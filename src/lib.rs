@@ -9,6 +9,8 @@
 //! которого **все** версии отозваны автором. С `backend-rug` этой
 //! цепочки нет вовсе, и он же считает на GMP.
 
+pub mod keys;
+
 use fast_paillier::{Ciphertext, DecryptionKey, EncryptionKey, Plaintext};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
