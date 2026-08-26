@@ -30,4 +30,8 @@ jobs:
           git config user.name  'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
       - name: mkdocs gh-deploy
-        run: mkdocs gh-deploy --force --message "docs: выкачено ${GITHUB_REF_NAME}"
+        # Блочный скаляр, а не строка: в "docs: выкачено" есть
+        # двоеточие с пробелом, и YAML прочёл бы это как вложенное
+        # отображение. Ровно на этом первый запуск и не собрался.
+        run: |
+          mkdocs gh-deploy --force --message "docs выкачено ${GITHUB_REF_NAME}"

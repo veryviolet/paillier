@@ -36,7 +36,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: собрать и поставить
         run: |
-          python -m pip install --quiet --upgrade pip 'maturin>=1.7,<2' pytest
+          python -m pip install --quiet --upgrade pip 'maturin>=1.7,<2' pytest pyyaml
           maturin build --release --out dist --interpreter python
           pip install --quiet dist/*.whl
       - run: pytest -q
