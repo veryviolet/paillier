@@ -34,7 +34,11 @@ REFERENCE = re.compile(
 
 
 def documents():
-    found = sorted(ROOT.glob("docs/*.md"))
+    # rglob, а не glob: страницы сайта лежат в подкаталогах
+    # (`docs/concepts/`, `docs/reference/`), и нерекурсивный обход
+    # проверял бы только корень `docs/` — то есть молча пропускал бы
+    # большую часть документации.
+    found = sorted(ROOT.rglob("docs/**/*.md"))
     found.append(ROOT / "README.md")
     return [path for path in found if path.exists()]
 

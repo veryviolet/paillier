@@ -3,7 +3,18 @@ name = "paillier"
 version = "0.3.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "Paillier для Guardora: своя реализация на GMP с привязкой к Python"
+description = "Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP с привязкой к Python"
+readme = "README.md"
+repository = "https://github.com/veryviolet/paillier"
+homepage = "https://veryviolet.github.io/paillier/"
+keywords = ["paillier", "homomorphic", "encryption", "cryptography", "gmp"]
+categories = ["cryptography"]
+authors = ["Kirill Groshenkov <kir.groshenkov@gmail.com>"]
+# Версия здесь ЕДИНСТВЕННАЯ. `pyproject.toml` объявляет её `dynamic`, и
+# maturin берёт её отсюда: две копии номера разъезжаются молча, а
+# разъехавшаяся версия хуже отсутствующей — она врёт про то, какой код
+# установлен.
+exclude = ["/benches", "/docs", "/.github", "/mkdocs.yml", "/site"]
 
 [lib]
 name = "paillier"

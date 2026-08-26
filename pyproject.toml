@@ -1,0 +1,55 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "paillier"
+description = "Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP, привязка к Python через pyo3"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT OR Apache-2.0"
+license-files = ["LICENSE-MIT", "LICENSE-APACHE"]
+authors = [{ name = "Kirill Groshenkov", email = "kir.groshenkov@gmail.com" }]
+keywords = [
+    "paillier",
+    "homomorphic-encryption",
+    "cryptography",
+    "federated-learning",
+    "privacy",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+# Версия берётся из `Cargo.toml`. Единственный источник номера — там же,
+# откуда его читает `__version__` при сборке (`CARGO_PKG_VERSION`).
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/veryviolet/paillier"
+Documentation = "https://veryviolet.github.io/paillier/"
+Repository = "https://github.com/veryviolet/paillier"
+Issues = "https://github.com/veryviolet/paillier/issues"
+Changelog = "https://github.com/veryviolet/paillier/blob/main/CHANGELOG.md"
+
+[tool.maturin]
+# Колёса собираются ПОД КАЖДУЮ версию Python отдельно, без `abi3`.
+#
+# Соблазн взять `abi3` силён — одно колесо вместо четырёх, — но в этом же
+# репозитории записано, чем `abi3` оборачивается, когда метка не
+# соответствует содержимому: `sf-heu==0.4.2b0` помечена `cp38-abi3`,
+# ставится и падает при импорте на символе, удалённом из CPython 3.12.
+# Отдельное колесо на версию не может соврать про совместимость: оно
+# либо собрано под этот интерпретатор, либо его нет.
+features = ["pyo3/extension-module"]
+strip = true

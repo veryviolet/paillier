@@ -1,0 +1,67 @@
+site_name: paillier
+site_url: https://veryviolet.github.io/paillier/
+site_description: >-
+  Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP,
+  привязка к Python через pyo3.
+repo_url: https://github.com/veryviolet/paillier
+repo_name: veryviolet/paillier
+
+theme:
+  name: material
+  language: ru
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+  palette:
+    - scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Тёмная тема
+    - scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Светлая тема
+
+plugins:
+  - search:
+      lang: ru
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets:
+      base_path:
+        - .
+  - toc:
+      permalink: true
+
+nav:
+  - Начало:
+      - Что это: index.md
+      - Установка: getting-started/installation.md
+      - Первый прогон: getting-started/first-run.md
+  - Как устроено:
+      - Схема и что она добавляет к предположениям: concepts/scheme.md
+      - Побочные каналы по времени: concepts/timing.md
+      - Кодирование и масштаб: concepts/encoding.md
+  - Справочник:
+      - API: reference/api.md
+      - Границы и отказы: reference/limits.md
+      - Прогоны: reference/benches.md
+  - Разбор:
+      - Сравнение с heu: heu-comparison.md
+      - Стойкость короткого показателя: short-exponent-security.md
+  - Изменения: changelog.md

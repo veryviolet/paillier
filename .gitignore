@@ -3,3 +3,4 @@
 __pycache__/
 .venv/
 benches/acc_values.f64
+/site

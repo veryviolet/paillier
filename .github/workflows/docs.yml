@@ -1,0 +1,33 @@
+name: docs
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch: # ручной перезапуск
+
+permissions:
+  contents: write # gh-deploy коммитит в ветку gh-pages
+
+concurrency:
+  group: docs-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # gh-deploy нужна полная история
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: поставить зависимости документации
+        run: pip install -r docs/requirements.txt
+      - name: автор коммита gh-deploy
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+      - name: mkdocs gh-deploy
+        run: mkdocs gh-deploy --force --message "docs: выкачено ${GITHUB_REF_NAME}"

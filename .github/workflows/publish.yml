@@ -1,0 +1,119 @@
+name: publish to PyPI
+
+# Trusted Publishing (OIDC) — никаких долгоживущих токенов ни здесь, ни в
+# секретах репозитория. Требует ОДНОРАЗОВОЙ настройки на стороне PyPI,
+# сделать её может только владелец учётной записи:
+#
+#   pypi.org -> Manage -> Account -> Publishing -> Add a new pending publisher
+#     project:     paillier
+#     owner:       veryviolet
+#     repository:  paillier
+#     workflow:    publish.yml
+#     environment: pypi
+#
+# После этого пуш любого тега vX.Y.Z собирает колёса и выкладывает их на
+# https://pypi.org/project/paillier/.
+#
+# Почему колёса собираются в контейнере manylinux, а не здесь: локальная
+# сборка получает метку по glibc машины (у нас `manylinux_2_34`), и
+# ставится она только там, где glibc не старее. Контейнер `2014` даёт
+# `manylinux_2_17` — нижнюю границу, с которой пакет ставится почти
+# везде.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write # нужно для обмена OIDC-доверия
+
+jobs:
+  build-wheels:
+    name: колесо для ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: сверить тег с версией в Cargo.toml
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -e
+          tag="${REF_NAME#v}"
+          ver="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)"
+          if [ "$tag" != "$ver" ]; then
+            echo "::error::тег $tag не совпадает с версией $ver в Cargo.toml"
+            exit 1
+          fi
+
+      - name: собрать колесо в manylinux
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          args: --release --out dist --interpreter ${{ matrix.python }}
+          manylinux: "2014"
+
+      # Колесо, которое не проверено установкой, — это не колесо, а
+      # архив. Проверяем на ТОМ ЖЕ интерпретаторе, под который собрано.
+      - name: поставить и прогнать
+        run: |
+          set -e
+          python -m venv /tmp/check
+          /tmp/check/bin/pip install --quiet --upgrade pip pytest
+          /tmp/check/bin/pip install --quiet dist/*.whl
+          /tmp/check/bin/python - <<'PY'
+          import paillier
+          print("версия:", paillier.__version__)
+          pub, sec = paillier.generate_keypair(2048)
+          blobs = [bytes(b) for b in paillier.encrypt_many(pub, [1.5, -2.25], scale_pow10=12)]
+          total = paillier.decrypt(sec, paillier.add_many(pub, blobs))
+          assert abs(total - (-0.75)) < 1e-9, total
+          PY
+          /tmp/check/bin/python -m pytest tests/encryption.py tests/scale.py -q
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.python }}
+          path: dist/*.whl
+
+  build-sdist:
+    name: исходный архив
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  publish:
+    name: выложить на PyPI
+    needs: [build-wheels, build-sdist]
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: показать, что выкладывается
+        run: ls -la dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
