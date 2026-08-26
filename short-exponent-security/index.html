@@ -1,0 +1,1926 @@
+
+<!doctype html>
+<html lang="ru" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP, привязка к Python через pyo3.">
+      
+      
+      
+        <link rel="canonical" href="https://veryviolet.github.io/paillier/short-exponent-security/">
+      
+      
+        <link rel="prev" href="../heu-comparison/">
+      
+      
+        <link rel="next" href="../changelog/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Стойкость короткого показателя - paillier</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#hr" class="md-skip">
+          Перейти к содержанию
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Верхний колонтитул">
+    <a href=".." title="paillier" class="md-header__button md-logo" aria-label="paillier" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            paillier
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Стойкость короткого показателя
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Тёмная тема"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Тёмная тема" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Светлая тема"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Светлая тема" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Поиск" placeholder="Поиск" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Поиск">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Очистить" aria-label="Очистить" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Инициализация поиска
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/veryviolet/paillier" title="Перейти к репозиторию" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    veryviolet/paillier
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Вкладки" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+  Начало
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../concepts/scheme/" class="md-tabs__link">
+          
+  
+  
+  Как устроено
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../reference/api/" class="md-tabs__link">
+          
+  
+  
+  Справочник
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../heu-comparison/" class="md-tabs__link">
+          
+  
+  
+  Разбор
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Изменения
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Навигация" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="paillier" class="md-nav__button md-logo" aria-label="paillier" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    paillier
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/veryviolet/paillier" title="Перейти к репозиторию" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    veryviolet/paillier
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Начало
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Начало
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Что это
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Установка
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/first-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Первый прогон
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Как устроено
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Как устроено
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/scheme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Схема и что она добавляет к предположениям
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/timing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Побочные каналы по времени
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/encoding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Кодирование и масштаб
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Справочник
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Справочник
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Границы и отказы
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/benches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Прогоны
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Разбор
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Разбор
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../heu-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Сравнение с heu
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Стойкость короткого показателя
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Стойкость короткого показателя
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Содержание">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Содержание
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Что именно меняется
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Почему расшифровка не ломается
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Требование к ключу: порядок должен быть НЕГЛАДКИМ
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Требование к ключу: порядок должен быть НЕГЛАДКИМ">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Чего этот контрпример НЕ доказывает
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#heu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        heu держится на статистике, а не на конструкции
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Почему hs не импортируется
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Модель угроз в нашем протоколе
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Запас стойкости короткого показателя
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Запас стойкости короткого показателя">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#n2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Показатель |n|/2 избыточен вчетверо, и это решение, а не дефект
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Требования к нашей генерации ключа
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Предположения, которые добавляются
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Чем проверяем реализацию
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Чем проверяем реализацию">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Почему проверок чужого модуля больше нет
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Составность снята отдельным решением, и три довода выше к ней не относятся
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Чего этот переход не даёт
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Изменения
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Содержание">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Содержание
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Что именно меняется
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Почему расшифровка не ломается
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Требование к ключу: порядок должен быть НЕГЛАДКИМ
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Требование к ключу: порядок должен быть НЕГЛАДКИМ">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Чего этот контрпример НЕ доказывает
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#heu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        heu держится на статистике, а не на конструкции
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Почему hs не импортируется
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Модель угроз в нашем протоколе
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Запас стойкости короткого показателя
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Запас стойкости короткого показателя">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#n2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Показатель |n|/2 избыточен вчетверо, и это решение, а не дефект
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Требования к нашей генерации ключа
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Предположения, которые добавляются
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Чем проверяем реализацию
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Чем проверяем реализацию">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Почему проверок чужого модуля больше нет
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Составность снята отдельным решением, и три довода выше к ней не относятся
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Чего этот переход не даёт
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="hr">Переход на <code>h^r</code>: что меняется в стойкости<a class="headerlink" href="#hr" title="Permanent link">&para;</a></h1>
+<p>Разбор перед реализацией. Приём взят из <code>heu</code>
+(<code>paillier_zahlen/key_generator.cc:43-57</code>, <code>encryptor.cc:26-31</code>), но
+разобран независимо.</p>
+<p><strong>Третья редакция.</strong> Первая требовала от порядка <code>h</code> величины вместо
+негладкости — на ключе, где все её проверки зелены, открытый текст
+снимался за семь секунд. Вторая это исправила, но ввела пробу на
+гладкость как защиту от подменённого <code>hs</code>; проба не даёт гарантии ни при
+какой границе и стоит 149 секунд на импорт нашего ключа. Здесь она
+заменена на устройство, при котором подменить нечего.</p>
+<h2 id="_1">Что именно меняется<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<p><strong>Было</strong> (<code>fast-paillier</code>, <code>encryption_key.rs:78</code>):</p>
+<div class="highlight"><pre><span></span><code>r ← равномерно из Z*_n
+c = (1 + m·n) · r^n mod n²
+</code></pre></div>
+<p><strong>Станет:</strong></p>
+<div class="highlight"><pre><span></span><code>шифрующий, один раз на модуль n:
+    x  ← случайное, gcd(x, n) = 1
+    h  = −x² mod n
+    hs = h^n mod n²
+
+при шифровании:
+    r ← случайное, |n|/2 бит
+    c = (1 + m·n) · hs^r mod n²
+</code></pre></div>
+<p>Существенно: <code>hs</code> <strong>выводит шифрующий сам</strong> из одного <code>n</code>. Он не едет по
+проводу и не берётся из чужого ключа.</p>
+<h2 id="_2">Почему расшифровка не ломается<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>hs^r = (h^n)^r = (h^r)^n mod n²
+</code></pre></div>
+<p>Множитель имеет вид <code>ρ^n</code> при <code>ρ = h^r</code>, то есть остаётся законным
+рандомизатором обычного Paillier, и расшифровка <code>L(c^λ mod n²)·µ mod n</code>
+работает без единой правки.</p>
+<p>Приводить <code>ρ</code> можно хоть по <code>n</code>, хоть по <code>n²</code>: <code>a^n mod n²</code> зависит
+только от <code>a mod n</code>, потому что при <code>a = b + kn</code> биномиальное
+разложение оставляет от лишних слагаемых кратные <code>n²</code>.</p>
+<p>Владельцу ключа при этом <strong>не нужно знать, какое <code>hs</code> взял шифрующий</strong>.
+Проверено: два шифрующих с разными <code>hs</code> под одним <code>n</code> дают шифротексты,
+которые складываются и расшифровываются верно.</p>
+<h2 id="_3">Требование к ключу: порядок должен быть НЕГЛАДКИМ<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<p>Не «большим». Разница решающая.</p>
+<p>Контрпример: <code>p = 2·M_p+1</code>, <code>q = 2·M_q+1</code>, где <code>M_p</code>, <code>M_q</code> —
+произведения различных малых простых. Тогда <code>p ≡ q ≡ 3 (mod 4)</code>,
+<code>gcd(p−1, q−1) = 2</code>, <code>|p − q|</code> велика, <code>ord(h) = 597</code> бит — всё
+«выполнено». Но <code>λ</code> гладкая, Полиг–Хеллман снимает <code>r</code> целиком:
+открытый текст восстанавливается за 7 секунд.</p>
+<p>Правильное требование: <strong><code>ord(hs)</code> обязан иметь большой простой
+делитель.</strong> (<code>ord(h)</code> и <code>ord(hs)</code> совпадают: возведение в <code>n</code>-ю степень
+— изоморфизм на подгруппу <code>n</code>-х вычетов.)</p>
+<p><strong>Безопасные простые дают это конструктивно</strong>: при <code>p = 2p′+1</code>,
+<code>q = 2q′+1</code> получается <code>λ = 2p′q′</code>, и наибольший простой делитель —
+порядка половины длины модуля. Проверено <code>tests/order_of_hs.rs</code>:
+двенадцать ключей на 256-битных простых и один боевой длины, у всех
+<code>ord(hs) = λ</code>.</p>
+<p>Здесь стояло «в 200 случаях из 200» — число без артефакта, как и
+«полный перебор всех x» ниже.</p>
+<p>Блюмовы простые этого <strong>не дают</strong>. Они дают другое: <code>(h|p) = (h|q) = −1</code>
+при <code>(h|n) = +1</code>, то есть <code>⟨h⟩ ⊆ J_n</code> — свойство про расположение, а не
+про величину.</p>
+<p>Поэтому <strong>главная проверка ключа — что простые действительно
+безопасные</strong>: <code>(p−1)/2</code> и <code>(q−1)/2</code> просты. Блюмовость, <code>gcd</code> и разность
+— вспомогательные.</p>
+<p>Это утверждение стоит исполняемым тестом, а не рассуждением:
+<code>tests/smooth_order_attack.rs</code> строит ровно такой контрпример — модуль
+длиннее нижней границы, простые блюмовы, <code>gcd(p−1, q−1) = 2</code>, простые
+далеки друг от друга, — и снимает с него открытый текст, располагая
+<strong>только <code>n</code> и шифротекстом</strong>. Метод — Поллард <code>p−1</code>; он раскладывает
+модуль, после чего расшифровка идёт как у владельца ключа.</p>
+<h3 id="_4">Чего этот контрпример НЕ доказывает<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<p>Первая редакция теста снимала показатель <code>r</code> методом Полига–Хеллмана и
+называла это атакой на короткий показатель. Так было неверно дважды.</p>
+<p>Во-первых, за черту «дальше только <code>n</code> и шифротекст» проносились две
+величины, которых у наблюдателя нет: сам <code>hs</code> — он выводится шифрующим
+из случайного <code>x</code> и наружу не отдаётся (<code>dir(PublicKey)</code> содержит только
+<code>modulus_bytes</code>, <code>exponent_bits</code>, <code>plaintext_bound_bits</code>, <code>from_n</code>), — и
+порядок <code>hs</code>, который вычислялся из <code>λ</code>, то есть из <code>p</code> и <code>q</code>.</p>
+<p>Во-вторых, и это существеннее: такой ключ ломается <strong>вообще без всякой
+связи с коротким показателем</strong>. Гладкое <code>p−1</code> открывает Полларда <code>p−1</code>,
+а это метод против МОДУЛЯ, а не против рандомизатора. Канонический
+Paillier с полным показателем на том же ключе падает точно так же.</p>
+<p>Так что контрпример доказывает «гладкое <code>p−1</code> губит любой Paillier» —
+утверждение верное и достаточное, чтобы требовать безопасных простых, но
+не то, что было написано. Требование неглаткости порядка <code>hs</code>,
+специфичное именно для короткого показателя, стережёт <code>DegenerateHs</code>
+(<code>tests/degenerate_x.rs</code>), а при безопасных простых оно выполняется
+конструктивно: множество достижимых порядков <code>hs</code> есть
+<code>{2, 2p′, 2q′, 2p′q′}</code>, то есть гладких значений выше двойки среди них
+нет.</p>
+<p>Это СЛЕДСТВИЕ, а не наблюдение. <code>Z*_n ≅ Z_{2p′} × Z_{2q′}</code>, а
+<code>hs = h^n</code>; в <code>Z*_{n²} ≅ Z*_{p²} × Z*_{q²}</code> возведение в степень
+<code>n = pq</code> оставляет в компонентах порядки, делящие <code>2p′</code> и <code>2q′</code>, откуда
+<code>ord(hs)</code> делит <code>lcm(2p′, 2q′) = 2p′q′</code>. Нечётные делители отпадают
+(<code>h = −x²</code> чётного порядка), а <code>1</code> и <code>2</code> отсекает <code>DegenerateHs</code>.</p>
+<p>Здесь стояло: «полный перебор всех <code>x</code> на пяти НАСТОЯЩИХ ключах». Такой
+перебор невозможен ни при какой машине — <code>Z*_n</code> при <code>|n| ≥ 2048</code>
+содержит <code>2^2047</code> элементов, — и никакого артефакта за этой фразой не
+было. Утверждение верное, свидетельство было выдуманным.</p>
+<p>Что есть теперь (<code>tests/order_of_hs.rs</code>): перебор ЧЕСТНО полный, но на
+игрушечном ключе <code>p = 23</code>, <code>q = 59</code>, где перебор идёт по 1354
+значениям и обходятся все; выборка из двенадцати ключей на 256-битных простых; и один
+ключ боевой длины — чтобы «довод не зависит от длины» не осталось
+словами.</p>
+<h3 id="heu"><code>heu</code> держится на статистике, а не на конструкции<a class="headerlink" href="#heu" title="Permanent link">&para;</a></h3>
+<p><code>key_generator.cc:34,36</code> зовёт <code>RandPrimeOver(half, PrimeType::BBS)</code> —
+блюмовы простые, не безопасные. Стойкость там опирается на то, что у
+случайного 1024-битного простого <code>λ</code> гладкой практически не бывает.
+Довод вероятностный и в коде не записан.</p>
+<p>Значит из <code>heu</code> нельзя перенести проверку ключа — её там нет. Мы
+отступаем от него в сторону строгости сознательно.</p>
+<h2 id="hs">Почему <code>hs</code> не импортируется<a class="headerlink" href="#hs" title="Permanent link">&para;</a></h2>
+<p><code>heu</code> кладёт <code>h_s_</code> в публичный ключ и принимает его с провода дословно
+(<code>public_key.h:86-87</code>: распаковка, <code>Init()</code>, ни одной проверки). При
+этом <code>h</code> не публикуется, поэтому проверить <code>hs = (−x²)^n</code> не может никто
+в принципе.</p>
+<p>Проверить импортированный <code>hs</code> вычислением <strong>невозможно</strong>, и это не
+вопрос усердия. Проба «<code>hs^E ≠ 1</code> при <code>E</code> — произведении простых до
+<code>B</code>» при границе <code>B</code> удостоверяет лишь <code>√B</code> работы, а стоит <code>π(B)·|n|</code>
+возведений в квадрат:</p>
+<table>
+<thead>
+<tr>
+<th><code>B</code></th>
+<th><code>π(B)</code></th>
+<th>стоимость при <code>\|n\| = 3072</code></th>
+<th>удостоверяет</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>2^16</code></td>
+<td>6 542</td>
+<td>2 мин</td>
+<td><code>2^8</code></td>
+</tr>
+<tr>
+<td><code>2^20</code></td>
+<td>82 025</td>
+<td>25 мин</td>
+<td><code>2^10</code></td>
+</tr>
+<tr>
+<td><code>2^24</code></td>
+<td>1 077 871</td>
+<td>5.5 ч</td>
+<td><code>2^12</code></td>
+</tr>
+</tbody>
+</table>
+<p>Чтобы удостоверить 128 бит, нужно <code>B = 2^256</code>. Сверх того, проба
+безразлична к степеням: Полиг–Хеллман стоит <code>Σ eᵢ·√pᵢ</code>, и ключ, у
+которого все простые множители меньше 500, пробу при <code>2^20</code> проходит, а
+открытый текст отдаёт за 0.1 секунды.</p>
+<p><strong>Поэтому <code>hs</code> не импортируется, а выводится.</strong> Шифрующий берёт своё
+<code>x</code> и считает <code>hs</code> сам из одного <code>n</code> — 0.30 с на ключ пира, считается
+один раз и кэшируется. Подменять нечего.</p>
+<p>Остаточный риск — злонамеренный <strong><code>n</code></strong> с гладкой <code>λ</code>. Его не ловит
+никакое вычисление по <code>(n, hs)</code>, и он остаётся в силе для любой схемы,
+включая исходную. В нашем протоколе <code>n</code> приходит от владельца ключа,
+который и так расшифровывает всё, что мы ему шлём, — то есть выигрыша у
+такой подмены нет.</p>
+<h2 id="_5">Модель угроз в нашем протоколе<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
+<p>Ключ порождает активная сторона и <strong>сама же им шифрует</strong>: владелец ключа
+и шифрующий — одно лицо.</p>
+<p>Чужим ключом мы шифруем ровно в одном месте — нули пустых бакетов на
+пассивной стороне. Что там можно узнать подменой, активная сторона и так
+получает по устройству протокола. Провод при этом под mTLS.</p>
+<p>То есть острой угрозы здесь нет. Вывод <code>hs</code> на месте вместо импорта
+делается не поэтому, а потому, что он <strong>проще</strong> импорта с проверкой и
+снимает целый класс возможностей, не требуя ни одной проверки.</p>
+<h2 id="_6">Запас стойкости короткого показателя<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h2>
+<p>Пусть <code>ord(hs) = S · L</code>, где <code>S</code> — гладкая часть, то есть произведение
+малых простых <code>pᵢ</code> в степенях <code>eᵢ</code>.</p>
+<div class="highlight"><pre><span></span><code>max( Σ eᵢ·√pᵢ ,  2^(|r|/2) / √S )
+</code></pre></div>
+<p>Первое — Полиг–Хеллман по гладкой части. Второе — кенгуру Полларда в
+интервале, <strong>сокращённом этой же гладкой частью</strong>: логарифм по модулю
+<code>S</code> берётся дёшево, и кенгуру остаётся интервал длиной <code>2^|r|/S</code>, то
+есть <code>2^(|r|/2)/√S</code> шагов.</p>
+<p>Здесь прежде стояло</p>
+<div class="highlight"><pre><span></span><code>min( 2^(|r|/2),  √(наибольший простой делитель ord(hs)) )
+</code></pre></div>
+<p>и это неверно дважды. Во-первых, кенгуру там не знает про <code>S</code>: формула
+судит по НАИБОЛЬШЕМУ простому делителю, тогда как работу нападающему
+сокращает гладкая часть. Во-вторых, <code>min</code> берёт дешевейшую из двух
+атак, но настоящая атака одна и складывается из обеих частей.</p>
+<p>Разница не умозрительная: ключ с <code>ord(hs) = 2^100 · L</code> старая формула
+оценит в <code>2^512</code> там, где настоящая цена <code>2^462</code>.</p>
+<p>На наших ключах разницы нет — <code>ord(hs) = 2p′q′</code>, значит <code>S = 2</code>, и обе
+формулы дают одно. Но это КРИТЕРИЙ, по которому судится ключ, и совпасть
+с верным в одном частном случае для критерия недостаточно.</p>
+<p>Оценка <code>2^(|r|/2)</code> сама по себе
+неверна: на гладком ключе она даёт <code>2^152</code> там, где настоящая стоимость
+семь секунд.</p>
+<p>При наших ключах — безопасные простые, <code>bits = 3072</code> по умолчанию,
+значит <code>|r| = 1536</code> — оба слагаемых велики. Но запас зависит от ключа
+целиком, а не только от длины показателя.</p>
+<h3 id="n2">Показатель <code>|n|/2</code> избыточен вчетверо, и это решение, а не дефект<a class="headerlink" href="#n2" title="Permanent link">&para;</a></h3>
+<p>Считаем по формуле выше. При <code>|n| = 2048</code> показатель даёт <code>2^512</code>, при
+3072 — <code>2^768</code>. А сам модуль стоит 112–128 бит (NIST SP 800-57). То
+есть показатель защищён вчетверо надёжнее ключа, который он охраняет:
+<code>|r| = 256</code> дало бы <code>2^128</code> — вровень.</p>
+<p>Что это стоит по скорости. Замерено (<code>benches/exponent_length.rs</code>,
+<code>|n| = 2048</code>, медиана пяти серий):</p>
+<table>
+<thead>
+<tr>
+<th>показатель</th>
+<th>окон</th>
+<th><code>pow_by_table</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1024 бита (сейчас)</td>
+<td>171</td>
+<td>1048 мкс</td>
+</tr>
+<tr>
+<td>512</td>
+<td>86</td>
+<td>502 мкс</td>
+</tr>
+<tr>
+<td>256</td>
+<td>43</td>
+<td>262 мкс</td>
+</tr>
+</tbody>
+</table>
+<p>Полное последовательное шифрование на той же машине — 1006–1050 мкс на
+элемент (<code>benches/measure.py</code>), медиана 1020. Значит постоянная часть,
+от длины показателя не зависящая, — <strong>меньше двадцати мкс</strong>, около двух
+процентов. Отсюда:</p>
+<table>
+<thead>
+<tr>
+<th>показатель</th>
+<th>полное время</th>
+<th>эл/с в потоке</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1024 бита</td>
+<td>1020 мкс</td>
+<td>980</td>
+</tr>
+<tr>
+<td>512</td>
+<td>~520 мкс</td>
+<td>~1900</td>
+</tr>
+<tr>
+<td>256</td>
+<td>~280 мкс</td>
+<td><strong>~3500</strong></td>
+</tr>
+</tbody>
+</table>
+<p>При <code>heu</code> 1407 эл/с по ядру сокращение до 256 бит <strong>обгоняет его</strong>
+в два с половиной раза.</p>
+<p>Два предостережения, и оба существенны.</p>
+<p>Во-первых, числа ВЫВЕДЕНЫ вычитанием, а не измерены сквозным прогоном:
+длина показателя снаружи не настраивается, она жёстко следует из <code>|n|</code>.</p>
+<p>Во-вторых, постоянная часть — разность двух независимо замеренных
+величин около 1030 мкс каждая, поэтому её собственная неопределённость
+сравнима с ней самой. Правый столбец округлён до сотни именно поэтому:
+точнее эти замеры не дают.</p>
+<p>Числа здесь менялись трижды, и лишь однажды — от уточнения. Сперва
+стояло «примерно 2600 эл/с», не следовавшее ни из какого замера; потом
+<code>2360–2630</code>, выведенное честно, но при <code>WINDOW_BITS = 4</code>. Нынешние —
+при шести битах, и к прежнему коду отношения не имеют.</p>
+<p>Прежде здесь стояло «примерно 2600 эл/с» — величина, как теперь видно,
+близкая к правде, но не следовавшая ни из какого замера: линейность по
+окнам была измерена, а постоянная часть в расчёт не входила вовсе.</p>
+<p>Здесь у меня был довод, и он оказался <strong>неверным</strong>. Я писал, что при
+<code>|r| = |n|/2</code> величина <code>hs^r</code> статистически близка к равномерной на
+<code>⟨hs⟩</code>, а при 256 битах близости нет, — то есть что сокращение меняет
+основание неразличимости.</p>
+<p>Посылка ложна. <code>hs = h^n</code>, а в <code>Z*_{n²} ≅ Z*_{p²} × Z*_{q²}</code> возведение
+в степень <code>n = pq</code> оставляет в компонентах порядки <code>2p′</code> и <code>2q′</code>, откуда
+<code>ord(hs) = lcm(2p′, 2q′) = 2p′q′ = λ</code>. Падение до <code>2p′</code> или <code>2q′</code>
+случается с вероятностью <code>1/q′</code>, <code>1/p′</code>, то есть исчезающе редко.</p>
+<p>Здесь стояло «<strong>400 из 400</strong> дали полную <code>λ</code>» — числа без артефакта, как
+и «пять настоящих ключей» выше. Проверка теперь есть и говорит ровно то,
+что делает: <code>tests/order_of_hs.rs</code> — двенадцать ключей на 256-битных
+простых и один боевой длины, у всех <code>ord(hs) = λ</code>.</p>
+<p>Значит порядок не <code>2^(|n|/2)</code>, а <code>≈ 2^(|n|−1)</code>. При <code>|n| = 2048</code>
+показатель в 1024 бита покрывает <code>2^1024</code> из <code>2^2047</code> — долю <code>2^−1023</code>,
+статистическое расстояние до равномерного равно <code>1 − 2^−1023</code>.
+<strong>Статистической близости нет и при <code>|n|/2</code>.</strong></p>
+<p>Отсюда верная формулировка выбора: оба варианта стоят на ОДНОМ
+предположении — о коротком показателе, пункт 1 ниже, — и различаются
+только величиной запаса, <code>2^512</code> против <code>2^128</code>. Бесплатным сокращение
+от этого не становится: сужение запаса вчетверо по битам реально. Но
+решать надо по запасу, а не по «более узкому основанию»: основание одно
+и то же.</p>
+<h2 id="_7">Требования к нашей генерации ключа<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h2>
+<p>Что даёт крейт: <code>decryption_key.rs:31-32</code> зовёт
+<code>generate_safe_prime(rng, 1536)</code> дважды, а <code>backend.rs:115-148</code> строит
+<code>p′</code>, проверяет на простоту, берёт <code>p = 2p′+1</code> и проверяет снова.
+Настоящие безопасные простые.</p>
+<p>Чего крейт <strong>не</strong> делает:</p>
+<ul>
+<li><strong>проверки <code>|p − q|</code> в нём нет вовсе.</strong> Свойство держится
+  вероятностно. Явную проверку делает <code>heu</code>
+  (<code>key_generator.cc:38-39</code>), а не мы, — значит её надо добавить.</li>
+<li><strong><code>from_primes</code> и десериализация минуют всё.</strong> Проверяются только
+  <code>p ≠ q</code>, <code>λ ≠ 0</code> и обратимость <code>λ</code>. Причём докстринг самого крейта у
+  <code>from_primes</code> гласит, что простые <strong>обязаны</strong> быть безопасными, — и не
+  проверяет этого.</li>
+</ul>
+<p>Поэтому «наши ключи удовлетворяют требованиям автоматически» верно
+только для пути <code>generate_keypair</code>, а всё остальное надо проверять.</p>
+<p>Плюс при выводе <code>h</code> проверяем знак: <code>jacobi(h, p) = jacobi(h, q) = −1</code>.
+Если знак потеряется и выйдет <code>h = x²</code>, порядок упадёт, а все проверки
+на корректность останутся зелёными. Проверка возможна только там, где
+есть <code>p</code> и <code>q</code>, то есть у владельца ключа.</p>
+<h2 id="_8">Предположения, которые добавляются<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Короткий показатель.</strong> <code>h^r</code> при коротком <code>r</code> неотличимо от <code>h^R</code>
+   при полном. Стандартное, опубликованное, но новое относительно
+   исходной схемы.</li>
+<li><strong>DCR, ограниченное <code>J_n</code>.</strong> Рандомизатор пробегает подгруппу индекса
+   два. Открытый текст это не выдаёт, но наши шифротексты публично
+   отличимы от стоковых: у всех символ Якоби <code>+1</code>, тогда как у стоковых
+   он делится примерно поровну. Отпечаток схемы виден на проводе.</li>
+<li><strong>Постоянство времени по <code>r</code>.</strong> Секрет переехал из основания в
+   показатель: было секретное основание и публичный показатель <code>n</code>,
+   стало публичное основание и секретный показатель. Оконная таблица
+   индексируется его битами — мишень для замера через кэш, а
+   восстановление <code>r</code> даёт <code>m</code>.</li>
+</ol>
+<p>Четвёртого предположения — про второе поле в публичном ключе — больше
+нет: <code>hs</code> не едет по проводу, ключ остаётся одним <code>n</code>, терять нечего.</p>
+<h2 id="_9">Чем проверяем реализацию<a class="headerlink" href="#_9" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Круг на немодифицированной расшифровке крейта: положительные,
+   отрицательные, ноль, границы диапазона.</li>
+<li>Гомоморфность, включая переход суммы через ноль.</li>
+<li>Совместимость: шифротекст нового вида расшифровывается стоковой
+   функцией — проверка утверждения <code>hs^r = (h^r)^n</code>.</li>
+<li><strong>Разные <code>hs</code> под одним <code>n</code> складываются.</strong> Два шифрующих выводят
+   своё <code>hs</code>; сумма их шифротекстов расшифровывается верно. Без этого
+   вывод на месте не имеет права на существование.</li>
+<li>Тысяча шифрований одного значения — все различны.</li>
+<li><strong>Столкновение рандомизатора при РАЗНЫХ открытых текстах.</strong> Проверка
+   5 к этому слепа, а именно так выглядит повторное использование <code>r</code>
+   после ветвления процесса с общим зерном. Признак считается только по
+   публичному ключу: <code>(c₁·c₂⁻¹ mod n²) mod n ≠ 1</code>.</li>
+<li><strong>Простые действительно безопасные</strong>: <code>(p−1)/2</code> и <code>(q−1)/2</code> просты.
+   Главная проверка ключа.</li>
+<li>Блюмовость, <code>gcd(p−1, q−1) = 2</code>, <code>|p − q|</code> — вспомогательные,
+   отдельными отказами.</li>
+<li>Знак <code>h</code>: <code>jacobi(h, p) = jacobi(h, q) = −1</code>.</li>
+<li>Длина показателя закреплена ЧИСЛОМ и считается от ФАКТИЧЕСКОЙ длины
+    <code>n</code>. Проверять надо на размере, где запрошенная и фактическая
+    величины расходятся, — иначе тест зелен по совпадению.</li>
+<li>Сквозной путь ключа: сериализация → передача → шифрование →
+    расшифровка.</li>
+<li><strong>Рандомизация на пути <code>from_n</code>, а не только у владельца.</strong> Все
+    проверки рандомизации стояли на ключе владельца, и мутация «<code>hs = 1</code>
+    только в <code>from_n</code>» проходила сьют целиком — то есть приватности не
+    было у той самой стороны, ради которой приём и существует.</li>
+<li><strong>Нижняя граница длины ключа.</strong> Её не было вовсе, и
+    <code>generate_keypair(32)</code> возвращал 32-битный модуль при зелёном
+    сьюте. Проверяется отказ, потому что всё остальное на таком ключе в
+    порядке.</li>
+<li>
+<p><strong>Чужой модуль.</strong> Отравленный <code>n</code> даёт отравленный <code>hs</code>, сколько
+    его ни выводи на месте. Проверяются две вещи:</p>
+<ul>
+<li>нечётность;</li>
+<li>длина снизу и сверху.</li>
+</ul>
+<p>И это <strong>всё</strong>. Ровно <em>partial public key validation</em> из NIST SP
+800-56B, то есть то, что делают все. Ни одна из двух не закрывает
+случай «приватности нет, а круг верен» — короткий модуль приватность
+ослабляет, а не снимает. Проверки, которые такие случаи закрывали,
+сняты; чего это стоит — ниже.</p>
+</li>
+</ol>
+<h3 id="_10">Почему проверок чужого модуля больше нет<a class="headerlink" href="#_10" title="Permanent link">&para;</a></h3>
+<p>Здесь были ещё три пробы — перебор малыми простыми, ро-Брента и Поллард
+<code>p−1</code> — и проверка составности. Всё снято, и разбор стоит записать,
+потому что путь к ним был ошибкой рассуждения, а не недосмотром.</p>
+<p>Довод был такой: отравленный модуль открывает шифротексты пассивной
+стороны любому перехватчику, владелец ключа при этом не теряет ничего,
+потому и может так поступить. Довод верен. Неверен вывод, что отсюда
+следует проверять модуль вычислением.</p>
+<p><strong>Не работает.</strong> Из одного <code>n</code> нельзя установить, что он произведение
+двух больших различных простых: это задача факторизации. Любая проба
+даёт границу и стоит ровно столько, сколько нападающему её перешагнуть,
+а он читает исходники и выберет множитель за границей. Замерено: ро с
+бюджетом <code>2^16</code> достаёт примерно до 32 бит, и 40-битный безопасный
+множитель — тот самый пример, ради которого проба и писалась, —
+проходил её насквозь.</p>
+<p><strong>Дорого.</strong> Пробы стоили две трети разбора чужого ключа (0.46 с из
+0.69 с при <code>|n| = 2048</code>) и утроили окно, в течение которого узел не
+отвечает на сигналы: с 2.4 до 6.8 с на предельном модуле, под снятым
+GIL. То есть защита от отказа в обслуживании сама стала отказом в
+обслуживании.</p>
+<p><strong>Не туда.</strong> Задача решается не пассивной проверкой, а доказательством
+формы модуля от владельца: Gennaro–Micciancio–Rabin для свободы от
+квадратов, van de Graaf–Peralta для «ровно два простых». Это конечная
+работа с ясным концом, но место для неё — вызов-ответ в рукопожатии
+узлов, а не функция в библиотеке.</p>
+<p>Так что верная формулировка: <strong><code>validate_public</code> закончить нельзя, а
+задачу — можно.</strong> Пока доказательства нет, доверие к <code>n</code> берётся из
+mTLS и приглашения, и это ВЫБОР, а не невозможность.</p>
+<h3 id="_11">Составность снята отдельным решением, и три довода выше к ней не относятся<a class="headerlink" href="#_11" title="Permanent link">&para;</a></h3>
+<p>Это надо разделить честно. Проверка <code>n</code> на простоту и на точную степень
+простого была снята вместе с пробами, но она <strong>не проба</strong>:</p>
+<ul>
+<li><code>is_probably_prime</code> — решающая процедура, а не поиск с границей. У неё
+  нет порога, который нападающий перешагнёт: простой модуль ловится
+  достоверно;</li>
+<li>стоит она 2.3 мс при <code>|n| = 2048</code> — полпроцента от тех 0.46 с, ради
+  которых снимались пробы;</li>
+<li>и ловит она не только злой умысел: пир со сломанным генератором,
+  приславший простое, принимается молча.</li>
+</ul>
+<p>То есть довод «не работает» к ней неверен, «дорого» — неверен, а «не
+туда» говорит про идеальное лечение, а не про то, зачем снимать
+достоверную проверку сегодня.</p>
+<p>Снята она по другому основанию: <strong>делаем ровно то, что делают все.</strong>
+<code>heu</code> составность не проверяет, NIST SP 800-56B её в partial validation
+не включает. Это решение о границах библиотеки, а не вывод из
+рассуждения выше.</p>
+<p>Цена решения, замеренная и записанная, чтобы её нельзя было не заметить:
+2048-битное простое <code>n</code> принимается <code>from_n</code> за 0.010 с, шифротексты при
+этом различны — рандомизация цела, круг цел, — а наблюдатель, у которого
+есть только <code>n</code>, читает все открытые тексты, потому что <code>λ = n−1</code>.
+Степень простого проходит так же. Возврат стоит две строки.</p>
+<p>Как это устроено у соседей, проверено по коду: <code>heu</code> при приёме чужого
+ключа не делает вообще ничего — <code>public_key.h:84-87</code> берёт <code>n_</code> и <code>h_s_</code>
+из msgpack дословно и зовёт <code>Init()</code>, который считает только <code>n²</code>,
+<code>n/2</code>, <code>key_size</code> и оконную таблицу. Все проверки у <code>heu</code> — на своём
+ключе, при генерации.
+15. <strong>Запас под сумму.</strong> Поштучной проверки диапазона мало: на
+    1024-битном ключе три законных значения складывались в конечное
+    правдоподобное число не того знака. Запас резервируется при
+    шифровании, и <code>add_many</code> держит планку на один вызов.</p>
+<pre><code>Гарантией эта пара НЕ является, и так написано в коде: счётчик
+повызовный, результат `add_many` подаётся во второй вызов, и два
+законных вызова дают `2^40` слагаемых. Держит инвариант соотношение
+между нижней границей ключа и тем, что вообще кодируется из `f64`:
+`2^2026`–`2^2027` против `2^1024`. Два значения потому, что
+произведение двух 1024-битных простых выходит и на 2048 бит, и на
+2047; здесь стояло одиночное `2^2027`, которое опровергал каждый
+второй ключ. Утверждается это числом — но числом ОТ ФАКТИЧЕСКОЙ
+длины модуля (`modulus_bits − 21`), а не литералом, поэтому тест
+расхождения не знал.
+
+Граница считается ОДНОЙ функцией на предикат шифрования и на
+геттер. Врозь мутация множителя в предикате проходила сьют целиком
+— геттер продолжал возвращать верное число. Это тот же дефект, что
+был с длиной показателя, повторённый в соседней строке.
+</code></pre>
+<ol>
+<li><strong>Отказ, а не паника.</strong> <code>PanicException</code> наследует <code>BaseException</code>
+    и сквозь <code>except Exception</code> вызывающего проходит насквозь.</li>
+</ol>
+<h2 id="_12">Чего этот переход не даёт<a class="headerlink" href="#_12" title="Permanent link">&para;</a></h2>
+<p>Заготовленного запаса готовых <code>hs^r</code>. Ускорил бы ещё, но повторное
+использование <code>r</code> ломает семантическую безопасность. Только с гарантией
+однократного расхода, и это отдельная работа.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u043e \u0432 \u0431\u0443\u0444\u0435\u0440", "clipboard.copy": "\u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0432 \u0431\u0443\u0444\u0435\u0440", "search.result.more.one": "\u0415\u0449\u0451 1 \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435", "search.result.more.other": "\u0415\u0449\u0451 # \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435", "search.result.none": "\u0421\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0439 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e", "search.result.one": "\u041d\u0430\u0439\u0434\u0435\u043d\u043e 1 \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0435", "search.result.other": "\u041d\u0430\u0439\u0434\u0435\u043d\u043e \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0439: #", "search.result.placeholder": "\u041d\u0430\u0447\u043d\u0438\u0442\u0435 \u043f\u0435\u0447\u0430\u0442\u0430\u0442\u044c \u0434\u043b\u044f \u043f\u043e\u0438\u0441\u043a\u0430", "search.result.term.missing": "\u041e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442", "select.version": "\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0432\u0435\u0440\u0441\u0438\u044e"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

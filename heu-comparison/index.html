@@ -1,0 +1,2145 @@
+
+<!doctype html>
+<html lang="ru" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP, привязка к Python через pyo3.">
+      
+      
+      
+        <link rel="canonical" href="https://veryviolet.github.io/paillier/heu-comparison/">
+      
+      
+        <link rel="prev" href="../reference/benches/">
+      
+      
+        <link rel="next" href="../short-exponent-security/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Сравнение с heu - paillier</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#heu" class="md-skip">
+          Перейти к содержанию
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Верхний колонтитул">
+    <a href=".." title="paillier" class="md-header__button md-logo" aria-label="paillier" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            paillier
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Сравнение с heu
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Тёмная тема"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Тёмная тема" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Светлая тема"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Светлая тема" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Поиск" placeholder="Поиск" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Поиск">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Очистить" aria-label="Очистить" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Инициализация поиска
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/veryviolet/paillier" title="Перейти к репозиторию" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    veryviolet/paillier
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Вкладки" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+  Начало
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../concepts/scheme/" class="md-tabs__link">
+          
+  
+  
+  Как устроено
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../reference/api/" class="md-tabs__link">
+          
+  
+  
+  Справочник
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Разбор
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Изменения
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Навигация" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="paillier" class="md-nav__button md-logo" aria-label="paillier" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    paillier
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/veryviolet/paillier" title="Перейти к репозиторию" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    veryviolet/paillier
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Начало
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Начало
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Что это
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Установка
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/first-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Первый прогон
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Как устроено
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Как устроено
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/scheme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Схема и что она добавляет к предположениям
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/timing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Побочные каналы по времени
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/encoding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Кодирование и масштаб
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Справочник
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Справочник
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Границы и отказы
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/benches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Прогоны
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Разбор
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Разбор
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Сравнение с heu
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Сравнение с heu
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Содержание">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Содержание
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Сводка
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Сводка">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Откуда берётся каждая разница
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Различия в безопасности
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Различия в безопасности">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Что за этим стоит
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Шифрование
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Шифрование">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        g^m — паритет
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        r^n — здесь и лежит разрыв
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Пространство Монтгомери
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Расшифровка
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Что переносим
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Что переносим">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Что дал перенос, и в чём я сначала соврал числами
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Чем это оборачивается на знакопостоянных данных
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Лицензии
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../short-exponent-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Стойкость короткого показателя
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Изменения
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Содержание">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Содержание
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Сводка
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Сводка">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Откуда берётся каждая разница
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Различия в безопасности
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Различия в безопасности">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Что за этим стоит
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Шифрование
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Шифрование">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        g^m — паритет
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        r^n — здесь и лежит разрыв
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Пространство Монтгомери
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Расшифровка
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Что переносим
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Что переносим">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Что дал перенос, и в чём я сначала соврал числами
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Чем это оборачивается на знакопостоянных данных
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Лицензии
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="heu">Чем <code>heu</code> быстрее и что из этого перенимаем<a class="headerlink" href="#heu" title="Permanent link">&para;</a></h1>
+<h2 id="_1">Сводка<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<p>Ключ 2048 бит, один набор, одна машина, <code>N = 200</code>. <code>paillier</code> — этот
+пакет.</p>
+<table>
+<thead>
+<tr>
+<th>метрика</th>
+<th><code>paillier</code></th>
+<th><code>heu</code></th>
+<th>кто лучше</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>шифрование, все ядра (эл/с)</td>
+<td><strong>6500–6700</strong></td>
+<td>1407</td>
+<td><code>paillier</code> ×4.7</td>
+</tr>
+<tr>
+<td>шифрование, одно ядро (эл/с)</td>
+<td>980</td>
+<td><strong>1407</strong></td>
+<td><code>heu</code> ×1.43</td>
+</tr>
+<tr>
+<td>сложение (мкс на слагаемое)</td>
+<td><strong>7.3</strong></td>
+<td>10.8</td>
+<td>форма API, не арифметика</td>
+</tr>
+<tr>
+<td>расшифровка (мс)</td>
+<td>3.75</td>
+<td><strong>2.86</strong></td>
+<td><code>heu</code> ×1.3</td>
+</tr>
+<tr>
+<td>шифротекст (байт)</td>
+<td><strong>512–513</strong></td>
+<td>523–524</td>
+<td><code>paillier</code></td>
+</tr>
+<tr>
+<td>ключ 2048 (с, медиана из 5)</td>
+<td>1.4–2.8</td>
+<td><strong>0.95</strong></td>
+<td><code>heu</code> ×1.5–3</td>
+</tr>
+<tr>
+<td>ошибка суммы, 10⁵ неотрицательных</td>
+<td><strong>1.24e-06</strong></td>
+<td>5.01e-04</td>
+<td><code>paillier</code> ×400</td>
+</tr>
+</tbody>
+</table>
+<p>Параллелизм есть только у нас: у <code>heu</code> <code>encrypt_many</code> нет вовсе, там
+питоновский цикл. Поэтому первые две строки — это одно и то же
+измерение, поданное двумя способами, и обе надо читать вместе.</p>
+<p>Разброс у генерации ключа огромный — от 0.98 до 10.3 секунды по пяти
+повторам, — поэтому там медиана, и одиночный замер не значит ничего.</p>
+<h3 id="_2">Откуда берётся каждая разница<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h3>
+<p><strong>Шифрование в одном ядре, ×1.43 в пользу <code>heu</code></strong> — это ЧИСЛО
+УМНОЖЕНИЙ, а не их цена и не плата за стойкость.</p>
+<p>Профилирование: шифрование на <strong>98.2 %</strong> состоит из <code>pow_by_table</code>;
+кодирование, <code>1 + m·n</code>, финальное умножение и сериализация вместе —
+меньше половины процента. То есть операция — это ровно
+<code>окон + 2</code> умножения по модулю <code>n²</code>.</p>
+<p>Цена одного умножения у нас и у <code>heu</code> <strong>одинаковая</strong>: 5.8 против 5.9
+мкс, разница внутри разброса машины. Отличается число окон: у <code>heu</code>
+ширина окна <strong>10 бит</strong> (<code>public_key.cc</code>, <code>kExpUnitBits = 10</code>) — 103
+умножения; у нас было 4 бита и 256 умножений, стало 6 бит и 171.</p>
+<p>Здесь стояло другое объяснение — «94 % разрыва это умножение в
+пространстве Монтгомери НА ЛИМБАХ». Оно <strong>неверно</strong>, и проверено
+числом: Монтгомери на <code>mpn_*</code> без аллокаций даёт 4.90–5.24 мкс против
+5.75–5.87 у <code>mpz_mul</code> + <code>mpz_tdiv_r</code>, то есть <strong>1.10–1.20</strong>, а не 2.
+REDC (64 умножения-с-накоплением) стоит 3.0 мкс против 3.5 у деления —
+деление в GMP на этих длинах уже субквадратичное, а REDC нет. Одним
+переходом на лимбы <code>heu</code> не догоняется.</p>
+<p>Меры стойкости в шифровании стоят <strong>5.6 %</strong> — замерено парным прогоном
+сборки со снятыми мерами против выпущенной, девять чередующихся пар.</p>
+<p><strong>Расшифровка, ×1.3 в пользу <code>heu</code></strong> — наоборот, плата за стойкость
+целиком: <code>mpz_powm_sec</code> вместо <code>mpz_powm</code>, замерено 1.54–1.55×. С
+обычным возведением вышло бы около 2.4 мс, то есть быстрее <code>heu</code>.</p>
+<p><strong>Ключ, в полтора-три раза в пользу <code>heu</code></strong> — прямое следствие требования к
+ключу. Мы ищем БЕЗОПАСНЫЕ простые (<code>p = 2p′+1</code>, <code>p′</code> тоже просто), <code>heu</code>
+— блюмовы (<code>key_generator.cc:34</code>). Второе условие режет плотность
+кандидатов примерно как <code>1/ln N</code>, отсюда и разница. Здесь я прежде
+утверждал обратное («4.87 с против ~25»); замер это опровергает.</p>
+<p><strong>Ошибка суммы, ×400 в пользу нас</strong> — правило округления: мы к
+ближайшему, <code>heu</code> усекает к нулю. На знакопостоянных данных усечение
+даёт линейный снос. На симметричных данных разницы нет.</p>
+<h2 id="_3">Различия в безопасности<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<p>Проверено по исходникам <code>heu</code> (<code>paillier_zahlen</code>), не по памяти.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>paillier</code></th>
+<th><code>heu</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>простые</td>
+<td>безопасные, <code>p = 2p′+1</code></td>
+<td>блюмовы (<code>PrimeType::BBS</code>)</td>
+</tr>
+<tr>
+<td>неглаткость <code>ord(hs)</code></td>
+<td><strong>по построению</strong></td>
+<td>статистически</td>
+</tr>
+<tr>
+<td><code>|p − q|</code></td>
+<td><code>≥ |p| − 100</code> (FIPS 186-4 B.3.1)</td>
+<td><code>≥ |n|/2 − 2</code> — <strong>строже нашего</strong></td>
+</tr>
+<tr>
+<td>проверка чужого <code>n</code></td>
+<td>нечётность и длина</td>
+<td><strong>нет никакой</strong></td>
+</tr>
+<tr>
+<td>проверка своего ключа</td>
+<td>простота, длины, расхождение простых</td>
+<td>нет</td>
+</tr>
+<tr>
+<td>откуда берётся <code>hs</code></td>
+<td><strong>выводится из <code>n</code> на месте</strong></td>
+<td>приезжает в публичном ключе</td>
+</tr>
+<tr>
+<td>вырожденный <code>hs</code></td>
+<td><code>DegenerateHs</code>, точный предикат</td>
+<td><strong>не проверяется</strong></td>
+</tr>
+<tr>
+<td>показатель при расшифровке</td>
+<td><code>mpz_powm_sec</code></td>
+<td>не проверял</td>
+</tr>
+<tr>
+<td>канал по весу показателя</td>
+<td>закрыт</td>
+<td>не проверял</td>
+</tr>
+<tr>
+<td>кэш-канал</td>
+<td>закрыт</td>
+<td>не проверял</td>
+</tr>
+<tr>
+<td>канал по ведущим нулям</td>
+<td><strong>открыт, ~0.118 бита</strong></td>
+<td>не проверял</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_4">Что за этим стоит<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<p><strong>Главное различие — <code>hs</code> приезжает или выводится.</strong> У <code>heu</code> публичный
+ключ упакован как пара <code>(n_, h_s_)</code> и распаковывается без единой
+проверки (<code>public_key.h:86-87</code>, следом сразу <code>Init()</code>). То есть
+шифрующая сторона ОБЯЗАНА доверять чужому <code>h_s_</code>. Проверить его нельзя:
+проба на гладкость с границей <code>B</code> удостоверяет лишь <code>√B</code> работы, а стоит
+<code>π(B)·|n|</code> возведений.</p>
+<p>Наш <code>from_n</code> берёт с провода только <code>n</code> и выводит <code>hs</code> сам. Отравленный
+модуль по-прежнему даёт отравленный <code>hs</code> — от этого вывод на месте не
+спасает, — но целый класс возможностей исчезает без единой проверки.</p>
+<p><strong>Вырожденный <code>hs</code>.</strong> <code>heu</code> требует лишь <code>gcd(x, n) = 1</code>
+(<code>key_generator.cc:44-47</code>). При <code>x = 1</code> выходит <code>h = −1</code>, <code>h_s = n²−1</code>, и
+рандомизация схлопывается до одного бита: <code>hs^r ∈ {1, n²−1}</code>. Вероятность
+ничтожна, но проверки нет; у нас это ловит <code>DegenerateHs</code>, и предикат
+точный, а не эвристика — при безопасных простых <code>ord(hs) ≤ 2</code> есть
+единственное достижимое вырождение.</p>
+<p><strong>В одном месте <code>heu</code> строже нас.</strong> Расхождение простых: у них
+<code>≥ |n|/2 − 2</code> бит (при 2048 это 1022), у нас <code>≥ |p| − 100</code> (924).
+Обе величины закрывают Ферма с колоссальным запасом, но требование у них
+жёстче, и это надо называть, а не замалчивать.</p>
+<p><strong>Чего я НЕ утверждаю.</strong> Про постоянство времени у <code>heu</code> — ничего. В его
+собственном коде запроса постоянного времени нет нигде, но возведение
+уходит в SPI длинной арифметики (<code>bigint_spi</code>, по умолчанию openssl), а
+его исходников я не читал. Отсутствие запроса — не доказательство
+отсутствия свойства.</p>
+<p>Разбор по коду: <code>heu/library/algorithms/paillier_zahlen</code> (Apache 2.0,
+это и есть <code>SchemaType.ZPaillier</code>) против <code>fast-paillier 0.3.2</code>
+(MIT OR Apache-2.0), на котором стоит наш пакет.</p>
+<p>Замерено на одном наборе, ключ 2048 бит, Python 3.10, один поток:
+шифрование <strong>0.69 мс</strong> у <code>heu</code> против <strong>9.36 мс</strong> у нас. Разница
+тринадцатикратная при том, что обе считают длинной арифметикой на C.
+Значит дело не в языке — ниже разобрано, в чём.</p>
+<h2 id="_5">Шифрование<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
+<p>Обе стороны считают <code>c = g^m · r^n mod n²</code>, но по-разному.</p>
+<h3 id="gm"><code>g^m</code> — паритет<a class="headerlink" href="#gm" title="Permanent link">&para;</a></h3>
+<p>При <code>g = n+1</code> бином даёт <code>g^m ≡ 1 + m·n (mod n²)</code>: одно умножение
+вместо возведения в степень. Делают обе.</p>
+<p><code>heu</code> (<code>encryptor.cc:44</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="n">BigInt</span><span class="w"> </span><span class="n">gm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pk_</span><span class="p">.</span><span class="n">n_</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w">  </span><span class="c1">// no need mod</span>
+</code></pre></div>
+<p><code>fast-paillier</code> (<code>encryption_key.rs:75</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="kd">let</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">Integer</span><span class="p">::</span><span class="n">one</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="o">&amp;</span><span class="n">x</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">n</span><span class="p">())</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">nn</span><span class="p">();</span>
+</code></pre></div>
+<h3 id="rn"><code>r^n</code> — здесь и лежит разрыв<a class="headerlink" href="#rn" title="Permanent link">&para;</a></h3>
+<p><code>fast-paillier</code> (<code>encryption_key.rs:78</code>) считает буквально:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">let</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nonce</span><span class="p">.</span><span class="n">pow_mod_ref</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">n</span><span class="p">(),</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">nn</span><span class="p">())</span>
+</code></pre></div>
+<p>Основание <code>nonce</code> <strong>случайное</strong>, показатель <code>n</code> — 2048 бит, модуль <code>n²</code>
+— 4096 бит. Полное возведение в степень, и ничего предвычислить нельзя:
+основание каждый раз новое.</p>
+<p><code>heu</code> (<code>encryptor.cc:26-31</code>) считает иначе:</p>
+<div class="highlight"><pre><span></span><code><span class="n">BigInt</span><span class="w"> </span><span class="nf">Encryptor::GetRn</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">BigInt</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BigInt</span><span class="o">::</span><span class="n">RandomExactBits</span><span class="p">(</span><span class="n">pk_</span><span class="p">.</span><span class="n">key_size_</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">pk_</span><span class="p">.</span><span class="n">m_space_</span><span class="o">-&gt;</span><span class="n">PowMod</span><span class="p">(</span><span class="o">*</span><span class="n">pk_</span><span class="p">.</span><span class="n">hs_table_</span><span class="p">,</span><span class="w"> </span><span class="n">r</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Три отличия сразу, и каждое режет цену:</p>
+<ol>
+<li><strong>Основание фиксированное.</strong> Вместо <code>r^n</code> берётся <code>h^r</code>, где <code>h</code>
+   заготовлено при генерации ключа. Это вариант Дамгорда–Жюрика, а не
+   самодеятельность. Но «неразличимость сохраняется» — не следствие
+   одной DCRA: нужно ДОПОЛНИТЕЛЬНОЕ предположение о коротком
+   показателе, и оно выписано первым пунктом в
+   <code>docs/short-exponent-security.md</code>. Безусловно эту фразу читать
+   нельзя.</li>
+<li><strong>Таблица окон.</strong> <code>hs_table_</code> — предвычисленные степени фиксированного
+   основания. Возможна ровно потому, что основание не меняется.</li>
+<li><strong>Показатель вдвое короче.</strong> <code>key_size_ / 2</code> — 1024 бита вместо 2048.</li>
+</ol>
+<p>Итого вместо возведения случайного основания в 2048-битную степень —
+табличное возведение фиксированного основания в 1024-битную. Отсюда и
+берётся тринадцатикратная разница.</p>
+<h3 id="_6">Пространство Монтгомери<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h3>
+<p><code>heu</code> держит модуль в <code>m_space_</code> и считает <code>MulMod</code>/<code>PowMod</code> в нём
+(<code>encryptor.cc:46,49</code>), с явными переходами <code>MapIntoMSpace</code> /
+<code>MapBackToZSpace</code>. <code>fast-paillier</code> пользуется обычными <code>%</code> и <code>.modulo()</code>
+поверх GMP.</p>
+<p><strong>У нас этот приём был реализован и откачен по замеру.</strong> Записано здесь,
+чтобы следующий читатель не пробовал заново.</p>
+<table>
+<thead>
+<tr>
+<th>n = 10 000, модуль 2048</th>
+<th>эл/с шифрования</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>до обоих приёмов</td>
+<td>1 190</td>
+</tr>
+<tr>
+<td>+ таблица окон</td>
+<td><strong>4 576</strong></td>
+</tr>
+<tr>
+<td>+ таблица и Монтгомери</td>
+<td>3 872</td>
+</tr>
+</tbody>
+</table>
+<p>Монтгомери <strong>замедлил на 15 %</strong>. Причина в уровне, на котором он
+написан: REDC поверх <code>rug::Integer</code> собирается из тех же полноразмерных
+операций — два умножения, сложение и сдвиг вместо одного умножения и
+одного деления. <code>mpz_tdiv_r</code> в GMP стоит дешевле, чем два лишних
+умножения по 4096 бит.</p>
+<p>У <code>heu</code> тот же приём выигрывает потому, что лежит <strong>на лимбах</strong>, внутри
+<code>m_space_</code>, а не поверх обёртки над <code>mpz</code>. Повторить это у нас значило
+бы спуститься к <code>gmp-mpfr-sys</code> и работать с <code>mp_limb_t</code> напрямую — то
+есть писать своё умножение по модулю со всеми обязательствами по
+постоянству времени. Это уже не «чистая арифметика», как обещала
+таблица ниже.</p>
+<p>Арифметика при этом была верна: шесть тестов на равенство с <code>pow_mod</code>,
+включая исчерпывающий перебор всех 65536 показателей двух байт,
+проходили. Снято не из-за ошибки, а из-за того, что на этом уровне
+приём не окупается.</p>
+<h2 id="_7">Расшифровка<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h2>
+<p>Здесь <strong>обе</strong> делают китайскую теорему об остатках: <code>heu</code>
+(<code>decryptor.cc:38-47</code>) — явно, порознь по <code>p²</code> и <code>q²</code>, со сборкой через
+<code>p_inv_mod_q_</code>; <code>fast-paillier</code> (<code>decryption_key.rs:80</code>) — тем же
+приёмом, но спрятанным в <code>crt_mod_nn.exp</code>.</p>
+<p>Числа менялись дважды, и обе цифры стоит держать рядом:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>мс, ключ 2048</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>heu</code></td>
+<td>2.86</td>
+</tr>
+<tr>
+<td>мы на <code>fast-paillier</code></td>
+<td>5.32</td>
+</tr>
+<tr>
+<td>мы на своей расшифровке</td>
+<td><strong>3.75</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Своя реализация делает то же самое, но возводит через <code>mpz_powm_sec</code>
+вместо <code>mpz_powm</code> — это единственное отличие по существу. Показатель
+здесь выведен из <code>λ</code>, то есть из ДОЛГОВРЕМЕННОГО секрета ключа, а
+документация GMP для секретных показателей требует именно <code>_sec</code>:
+<code>mpz_powm</code> обращается к таблице по битам показателя.</p>
+<p>Цена этого замерена отдельно, на тех же длинах, что в компонентах
+китайской теоремы (<code>benches/secure_pow.rs</code>, медиана трёх серий по сто):</p>
+<table>
+<thead>
+<tr>
+<th>длина <code>n</code></th>
+<th><code>powm</code>, мкс</th>
+<th><code>powm_sec</code>, мкс</th>
+<th>отношение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2048</td>
+<td>1195–1245</td>
+<td>1840–1934</td>
+<td><strong>1.54–1.55</strong></td>
+</tr>
+<tr>
+<td>3072</td>
+<td>3573–3793</td>
+<td>5965–6109</td>
+<td><strong>1.61–1.67</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Абсолютные величины даны вилкой по двум прогонам, отношение — жирным:
+устойчиво именно оно, а машина между запусками гуляет на 4–6 %.</p>
+<p>Два возведения при 2048 битах дают 3.7–3.9 мс при расшифровке 3.70–3.75: то
+есть в расшифровке практически ничего, кроме них, и нет. Разводить эти
+две величины точнее прогоны не позволяют — знак расхождения между
+запусками меняется (то целое дешевле суммы частей на 1 %, то на 5 %),
+и это ровно та разница, которую даёт переход между процессами.</p>
+<p>С обычным <code>powm</code> вышло бы около 2.4 мс, и мы были бы БЫСТРЕЕ <code>heu</code>.
+Отставание 3.75 против 2.86 — плата за свойство, а не проигрыш в
+алгоритме.</p>
+<p>Утверждать, что у <code>heu</code> этого свойства нет, я не буду: в его собственном
+коде запроса постоянного времени нет нигде, но возведение уходит в SPI
+длинной арифметики (<code>bigint_spi</code>, по умолчанию openssl), а его исходников
+я не смотрел. Проверяемое утверждение здесь только одно — про нас.</p>
+<h2 id="_8">Что переносим<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>приём</th>
+<th>у нас</th>
+<th>у <code>heu</code></th>
+<th>итог</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>g^m = 1 + m·n</code></td>
+<td>было</td>
+<td>есть</td>
+<td>переносить нечего</td>
+</tr>
+<tr>
+<td>КТО при расшифровке</td>
+<td>было</td>
+<td>есть</td>
+<td>переносить нечего</td>
+</tr>
+<tr>
+<td>фиксированное основание <code>h</code> вместо <code>r^n</code></td>
+<td><strong>перенесено</strong></td>
+<td>есть</td>
+<td>требовало правки генерации ключа</td>
+</tr>
+<tr>
+<td>короткий показатель <code>n/2</code> бит</td>
+<td><strong>перенесено</strong></td>
+<td>есть</td>
+<td>следствие перехода на <code>h</code></td>
+</tr>
+<tr>
+<td>таблица окон для <code>h</code></td>
+<td><strong>перенесено</strong></td>
+<td>есть</td>
+<td>чистая арифметика, дала 3.8×</td>
+</tr>
+<tr>
+<td>пространство Монтгомери</td>
+<td><strong>отвергнуто по замеру</strong></td>
+<td>есть</td>
+<td>поверх <code>mpz</code> замедляет на 15 %</td>
+</tr>
+</tbody>
+</table>
+<p>Первые два были у нас изначально. Три следующих перенесены, шестой
+проверен и отвергнут — разбор выше.</p>
+<h3 id="_9">Что дал перенос, и в чём я сначала соврал числами<a class="headerlink" href="#_9" title="Permanent link">&para;</a></h3>
+<p>Считать надо <strong>по ядру</strong>, а не сравнивать наш параллельный
+<code>encrypt_many</code> с питоновским циклом у <code>heu</code>. Замер на одном ключе 2048,
+одних данных, одном окружении:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>эл/с</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>наши, 12 потоков</td>
+<td>6500–6700</td>
+</tr>
+<tr>
+<td>наши, один поток</td>
+<td><strong>980</strong></td>
+</tr>
+<tr>
+<td><code>heu</code>, последовательный цикл</td>
+<td><strong>1407</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Числа менялись дважды. Закрытие кэш-канала не стоило ничего измеримого:
+683 → 686 эл/с в потоке при отдельно замеренной цене 1–5 % на самом
+возведении (<code>benches/window_select.rs</code>) — в сквозном прогоне она тонет
+в разбросе. Расширение окна с четырёх бит до шести дало 686 → 980, то
+есть <strong>×1.43</strong>.</p>
+<p><strong>По ядру <code>heu</code> быстрее нас в 1.43 раза.</strong> Отрыв «втрое» был сопоставлением
+разного, и это моя ошибка. Верное утверждение: приёмы сократили
+отставание с тринадцатикратного до двукратного.</p>
+<p>Масштабирование по потокам — 693 / 1331 / 2567 / 4076 / 4393 при 1, 2,
+4, 8, 12: ×6.3 на двенадцати ядрах, эффективность падает с 96 % до
+53 %. Уплощение после восьми — SMT плюс давление на память: таблица при
+2048 битах около 2 МБ, и все потоки читают её одновременно. То есть
+таблица выигрывает в одном потоке и хуже масштабируется.</p>
+<p>Про точность я соврал так же, и дважды — сперва масштабом, потом
+эталоном.</p>
+<p>Масштабом: ошибка суммы у <code>heu</code> больше нашей не из-за алгоритма, а
+из-за умолчания кодировщика — у них <code>scale = 1e6</code>
+(<code>plain_encoder.h:48</code>), у нас <code>SCALE = 1e8</code>.</p>
+<p>Эталоном: я сравнивал результат с точной суммой ОКРУГЛЁННЫХ значений.
+Но это ровно то, что схема обязана дать по построению, — измерялась
+гомоморфность, которая точна, а не ошибка кодирования. Отсюда и взялась
+цифра <code>1.0e-08</code> на миллионе слагаемых: подпись входов без ошибки
+округления, а не свойство схемы. Верный эталон — точная сумма ИСХОДНЫХ
+чисел в <code>Fraction</code>.</p>
+<p>С верным эталоном и на одних и тех же входах (1000 чисел, <code>σ = 100</code>,
+<code>|n| = 2048</code>, <code>benches/measure.py</code>):</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>круг</th>
+<th>сумма 1000</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>heu</code>, <code>scale = 1e6</code></td>
+<td>2.12e-07</td>
+<td>3.56e-05</td>
+</tr>
+<tr>
+<td><code>heu</code>, <code>scale = 1e8</code></td>
+<td>1.82e-09</td>
+<td>4.53e-07</td>
+</tr>
+<tr>
+<td>наша, <code>SCALE = 1e8</code></td>
+<td><strong>1.82e-09</strong></td>
+<td>3.07e-07</td>
+</tr>
+</tbody>
+</table>
+<p>Круг совпадает до последней цифры. И здесь я написал третью неправду:
+«разницу в сумме записывать в преимущество нельзя, это один розыгрыш
+случайного блуждания на каждую строку; оба кодировщика округляют к
+ближайшему».</p>
+<p>Розыгрыш там не один и не случайный: <strong>обе строки берут один и тот же
+файл входов</strong>, что и доказывает совпадение колонки «круг» до последней
+цифры. А правила округления РАЗНЫЕ, и это проверено различающим
+наблюдением, а не выведено из чисел (<code>benches/acc_rounding.py</code>).</p>
+<p>Проба — значение, у которого масштабированная величина имеет дробную
+часть 0.7: усечение её отбросит, округление добавит единицу.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>1.0000007</code></th>
+<th><code>−1.0000007</code></th>
+<th>вывод</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>heu</code></td>
+<td><code>1.0000000</code></td>
+<td><code>−1.0000000</code></td>
+<td>усечение к нулю</td>
+</tr>
+<tr>
+<td>наша</td>
+<td><code>1.0000010</code></td>
+<td><code>−1.0000010</code></td>
+<td>к ближайшему</td>
+</tr>
+</tbody>
+</table>
+<p>Это следует и из кода: <code>PlainEncoder::Encode</code> (<code>plain_encoder.h:60</code>)
+считает <code>cleartext * scale_</code> в <code>double</code> и кладёт результат в целочисленный
+<code>Plaintext</code>, а преобразование <code>double → целое</code> в C++ усекает к нулю.</p>
+<h3 id="_10">Чем это оборачивается на знакопостоянных данных<a class="headerlink" href="#_10" title="Permanent link">&para;</a></h3>
+<p>Усечение смещает КАЖДОЕ слагаемое вниз по модулю — на <code>1/(2·scale)</code> в
+среднем. На симметричном входе сносы разных знаков гасятся, и обе
+библиотеки растут как <code>√k</code>; поэтому на первой таблице разница выглядит
+розыгрышем. Но входы федеративного обучения сплошь и рядом
+знакопостоянны: счётчики бакетов, квадраты градиентов, суммы модулей.
+Там сносы складываются, и ошибка растёт ЛИНЕЙНО.</p>
+<p>Замерено (<code>benches/measure.py</code>, вход <code>uniform(0, 1000)</code>, масштаб
+<code>1e8</code> у обеих, эталон — точная сумма исходных чисел):</p>
+<table>
+<thead>
+<tr>
+<th>k</th>
+<th><code>heu</code></th>
+<th>наша</th>
+<th>снос <code>k/(2·scale)</code></th>
+<th>блуждание <code>√(k/12)/scale</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 000</td>
+<td>4.98e-06</td>
+<td>1.95e-08</td>
+<td>5.00e-06</td>
+<td>9.13e-08</td>
+</tr>
+<tr>
+<td>10 000</td>
+<td>5.02e-05</td>
+<td>1.42e-07</td>
+<td>5.00e-05</td>
+<td>2.89e-07</td>
+</tr>
+<tr>
+<td>100 000</td>
+<td>5.00e-04</td>
+<td>1.17e-06</td>
+<td>5.00e-04</td>
+<td>9.13e-07</td>
+</tr>
+</tbody>
+</table>
+<p>Ошибка <code>heu</code> совпадает со сносом до третьей цифры на всех трёх
+размерах; наша держится на уровне блуждания. <strong>На ста тысячах
+неотрицательных слагаемых мы точнее в 430 раз</strong>, и это не розыгрыш, а
+разные правила округления.</p>
+<p>Настоящий результат был похоронен моим же выводом. Форма «оба
+несмещённы» звучит осторожно и потому выглядит честной — но осторожная
+неправда остаётся неправдой.</p>
+<p>Как ошибка растёт — замерено отдельно (<code>benches/measure.py</code>,
+<code>SCALE = 1e8</code>, эталон точный):</p>
+<table>
+<thead>
+<tr>
+<th>k</th>
+<th>ошибка</th>
+<th><code>√(k/12)/SCALE</code></th>
+<th>отношение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 000</td>
+<td>3.09e-08</td>
+<td>9.13e-08</td>
+<td>0.34</td>
+</tr>
+<tr>
+<td>10 000</td>
+<td>4.73e-08</td>
+<td>2.89e-07</td>
+<td>0.16</td>
+</tr>
+<tr>
+<td>100 000</td>
+<td>9.62e-07</td>
+<td>9.13e-07</td>
+<td>1.05</td>
+</tr>
+<tr>
+<td>1 048 576</td>
+<td><strong>2.60e-06</strong></td>
+<td>2.96e-06</td>
+<td>0.88</td>
+</tr>
+</tbody>
+</table>
+<p>Отношение болтается около единицы и НЕ растёт — это и есть довод, а не
+совпадение отдельных чисел: каждая клетка тут единичный розыгрыш, и
+разброс в ней большой. Смещение даже в один младший разряд на слагаемое
+дало бы на <code>2^20</code> величину порядка <code>1e-02</code>, то есть отношение около
+<code>3·10^3</code>. Наблюдается <code>0.88</code>.</p>
+<p>Практический предел отсюда: при <code>SCALE = 1e8</code> миллион слагаемых стоит
+около <code>3e-06</code> абсолютной ошибки. Это шум кодирования, и он не зависит
+от длины ключа — только от масштаба.</p>
+<p><strong>И только пока <code>|v| ≲ 2^53/SCALE</code>, то есть примерно до <code>9e7</code>.</strong> Выше
+этой величины <code>value * SCALE</code> не представимо в f64 точно, округляется
+само, и ошибка перестаёт быть абсолютной — становится относительной:
+около <code>6e-7</code> при <code>|v| ~ 1e10</code> и около <code>1e-2</code> при <code>1e14</code>.</p>
+<p>Оговорки здесь не было вовсе, а замер (<code>benches/measure.py</code>) идёт
+на входе <code>±1000</code> — то есть ровно там, где модель и держится. Проверить
+модель там, где она верна, и записать её без условия — это ровно тот
+приём, за который в этом же документе разобрана история с эталоном
+суммы.</p>
+<p>Где сравнение сопоставимо и мы действительно быстрее — сложение: 1000
+слагаемых за 0.0071 с против 0.0106 с, и наш цикл <strong>однопоточный</strong>.</p>
+<p>Главный перенос — переход с <code>r^n</code> на <code>h^r</code> с таблицей и коротким
+показателем. Он трогает <strong>схему</strong>, а не только арифметику: <code>h</code>
+порождается при генерации ключа, и его корректность — условие
+стойкости. Приём стандартный и опубликованный, но вводить его надо с
+проверкой, а не «по аналогии».</p>
+<p>Здесь стояло: «Пространство Монтгомери и таблица окон безопасны: они не
+меняют результат, только скорость». Это неверно, и неверно ровно тем
+способом, против которого написан весь <code>short-exponent-security.md</code>:
+<strong>«не меняет результат» и «не меняет наблюдаемое» — разные вещи.</strong></p>
+<p>Таблица окон в первой редакции пропускала нулевые цифры, и число
+умножений равнялось числу ненулевых полубайт СЕКРЕТНОГО показателя.
+Замерено при <code>|n| = 2048</code>: от 0.2 мкс на пустом показателе до 1576 мкс
+на полном, линейно, по 6.1 мкс на цифру — 0.4 % полного времени, много
+выше шума.</p>
+<p>Заявленный запас это не пробивало: точное знание веса <code>r</code> даёт около
+четырёх бит из 1024 (это при <code>w = 4</code>; при шести окон 171 и энтропия
+веса около 2.7 бита), сильная форма утечки — около 86, и остаётся много
+выше границы <code>2^512</code>. Но «не пробивает» и «безопасно» — разные
+утверждения.</p>
+<p>Пропуск снят: умножение делается на каждом окне. Но первая попытка это
+<strong>не сработала</strong>, и ошибка стоит записи. Я положил в таблицу единицу —
+и замер дал подорожание 0.6 % вместо ожидавшихся 6.7 %. Я прочёл это
+как хорошую новость. На деле недостающие шесть процентов были той
+работой, которая не делается: <code>result * 1</code> GMP считает за <code>O(лимбов)</code>,
+а следующий <code>% n²</code> возвращается сразу. Наклон времени по весу
+показателя остался прежним — 6.32 мкс на цифру против 6.1 до «правки».</p>
+<p><strong>Дешевле ожидаемого — это не подарок, а сигнал.</strong></p>
+<p>Работает полноразмерный вычет: в нулевой записи лежит <code>n² + 1</code>. Замер
+после — наклон <strong>−0.186</strong> мкс на цифру, разброс 2.3 % без тренда, то
+есть шум. Цена свойства — 2.1 % (679 → 665 эл/с в потоке). Прогон
+оставлен в репозитории: <code>tests/timing_channel.rs</code>, признак —
+наклон, а не абсолютное время.</p>
+<p>Постоянного времени это НЕ даёт и не заявляется. Каналов было названо
+три: по весу показателя (закрыт), кэш-канал (закрыт позже, разбор ниже)
+и по позиции ведущих нулей — он остаётся открытым.</p>
+<p><strong>Ведущие нули.</strong> Цикл стартует с единицы, и пока младшие цифры
+нулевые, накопитель однолимбовый. Замерено: −6.33 мкс на ведущий нуль
+при ФИКСИРОВАННОМ весе. Канал по весу закрыт, канал по позиции — нет.
+Проверено и то, что очевидное лечение не работает: старт с <code>n² + 1</code>
+даёт −6.56, потому что приведение возвращает каноническую единицу.</p>
+<p>Единственное известное лечение — избыточное представление, где единица
+не однолимбовая, то есть <strong>форма Монтгомери, отвергнутая выше по
+скорости</strong>. Связь прямая, и прятать её нельзя.</p>
+<p>Остаток: энтропия длины ряда ведущих нулей около <strong>0.118 бита</strong> из 1024,
+против запаса <code>2^512</code> — ничто. Допущен осознанно, сторожится
+<code>tests/timing_channel.rs</code> на нерост.</p>
+<p><strong>Кэш-канал — закрыт, и цена его была посчитана неверно.</strong> Запись
+выбиралась по индексу, равному цифре, значит адрес обращения к памяти
+зависел от секрета. Здесь стояло: «закрыть значило бы читать всю строку
+на каждом окне — платить в шестнадцать раз».</p>
+<p>Это смешивает «прочитать шестнадцать записей» с «сделать шестнадцать
+умножений». Умножение остаётся ОДНО; добавляется потоковое чтение восьми
+килобайт, которое против умножения на 4096 битах почти ничего не стоит.</p>
+<p>Строка теперь лежит 64-битными словами и читается целиком, нужная запись
+выбирается арифметической маской без единого ветвления
+(<code>src/fast.rs::select_entry</code>). Замерено на одних <code>hs</code>, <code>n²</code> и показателе,
+результаты сверены на равенство (<code>benches/window_select.rs</code>):</p>
+<table>
+<thead>
+<tr>
+<th><code>|n|</code></th>
+<th>по индексу</th>
+<th>маской</th>
+<th>отношение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2048</td>
+<td>1061 мкс</td>
+<td>1019 мкс</td>
+<td><strong>0.96</strong></td>
+</tr>
+<tr>
+<td>3072</td>
+<td>2842 мкс</td>
+<td>2946 мкс</td>
+<td><strong>1.04</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Не шестнадцать раз, а один-три процента; в сквозном прогоне не видно
+вовсе. Число, на которое опиралось решение оставить канал открытым, было
+завышено более чем на порядок.</p>
+<p>Укладка словами, а не байтами — не мелочь: с побайтным чтением то же
+самое стоило <strong>+26 %</strong>. Цена здесь упирается в число итераций, а не в
+объём данных.</p>
+<p>Чего в этом списке <strong>нет</strong> намеренно: заготовленного запаса готовых
+<code>r^n</code>. Он дал бы ещё, но повторное использование <code>r</code> ломает
+семантическую безопасность, и вводить его можно только с явной
+гарантией однократного расхода каждого значения.</p>
+<h2 id="_11">Лицензии<a class="headerlink" href="#_11" title="Permanent link">&para;</a></h2>
+<p><code>heu</code> — Apache 2.0, <code>fast-paillier</code> — MIT OR Apache-2.0. И решения, и
+код можно брать с сохранением уведомления.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u043e \u0432 \u0431\u0443\u0444\u0435\u0440", "clipboard.copy": "\u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0432 \u0431\u0443\u0444\u0435\u0440", "search.result.more.one": "\u0415\u0449\u0451 1 \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435", "search.result.more.other": "\u0415\u0449\u0451 # \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435", "search.result.none": "\u0421\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0439 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e", "search.result.one": "\u041d\u0430\u0439\u0434\u0435\u043d\u043e 1 \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0435", "search.result.other": "\u041d\u0430\u0439\u0434\u0435\u043d\u043e \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0439: #", "search.result.placeholder": "\u041d\u0430\u0447\u043d\u0438\u0442\u0435 \u043f\u0435\u0447\u0430\u0442\u0430\u0442\u044c \u0434\u043b\u044f \u043f\u043e\u0438\u0441\u043a\u0430", "search.result.term.missing": "\u041e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442", "select.version": "\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0432\u0435\u0440\u0441\u0438\u044e"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
