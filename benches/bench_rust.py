@@ -4,7 +4,7 @@ import json
 import time
 
 import numpy as np
-import rustpaillier as rp
+import paillier as rp
 
 N = 200
 SUM_SIZE = 100
@@ -36,7 +36,7 @@ t_add, total = timed(lambda: rp.add_many(pub, blobs[:SUM_SIZE]))
 t_dec, got = timed(lambda: rp.decrypt(sec, total), repeats=5)
 
 print(json.dumps({
-    "lib": "rust/fast-paillier",
+    "lib": "guardora/paillier",
     "encrypt_ms": round(t_par / N * 1e3, 4),
     "encrypt_ms_serial": round(t_one / 40 * 1e3, 4),
     "add_us": round(t_add / (SUM_SIZE - 1) * 1e6, 2),

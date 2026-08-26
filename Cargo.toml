@@ -1,9 +1,9 @@
 [package]
 name = "paillier"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "Paillier для Guardora: привязка к Python поверх fast-paillier"
+description = "Paillier для Guardora: своя реализация на GMP с привязкой к Python"
 
 [lib]
 name = "paillier"
@@ -17,7 +17,6 @@ pyo3 = { version = "0.23", features = ["extension-module"] }
 # `core::error::Error`, стабилизированного в Rust 1.81, и надобность
 # отпала. С `backend-rug` этой цепочки нет вовсе, и он же считает на
 # GMP.
-fast-paillier = { version = "=0.3.2", default-features = false, features = ["backend-rug"] }
 rug = "1.24"
 rand = "0.8"
 rayon = "1.10"
@@ -25,3 +24,24 @@ rayon = "1.10"
 [profile.release]
 opt-level = 3
 lto = true
+
+[[bench]]
+name = "modmul"
+harness = false
+
+[[bench]]
+name = "secure_pow"
+harness = false
+
+[[bench]]
+name = "window_select"
+harness = false
+
+[[bench]]
+name = "exponent_length"
+harness = false
+
+[dev-dependencies]
+# ТОЛЬКО эталон для тестов: своя реализация, сверяемая сама с собой,
+# ничего не доказывает. В сборку библиотеки НЕ входит.
+fast-paillier = { version = "=0.3.2", default-features = false, features = ["backend-rug"] }
