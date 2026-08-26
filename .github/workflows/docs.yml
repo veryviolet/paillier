@@ -3,10 +3,10 @@ name: docs
 on:
   push:
     tags: ["v*"]
-  workflow_dispatch: # ручной перезапуск
+  workflow_dispatch: # manual redeploy
 
 permissions:
-  contents: write # gh-deploy коммитит в ветку gh-pages
+  contents: write # gh-deploy commits to the gh-pages branch
 
 concurrency:
   group: docs-deploy
@@ -18,20 +18,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # gh-deploy нужна полная история
+          fetch-depth: 0 # gh-deploy needs the full history
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-      - name: поставить зависимости документации
+      - name: install documentation dependencies
         run: pip install -r docs/requirements.txt
-      - name: автор коммита gh-deploy
+      - name: git author for the gh-deploy commit
         run: |
           git config user.name  'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
       - name: mkdocs gh-deploy
-        # Блочный скаляр, а не строка: в "docs: выкачено" есть
-        # двоеточие с пробелом, и YAML прочёл бы это как вложенное
-        # отображение. Ровно на этом первый запуск и не собрался.
+        # A block scalar rather than a plain string: a colon followed
+        # by a space inside an unquoted scalar is read by YAML as a
+        # nested mapping. That is exactly why the first run never
+        # started.
         run: |
-          mkdocs gh-deploy --force --message "docs выкачено ${GITHUB_REF_NAME}"
+          mkdocs gh-deploy --force --message "docs deployed ${GITHUB_REF_NAME}"

@@ -1,17 +1,18 @@
-"""Проверка собранного колеса: ставится, импортируется, считает верно.
+"""Check a built wheel: it installs, imports and computes correctly.
 
-Отдельным файлом, а не строкой внутри workflow. Причина не в красоте:
-многострочная команда внутри YAML — это heredoc или экранирование, а и
-то и другое ломается от одного лишнего пробела, причём ломается ТОЛЬКО
-в CI, где отладка стоит по одному пушу за попытку.
+A separate file rather than a string inside a workflow. The reason is
+not tidiness: a multi-line command inside YAML means a heredoc or
+escaping, and both break on one stray space — and break ONLY in CI,
+where debugging costs one push per attempt.
 
-Здесь же это обычный скрипт: запускается локально ровно так же, как в
-CI, и падает с обычным traceback.
+Here it is an ordinary script: it runs locally exactly as it runs in CI
+and fails with an ordinary traceback.
 
-Лежит в `scripts/`, а не в `tests/`: `pytest` собирает всё из `tests/`,
-и модуль с кодом на верхнем уровне исполнился бы при сборе тестов.
+It lives in `scripts/`, not in `tests/`: `pytest` collects everything
+under `tests/`, and a module with top-level code would execute during
+collection.
 
-Запуск: `python scripts/smoke_wheel.py`
+Run: `python scripts/smoke_wheel.py`
 """
 import sys
 
@@ -19,30 +20,30 @@ import paillier
 
 
 def main():
-    print("версия:", paillier.__version__)
+    print("version:", paillier.__version__)
 
     pub, sec = paillier.generate_keypair(2048)
 
-    # Круг, гомоморфность, смена знака и НЕумолчальный масштаб разом:
-    # проверка на умолчании прошла бы и на сборке, где масштаб из блоба
-    # не читается вовсе.
+    # Round trip, homomorphism, a sign change and a NON-default scale all
+    # at once: a check at the default would also pass on a build where
+    # the scale is never read back out of the blob.
     blobs = [
         bytes(b)
         for b in paillier.encrypt_many(pub, [1.5, -2.25], scale_pow10=12)
     ]
     total = paillier.decrypt(sec, paillier.add_many(pub, blobs))
-    assert abs(total - (-0.75)) < 1e-9, f"сумма {total}, ожидалось -0.75"
+    assert abs(total - (-0.75)) < 1e-9, f"sum {total}, expected -0.75"
 
-    # Отказ — такая же часть договора, как результат. Колесо, которое
-    # считает верно, но молча съедает NaN, негодно.
+    # A refusal is as much part of the contract as a result. A wheel that
+    # computes correctly but silently swallows NaN is not fit to ship.
     try:
         paillier.encrypt_many(pub, [float("nan")])
     except ValueError:
         pass
     else:
-        raise AssertionError("NaN зашифровался вместо отказа")
+        raise AssertionError("NaN was encrypted instead of being refused")
 
-    print("колесо годно")
+    print("wheel is sound")
 
 
 if __name__ == "__main__":

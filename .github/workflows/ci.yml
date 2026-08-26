@@ -14,14 +14,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      # Тесты идут в release: часть из них меряет ВРЕМЯ (наклон по весу
-      # показателя, по числу ведущих нулей), и в debug-сборке эти замеры
-      # не значат ничего. Плюс порождение безопасных простых в debug
-      # заняло бы минуты.
+      # Tests run in release: some of them measure TIME (the slope
+      # against exponent weight and against the number of leading
+      # zeros), and in a debug build those measurements mean nothing.
+      # Safe-prime generation in debug would also take minutes.
       - run: cargo test --release
 
   python:
-    name: pytest на ${{ matrix.python }}
+    name: pytest on ${{ matrix.python }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -34,7 +34,7 @@ jobs:
           python-version: ${{ matrix.python }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: собрать и поставить
+      - name: build and install
         run: |
           python -m pip install --quiet --upgrade pip 'maturin>=1.7,<2' pytest pyyaml
           maturin build --release --out dist --interpreter python

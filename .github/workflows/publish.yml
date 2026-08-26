@@ -1,8 +1,8 @@
 name: publish to PyPI
 
-# Trusted Publishing (OIDC) — никаких долгоживущих токенов ни здесь, ни в
-# секретах репозитория. Требует ОДНОРАЗОВОЙ настройки на стороне PyPI,
-# сделать её может только владелец учётной записи:
+# Trusted Publishing (OIDC) — no long-lived tokens here or in the
+# repository secrets. It requires a ONE-TIME setup on the PyPI side,
+# which only the account owner can do:
 #
 #   pypi.org -> Manage -> Account -> Publishing -> Add a new pending publisher
 #     project:     paillier
@@ -11,32 +11,32 @@ name: publish to PyPI
 #     workflow:    publish.yml
 #     environment: pypi
 #
-# После этого пуш любого тега vX.Y.Z собирает колёса и выкладывает их на
-# https://pypi.org/project/paillier/.
+# After that, pushing any vX.Y.Z tag builds the wheels and publishes
+# them to https://pypi.org/project/paillier/.
 #
-# Почему колёса собираются в контейнере manylinux, а не здесь: локальная
-# сборка получает метку по glibc машины (у нас `manylinux_2_34`), и
-# ставится она только там, где glibc не старее. Контейнер `2014` даёт
-# `manylinux_2_17` — нижнюю границу, с которой пакет ставится почти
-# везде.
+# Why the wheels are built inside a manylinux container rather than on
+# the runner: a local build gets its tag from the machine glibc
+# (`manylinux_2_34` here) and installs only where glibc is no older. The
+# `2014` container gives `manylinux_2_17` — the floor that installs
+# almost everywhere.
 
 on:
   push:
     tags:
       - "v*"
-  # Ручной запуск нужен не для удобства. Настройка Trusted Publishing на
-  # стороне PyPI — одноразовая и делается человеком; тег, выпущенный до
-  # неё, уже не опубликуется никогда, а выдумывать ради этого лишнюю
-  # версию — врать в истории выпусков.
+  # The manual trigger is not for convenience. The Trusted Publishing
+  # setup on the PyPI side is one-time and done by a human; a tag cut
+  # before it can never be published, and inventing an extra version for
+  # that would be lying in the release history.
   workflow_dispatch:
 
 permissions:
   contents: read
-  id-token: write # нужно для обмена OIDC-доверия
+  id-token: write # required for the OIDC trust exchange
 
 jobs:
   build-wheels:
-    name: колесо для ${{ matrix.python }}
+    name: wheel for ${{ matrix.python }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -49,7 +49,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - name: сверить тег с версией в Cargo.toml
+      - name: check the tag against the version in Cargo.toml
         if: github.event_name == 'push'
         env:
           REF_NAME: ${{ github.ref_name }}
@@ -58,20 +58,20 @@ jobs:
           tag="${REF_NAME#v}"
           ver="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)"
           if [ "$tag" != "$ver" ]; then
-            echo "::error::тег $tag не совпадает с версией $ver в Cargo.toml"
+            echo "::error::tag $tag does not match version $ver in Cargo.toml"
             exit 1
           fi
 
-      - name: собрать колесо в manylinux
+      - name: build the wheel in manylinux
         uses: PyO3/maturin-action@v1
         with:
           command: build
           args: --release --out dist --interpreter ${{ matrix.python }}
           manylinux: "2014"
 
-      # Колесо, которое не проверено установкой, — это не колесо, а
-      # архив. Проверяем на ТОМ ЖЕ интерпретаторе, под который собрано.
-      - name: поставить и прогнать
+      # A wheel not verified by installing it is not a wheel, it is an
+      # archive. Verified on the SAME interpreter it was built for.
+      - name: install and run
         run: |
           set -e
           python -m venv /tmp/check
@@ -86,7 +86,7 @@ jobs:
           path: dist/*.whl
 
   build-sdist:
-    name: исходный архив
+    name: source distribution
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -100,7 +100,7 @@ jobs:
           path: dist/*.tar.gz
 
   publish:
-    name: выложить на PyPI
+    name: publish to PyPI
     needs: [build-wheels, build-sdist]
     runs-on: ubuntu-latest
     environment: pypi
@@ -110,7 +110,7 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: показать, что выкладывается
+      - name: show what is being published
         run: ls -la dist/
 
       - uses: pypa/gh-action-pypi-publish@release/v1
