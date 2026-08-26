@@ -95,7 +95,7 @@ fn slope(points: &[(f64, f64)]) -> f64 {
 }
 
 #[test]
-fn время_не_зависит_от_веса_показателя() {
+fn time_does_not_depend_on_exponent_weight() {
     let nn = modulus();
     let hs = Integer::from(&nn / 3u32) + 7u32;
     let table = build_window_table(&hs, &nn, WINDOWS);
@@ -128,7 +128,7 @@ fn время_не_зависит_от_веса_показателя() {
 }
 
 #[test]
-fn позиционный_остаток_не_вырос() {
+fn position_remainder_has_not_grown() {
     // Канал, который НЕ закрыт и назван в `fast::pow_by_table`: пока
     // младшие цифры нулевые, накопитель равен единице и остаётся
     // однолимбовым, поэтому ведущие нули дешевле прочих.

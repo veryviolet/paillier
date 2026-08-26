@@ -99,7 +99,7 @@ single-limb — that is, **Montgomery form**. It was rejected on speed,
 and the connection deserves to be stated plainly: the rejected technique
 is the only known cure for the remaining channel.
 
-Guarded by `tests/timing_channel.rs::позиционный_остаток_не_вырос` — not
+Guarded by `tests/timing_channel.rs::position_remainder_has_not_grown` — not
 for absence, but for the remainder not growing.
 
 ## Decryption

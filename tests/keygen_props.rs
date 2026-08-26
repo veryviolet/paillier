@@ -63,7 +63,7 @@ fn fermat(n: &Integer, budget: u64) -> Option<(Integer, u64)> {
 }
 
 #[test]
-fn отвергнутый_ключ_действительно_раскладывается_методом_ферма() {
+fn the_refused_key_really_does_factor_by_fermat() {
     let p = safe_prime_at_or_above(&random_odd(PRIME_BITS));
 
     // Целимся на границу ПРЕЖНЕЙ, неверной редакции: |p|/2 + 8 бит.
@@ -112,7 +112,7 @@ fn safe_prime_at_gap(p: &Integer, gap_bits: u32) -> Integer {
 }
 
 #[test]
-fn порог_закреплён_числом_с_обеих_сторон() {
+fn the_threshold_is_pinned_by_number_on_both_sides() {
     // Два теста в этом файле допускали целую полосу значений порога:
     // при `SLACK = 247` оба оставались зелёными, а принятый ими ключ
     // раскладывался Ферма за 24 тысячи шагов. Здесь порог зажат с обеих
@@ -154,7 +154,7 @@ fn порог_закреплён_числом_с_обеих_сторон() {
 // без него не строится. Пропуск проверки перестал компилироваться.
 
 #[test]
-fn у_штатного_ключа_разность_почти_полной_длины() {
+fn a_normal_key_has_a_prime_gap_of_nearly_full_length() {
     // Для контраста: два независимых безопасных простых.
     let p = safe_prime_at_or_above(&random_odd(PRIME_BITS));
     let q = safe_prime_at_or_above(&random_odd(PRIME_BITS));

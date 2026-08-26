@@ -31,14 +31,14 @@ fn small_key() -> (Integer, Integer, Integer) {
 }
 
 #[test]
-fn единица_отвергается_до_вывода_hs() {
+fn one_is_refused_before_hs_is_derived() {
     let (_, _, n) = small_key();
 
     assert_eq!(derive_h(&Integer::from(1), &n), Err(KeyError::BadX));
 }
 
 #[test]
-fn ноль_и_верхняя_граница_отвергаются_по_диапазону() {
+fn zero_and_the_upper_bound_are_refused_by_range() {
     let (_, _, n) = small_key();
 
     assert_eq!(derive_h(&Integer::from(0), &n), Err(KeyError::BadX));
@@ -48,7 +48,7 @@ fn ноль_и_верхняя_граница_отвергаются_по_диа�
 }
 
 #[test]
-fn проверка_знака_на_единице_ЗЕЛЁНАЯ_и_потому_не_защита() {
+fn the_sign_check_is_green_on_one_and_therefore_not_a_defence() {
     // Ради этого тест и написан: показать, что символ Якоби здесь
     // ничего не ловит, и что защищает только сужение диапазона.
     let (p, q, n) = small_key();
@@ -59,7 +59,7 @@ fn проверка_знака_на_единице_ЗЕЛЁНАЯ_и_потом�
 }
 
 #[test]
-fn второй_рубеж_срабатывает_с_НАСТОЯЩЕГО_входа() {
+fn second_line_of_defence_fires_on_real_input() {
     // Нетривиальные корни из единицы: `x² ≡ 1 (mod n)` при `x ∉ {1, n−1}`.
     // Такое `x` проходит диапазон, `gcd` и Якоби — и вырождается только
     // на `hs`. То есть второй рубеж не «на всякий случай»: он ловит
@@ -84,7 +84,7 @@ fn второй_рубеж_срабатывает_с_НАСТОЯЩЕГО_вхо
 }
 
 #[test]
-fn вырожденный_hs_отвергается_и_при_подстановке_руками() {
+fn degenerate_hs_is_refused_even_when_planted_by_hand() {
     let (_, _, n) = small_key();
 
     // `h = −1` — то, что дало бы `x = 1`, если бы диапазон не сужали.
@@ -98,7 +98,7 @@ fn вырожденный_hs_отвергается_и_при_подстанов
 }
 
 #[test]
-fn годное_x_проходит_иначе_отказы_выше_ничего_не_значат() {
+fn a_usable_x_passes_or_the_refusals_above_mean_nothing() {
     let (p, q, n) = small_key();
     let limit = n.to_u32().unwrap();
 

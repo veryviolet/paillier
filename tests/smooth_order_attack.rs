@@ -99,7 +99,7 @@ fn pollard_p_minus_1(n: &Integer, bound: u32) -> Option<Integer> {
 }
 
 #[test]
-fn нижняя_граница_длины_есть_и_у_владельца() {
+fn the_length_floor_applies_to_the_owner_too() {
     // `validate_private` публична и заявлена как проверка ключа, а её
     // граница длины держалась только тем, что `generate_keypair`
     // проверяет раньше. 23 и 59 — настоящие безопасные простые
@@ -112,21 +112,21 @@ fn нижняя_граница_длины_есть_и_у_владельца() {
 }
 
 #[test]
-fn короткий_модуль_отвергается_при_импорте() {
+fn a_short_modulus_is_refused_on_import() {
     let n = (Integer::from(1) << 2000u32) + 1u32;
 
     assert_eq!(validate_public(&n), Err(KeyError::ModulusTooShort));
 }
 
 #[test]
-fn слишком_длинный_модуль_отвергается() {
+fn an_over_long_modulus_is_refused() {
     let n = (Integer::from(1) << 9000u32) + 1u32;
 
     assert_eq!(validate_public(&n), Err(KeyError::ModulusTooLong));
 }
 
 #[test]
-fn модуль_штатной_длины_принимается() {
+fn a_modulus_of_normal_length_is_accepted() {
     // Обратная сторона границ: без этого «починить» их можно было бы
     // полным запретом, и оба теста выше остались бы зелёными.
     let n = (Integer::from(1) << 3071u32) + 1u32;
@@ -135,7 +135,7 @@ fn модуль_штатной_длины_принимается() {
 }
 
 #[test]
-fn ключ_с_гладкой_лямбдой_отдаёт_открытый_текст_и_потому_отвергается() {
+fn a_key_with_smooth_lambda_gives_up_the_plaintext() {
     // Наборы не пересекаются — тогда gcd(p−1, q−1) = 2 и отказ придёт
     // именно по безопасности простых, а не по gcd.
     let (p, factors_p) = smooth_blum_prime(&small_primes(3, 30_000), 1030);

@@ -34,7 +34,7 @@ fn to_rug(value: &Plaintext) -> Integer {
 }
 
 #[test]
-fn наша_расшифровка_совпадает_с_крейтом() {
+fn our_decryption_matches_the_reference_crate() {
     let (dk, p, q) = key();
     let ours = Decryptor::new(&p, &q).expect("расшифровщик собирается");
     let ek = dk.encryption_key();
@@ -69,7 +69,7 @@ fn наша_расшифровка_совпадает_с_крейтом() {
 }
 
 #[test]
-fn негодный_шифротекст_отвергается() {
+fn an_invalid_ciphertext_is_refused() {
     let (dk, p, q) = key();
     let ours = Decryptor::new(&p, &q).expect("расшифровщик");
     let n = to_rug(dk.encryption_key().n());
@@ -86,7 +86,7 @@ fn негодный_шифротекст_отвергается() {
 }
 
 #[test]
-fn гомоморфная_сумма_расшифровывается_нашим() {
+fn a_homomorphic_sum_decrypts_with_ours() {
     // Отдельно от круга: сумма — это произведение шифротекстов, то есть
     // вход, которого шифрование напрямую не порождает.
     let (dk, p, q) = key();
