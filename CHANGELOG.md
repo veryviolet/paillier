@@ -1,131 +1,134 @@
-# Изменения
+# Changelog
 
 ## 0.3.0 — 2026-08-26
 
-**Формат шифротекста изменился.** Блоб теперь начинается с байта —
-показателя степени десятки, — и шифротексты версии 0.2.0 этой версией
-не расшифровываются.
+**BREAKING.** The blob now starts with a byte holding the power-of-ten
+scale exponent, and ciphertexts from 0.2.0 cannot be decrypted by this
+version.
 
-### Масштаб кодирования настраивается
+### The encoding scale is configurable
 
-`encrypt_many(pub, values, scale_pow10=8)`, значения от 0 до 18.
+`encrypt_many(pub, values, scale_pow10=8)`, values from 0 to 18.
 
-Масштаб — свойство ШИФРОТЕКСТА, а не настройки вызова, и это не
-украшение. Несовпадение масштабов даёт не отказ, а правдоподобное
-неверное число: те же коды, та же длина, только результат меньше в
-`10^Δ` раз. Поэтому `decrypt` берёт масштаб из самого блоба, а
-`add_many` **отказывает** на пачке с разными масштабами. Отдельно важно
-для пассивной стороны: она собирает чужой ключ из одного `n`, где
-масштаба нет вовсе, — при настройке «сбоку» она молча разошлась бы с
-владельцем ключа.
+The scale is a property of the CIPHERTEXT, not of the call, and that is
+not decoration. A scale mismatch produces not a refusal but a plausible
+wrong number: same codes, same length, just a result smaller by `10^Δ`.
+So `decrypt` reads the scale from the blob itself, and `add_many`
+**refuses** a batch that mixes scales. This matters especially for a
+party that only encrypts: it builds a peer key from `n` alone, where no
+scale exists — configured "on the side", it would silently disagree with
+the key holder.
 
-Цена — один байт на шифротекст: 512 → 513, всё ещё короче `heu` (524).
+The cost is one byte per ciphertext: 512 → 513.
 
-При `scale_pow10 = 12` ошибка суммы миллиона знакопостоянных слагаемых
-падает с 4.69e-06 до **1.86e-08** — это пол `f64`, то есть ошибка
-самого `float()` от точной суммы. Ценой сужения диапазона входа с
-`|v| ≲ 9e7` до `≲ 9e3`. Умолчание оставлено на `8`: широкий диапазон —
-разумное умолчание, сужение ради точности — решение вызывающего.
+At `scale_pow10 = 12` the sum error over a million sign-constant terms
+falls from 4.69e-06 to **1.86e-08** — the `f64` floor, i.e. the error of
+`float()` applied to the exact sum. The price is a narrower input range,
+from `|v| ≲ 9e7` down to `≲ 9e3`. The default stays at `8`: a wide range
+is a sensible default, narrowing it for accuracy is the caller's call.
 
-### Ширина окна 4 → 6 бит
+### Window width 4 → 6 bits
 
-Однопоточное шифрование **686 → 980 эл/с (×1.43)**, пакетное
-4403 → 6500–6700. Отставание от `heu` по ядру сократилось с 2.05 до
-1.43 раза.
+Single-threaded encryption **686 → 980 ops/s (×1.43)**, batched
+4403 → 6500–6700.
 
-Профилирование показало, что шифрование на 98.2 % состоит из умножений
-в `pow_by_table`, а цена ОДНОГО умножения у нас и у `heu` одинакова
-(5.8 против 5.9 мкс). Отличалось число окон: у `heu` ширина 10 бит
-(`kExpUnitBits`), у нас была 4. Шесть — там, где выигрыш ещё почти
-линеен, а таблица (5.6 МБ на ключ) остаётся заметно меньше кэша.
+Profiling showed that encryption is 98.2 % multiplications inside
+`pow_by_table`, so the operation is essentially `windows + 2` modular
+multiplications and nothing else. Six bits is where the gain is still
+nearly linear in the window count while the table (5.6 MB per key) stays
+comfortably below the cache.
 
-Постоянное по времени чтение сохранено; его цена перемерена — 1–5 %.
+Constant-time reading is preserved; its cost was re-measured at 1–5 %.
 
-Прежнее объяснение разрыва — «94 % это Монтгомери на лимбах» —
-**оказалось неверным** и заменено. Монтгомери на `mpn_*` без аллокаций
-даёт 1.10–1.20, а не 2: REDC стоит почти столько же, сколько деление,
-потому что деление в GMP на этих длинах уже субквадратичное.
+An earlier explanation of where the time went — "it is the modular
+multiplication, and Montgomery form on limbs would fix it" — **turned
+out to be wrong** and has been replaced. Montgomery on `mpn_*` with no
+allocations gives 1.10–1.20, not 2: REDC costs almost as much as
+division, because division in GMP at these lengths is already
+subquadratic.
 
-### Исправлено
+### Fixed
 
-- Число окон считалось как `bytes * 2` в двух местах — формула верна
-  ровно для четырёхбитного окна. Теперь одна функция `windows_for`.
-- То же `bytes * 2` стояло в `benches/exponent_length.rs` и печатало
-  вдвое больше окон, чем считалось.
-- Три теста, разбиравшие блоб как одно число, после введения заголовка
-  продолжили ПРОХОДИТЬ, проверяя мусор: утверждения там вида «не равно»
-  и «не единица», а мусор им удовлетворяет. Разбор вынесен в
-  `cipher_int`.
+- The window count was computed as `bytes * 2` in two places — a formula
+  correct only for a four-bit window. Now a single function,
+  `windows_for`.
+- The same `bytes * 2` sat in `benches/exponent_length.rs` and printed
+  twice as many windows as were actually used.
+- Three tests that parsed a blob as one integer kept PASSING after the
+  header byte was introduced, checking garbage: their assertions are of
+  the "not equal" and "not one" kind, and garbage satisfies those.
+  Parsing was moved into `cipher_int`.
 
 ## 0.2.0 — 2026-08-26
 
-Первый выпуск, в котором криптография своя. Прежде пакет был склейкой
-поверх крейта `fast-paillier`; теперь схема, генерация ключа,
-шифрование, сложение и расшифровка написаны здесь, а крейт остался
-только эталоном в тестах.
+The first release where the cryptography is our own. The package used to
+be glue on top of the `fast-paillier` crate; now the scheme, key
+generation, encryption, addition and decryption are written here, and
+the crate remains only as a test oracle.
 
-### Схема
+### The scheme
 
-- Шифрование КОРОТКИМ ПОКАЗАТЕЛЕМ: `c = (1 + m·n) · hs^r mod n²`, где
-  `hs = h^n`, `h = −x² mod n`, `|r| = |n|/2` — вариант
-  Дамгорда–Жюрика, тот же, что у `heu`. Это добавляет предположение о
-  стойкости сверх DCRA; разбор в `docs/short-exponent-security.md`.
-- Своя генерация безопасных простых с двойным решетом.
-- Расшифровка по китайской теореме через `mpz_powm_sec`: показатель
-  выведен из `λ`, то есть из долговременного секрета ключа.
-- Таблица окон для фиксированного основания: 256 умножений вместо
-  ~1280 на возведение.
+- Encryption with a SHORT EXPONENT: `c = (1 + m·n) · hs^r mod n²`, where
+  `hs = h^n`, `h = −x² mod n`, `|r| = |n|/2` — the Damgård–Jurik
+  variant. This adds a security assumption on top of DCRA; the analysis
+  is in `docs/short-exponent-security.md`.
+- Our own safe-prime generation with a double sieve.
+- CRT decryption through `mpz_powm_sec`: the exponent there derives from
+  `λ`, the long-lived secret of the key.
+- A window table for the fixed base: 256 multiplications instead of
+  ~1280 per exponentiation.
 
-### Побочные каналы
+### Side channels
 
-- **Закрыт** канал по весу показателя: умножение делается на каждом
-  окне, в нулевой записи лежит `n² + 1`, а не `1` (однолимбовая единица
-  умножается за `O(лимбов)` и утечку не закрывает).
-- **Закрыт** кэш-канал: строка таблицы лежит 64-битными словами,
-  читается целиком, запись выбирается арифметической маской без
-  ветвлений. Цена 1–3 % на возведении, в сквозном прогоне не видна.
-- **Открыт** канал по числу ведущих нулей показателя — около 0.36 бита
-  из 1024. Назван, замерен, сторожится тестом на нерост; единственное
-  известное лечение — форма Монтгомери, отвергнутая по замеру.
+- **Closed**: the exponent-weight channel. A multiplication happens at
+  every window, and the zero entry holds `n² + 1` rather than `1` (a
+  single-limb one multiplies in `O(limbs)` and does not close the leak).
+- **Closed**: the cache channel. The table row is laid out in 64-bit
+  words, read in full, and the entry is selected with an arithmetic mask
+  and no branches. The cost is 1–3 % on the exponentiation, invisible
+  end to end.
+- **Open**: the leading-zeros channel — about 0.36 bits out of 1024 at
+  the window width of this release. Named, measured, guarded by a test
+  that watches it does not grow; the only known cure is Montgomery form,
+  rejected on measurement.
 
-### Отказы вместо правдоподобного числа
+### Refusals instead of a plausible number
 
-- Чужой модуль отсекается по длине СЫРЫХ БАЙТ, прежде любой арифметики.
-  Прежде `n²` считалось до проверки и под удержанным GIL: 64 МБ от пира
-  давали 4.07 с полной глухоты интерпретатора.
-- `NaN`, `±inf`, переполнение при масштабировании, пустая сумма, чужой
-  шифротекст, чётный модуль — отказ, а не результат.
-- Ключ проверяется при сборке; пропуск проверки — ошибка КОМПИЛЯЦИИ
-  (свидетельство `keys::Validated` с приватным полем).
+- A foreign modulus is cut off by RAW BYTE length, before any
+  arithmetic. Previously `n²` was computed before the check and with the
+  GIL held: 64 MB from a peer bought 4.07 seconds of complete deafness.
+- `NaN`, `±inf`, overflow when scaling, an empty sum, a foreign
+  ciphertext, an even modulus — all refusals, not results.
+- The key is validated when assembled; skipping validation is a COMPILE
+  error (a `keys::Validated` witness with a private field).
 
-### Кодирование
+### Encoding
 
-- Неподвижная точка, масштаб `1e8`, округление К БЛИЖАЙШЕМУ. `heu`
-  усекает к нулю, и на знакопостоянных данных это даёт ошибку, растущую
-  ЛИНЕЙНО: на 100 000 слагаемых 5.00e-04 против наших 1.17e-06.
+- Fixed point, scale `1e8`, rounding TO NEAREST. Truncation toward zero
+  yields an error that grows LINEARLY on sign-constant data instead of
+  as `√k`: 5.00e-04 against 1.17e-06 over 100 000 terms.
 
-### Скорость (ключ 2048, одна машина)
+### Speed (2048-bit key, one machine)
 
-| | эл/с в потоке | сложение | расшифровка |
+| | ops/s per thread | addition | decryption |
 |---|---|---|---|
-| этот пакет | 686 | 6.7 мкс | 3.65 мс |
-| `heu` | 1378 | 9.8 мкс | 2.79 мс |
+| this release | 686 | 6.7 µs | 3.65 ms |
 
-Перенос приёмов `heu` сократил отставание по ядру с тринадцатикратного
-до двукратного. Расшифровка медленнее не по алгоритму: с обычным
-`mpz_powm` вышло бы около 2.4 мс.
+Decryption is slower than it could be by design, not by algorithm: with
+a plain `mpz_powm` it would be about 2.4 ms, but the exponent derives
+from the long-lived secret.
 
-### Инструменты
+### Tooling
 
-- `pytest.ini`: без него `pytest` в корне собирал НОЛЬ тестов — файлы
-  названы по предмету, а не `test_*.py`.
-- `tests/docs_references.py`: всё, что называет документация, обязано
-  существовать И лежать в индексе git.
-- Прогоны в `benches/`: сравнение библиотек, цена постоянного чтения,
-  цена `mpz_powm_sec`, влияние длины показателя, правило округления,
-  накопление ошибки на симметричном и на знакопостоянном входе.
+- `pytest.ini`: without it, `pytest` at the repository root collected
+  ZERO tests — the files are named after their subject, not `test_*.py`.
+- `tests/docs_references.py`: everything the documentation names must
+  exist AND be in the git index.
+- Benchmarks in `benches/`: the cost of constant-time reading, the cost
+  of `mpz_powm_sec`, the effect of exponent length, the rounding rule,
+  and error accumulation on symmetric and on sign-constant input.
 
 ## 0.1.0
 
-Привязка к Python поверх `fast-paillier`: кодирование `float`,
-сериализация, параллельное шифрование.
+A Python binding on top of `fast-paillier`: `float` encoding,
+serialisation, parallel encryption.

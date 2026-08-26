@@ -1,79 +1,83 @@
-# Схема и что она добавляет к предположениям
+# The scheme and what it assumes
 
-## Что считается
+## What is computed
 
 ```
 c = (1 + m·n) · hs^r  mod n²
 ```
 
-где `hs = h^n mod n²`, `h = −x² mod n`, а `r` — случайное число длиной
-`|n|/2` бит, своё на каждое сообщение.
+where `hs = h^n mod n²`, `h = −x² mod n`, and `r` is a random number of
+`|n|/2` bits, fresh for every message.
 
-Учебниковый Paillier считает `c = g^m · r^n mod n²` со **случайным
-основанием** `r`. Здесь основание фиксировано (`hs` живёт весь срок
-ключа), а случаен показатель. Это вариант Дамгорда–Жюрика, тот же, что
-у `heu`.
+Textbook Paillier computes `c = g^m · r^n mod n²` with a **random
+base** `r`. Here the base is fixed — `hs` lives for the whole life of
+the key — and the exponent is what varies. This is the Damgård–Jurik
+variant.
 
-Зачем: фиксированное основание позволяет предвычислить его степени один
-раз и превратить возведение в 171 умножение вместо примерно 1200.
-Отсюда почти вся скорость.
+Why: a fixed base means its powers can be precomputed once, turning the
+exponentiation into 171 multiplications instead of roughly 1200. Nearly
+all of the speed comes from there.
 
-## Почему расшифровка не меняется
+## Why decryption is unchanged
 
 ```
 hs^r = (h^n)^r = (h^r)^n mod n²
 ```
 
-Множитель имеет вид `ρ^n` при `ρ = h^r` — то есть остаётся законным
-рандомизатором обычного Paillier. Расшифровка работает без единой
-правки, и владельцу ключа **не нужно знать**, какое `hs` взял
-шифрующий.
+The factor has the form `ρ^n` with `ρ = h^r` — that is, it remains a
+legitimate randomiser of ordinary Paillier. Decryption works without a
+single change, and the key holder **does not need to know** which `hs`
+the encrypting side chose.
 
-## Что при этом добавляется к предположениям
+## What this adds to the assumptions
 
-Учебниковый Paillier стоит на одной DCRA (решающее предположение о
-составных вычетах). Короткий показатель требует **второго**: что `hs^r`
-при `|r| = |n|/2` неотличимо от `hs^r` при полном `r`.
+Textbook Paillier rests on DCRA alone (the Decisional Composite
+Residuosity Assumption). A short exponent requires a **second one**:
+that `hs^r` with `|r| = |n|/2` is indistinguishable from `hs^r` with a
+full-length `r`.
 
-Предположение стандартное и опубликованное. Но оно есть, и фразу
-«стойко по DCRA» здесь сказать нельзя.
+The assumption is standard and published. But it exists, and "secure
+under DCRA" is not a sentence you can say here.
 
-Полный разбор, включая контрпример, на котором открытый текст
-снимается за семь секунд, и разбор того, чего этот контрпример
-**не** доказывает — [Стойкость короткого показателя](../short-exponent-security.md).
+The full treatment — including a counterexample where the plaintext
+falls out in seven seconds, and an account of what that counterexample
+does **not** prove — is in
+[Short-exponent security](../short-exponent-security.md).
 
-## Что требуется от ключа
+## What is required of the key
 
-**Порядок `hs` обязан быть НЕГЛАДКИМ.** Не «большим» — именно
-неглаткость: на ключе с гладким `λ` метод Полига–Хеллмана снимает `r`
-целиком, и все проверки на величину при этом зелены.
+**`ord(hs)` must be NON-SMOOTH.** Not "large" — non-smooth. On a key
+with smooth `λ`, Pohlig–Hellman recovers `r` outright, and every
+magnitude check passes happily while it does.
 
-Безопасные простые дают это конструктивно. При `p = 2p′+1`,
-`q = 2q′+1` группа `Z*_n ≅ Z_{2p′} × Z_{2q′}`, и множество достижимых
-порядков `hs` есть `{2, 2p′, 2q′, 2p′q′}` — гладких значений выше
-двойки среди них нет вовсе. Это следствие, а не наблюдение; проверка
-стоит в `tests/order_of_hs.rs`.
+Safe primes give this by construction. With `p = 2p′+1`, `q = 2q′+1`
+the group is `Z*_n ≅ Z_{2p′} × Z_{2q′}`, and the set of reachable orders
+of `hs` is `{2, 2p′, 2q′, 2p′q′}` — no smooth value above two exists
+among them at all. That is a consequence, not an observation; the check
+lives in `tests/order_of_hs.rs`.
 
-`heu` порождает **блюмовы** простые и опирается на то, что у случайного
-1024-битного простого `λ` гладкой практически не бывает. Довод
-вероятностный, и в коде он не записан.
+The usual cheaper alternative is Blum primes, where the argument is
+that smooth `λ` is vanishingly rare for a random 1024-bit prime. That
+argument is probabilistic — and a probabilistic argument is not a check:
+nothing refuses a key that happens to be bad.
 
-## Что проверяется
+## What is validated
 
-| проверка | где |
+| check | where |
 |---|---|
-| `(p−1)/2` и `(q−1)/2` просты | `keys::validate_private` |
-| `\|p − q\|` не мала (Ферма) | там же |
-| длина модуля в границах | там же |
-| `hs` не вырожден (`ord ≤ 2`) | `keys::derive_hs` |
-| чужой модуль: нечётность и длина | `keys::validate_public` |
+| `(p−1)/2` and `(q−1)/2` are prime | `keys::validate_private` |
+| `\|p − q\|` is not small (Fermat) | same |
+| modulus length within bounds | same |
+| `hs` is not degenerate (`ord ≤ 2`) | `keys::derive_hs` |
+| foreign modulus: oddness and length | `keys::validate_public` |
 
-Пропуск проверки приватного ключа — **ошибка компиляции**, а не
-недосмотр: `SecretKey` держит свидетельство `keys::Validated`, тип
-нулевого размера с приватным полем, собрать который вне модуля нельзя
-ничем.
+Skipping private key validation is a **compile error**, not an
+oversight: `SecretKey` carries a `keys::Validated` witness — a
+zero-sized type with a private field that cannot be constructed outside
+its module by any means.
 
-Проверка ЧУЖОГО модуля намеренно ограничена длиной и нечётностью —
-это *partial public key validation* по NIST SP 800-56B, то же, что
-делают все. Отравленный модуль ею не ловится, и никакой другой
-проверкой из одного `n` тоже: разбор в докстринге `validate_public`.
+Validation of a FOREIGN modulus is deliberately limited to length and
+oddness — *partial public key validation* per NIST SP 800-56B, which is
+what everyone does. A poisoned modulus is not caught by it, and it is
+not caught by any other check derivable from `n` alone either; the
+reasoning is in the docstring of `validate_public`.

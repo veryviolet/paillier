@@ -1,96 +1,97 @@
-# Прогоны
+# Benchmarks
 
-В `benches/` лежат не тесты, а прогоны: они запускаются руками, ничего
-не утверждают и печатают числа. Каждый отвечает на **свой** вопрос —
-такой, на который остальные не отвечают.
+`benches/` holds benchmarks, not tests: they are run by hand, assert
+nothing, and print numbers. Each answers **its own** question — one the
+others do not answer.
 
-Прежде их было восемь, и каждый мерил свой кусок своей выборкой своим
-способом. Сравнивать их между собой было нельзя, и на этом сгнили два
-числа: «85 мкс в `add_many`» и «4.87 с генерация ключа».
+There used to be eight of them, each measuring its own piece with its
+own sample by its own method. They could not be compared with one
+another, and two numbers rotted on exactly that: "85 µs in `add_many`"
+and "4.87 s key generation".
 
-## `measure.py` — все операции разом
+## `measure.py` — every operation at once
 
 ```bash
-python benches/measure.py ours
-python benches/measure.py heu     # в окружении, где стоит heu
+python benches/measure.py
 ```
 
-Один набор данных, один порядок операций, одни повторы, один формат
-вывода для любой библиотеки: шифрование последовательно и пакетом,
-сложение, расшифровка, генерация ключа, длины шифротекста и точность на
-симметричном и на неотрицательном входе.
+One dataset, one order of operations, one repeat count, one output
+format for any library: encryption serially and in a batch, addition,
+decryption, key generation, ciphertext lengths, and accuracy on
+symmetric and on non-negative input.
 
-Везде **медиана и разброс**, а не лучшее время. Лучшее из N — оценка
-нижней границы, а не типичного поведения, и сравнивать её с медианой
-другой величины нельзя. Разброс между запусками одного и того же кода
-замерен и составляет около 7 %: любой эффект меньше этого одиночным
-замером не измеряется вовсе.
+**Median and spread everywhere**, not best time. Best-of-N estimates a
+lower bound, not typical behaviour, and comparing it against another
+quantity's median is invalid. The spread between runs of identical code
+was measured at about 7 %: any effect smaller than that is not measured
+by a single run at all.
 
-Эталон точности — точная сумма **исходных** чисел в `Fraction`. Сумма
-округлённых значений равна результату схемы по построению: сравнение с
-ней измеряет гомоморфность, которая точна, а не ошибку кодирования.
+The accuracy reference is the exact sum of the **original** numbers in
+`Fraction`. The sum of rounded values equals the scheme's result by
+construction: comparing against it measures homomorphism, which is
+exact, not the encoding error.
 
-## `acc_rounding.py` — округляет кодировщик или усекает
+## `acc_rounding.py` — does the encoder round or truncate
 
-Различающее наблюдение: значение, у которого масштабированная величина
-имеет дробную часть 0.7. Усечение её отбросит, округление добавит
-единицу.
+A discriminating observation: a value whose scaled magnitude has
+fractional part 0.7. Truncation drops it, rounding adds one.
 
-Дробная часть именно 0.7, а не 0.5: `1.0000005` в двоичном `f64` не
-представимо точно, и проба на ничью превращается в пробу на то, куда
-легла ошибка представления.
+Fractional part 0.7 rather than 0.5 on purpose: `1.0000005` is not
+exactly representable in binary `f64`, and a tie probe would turn into a
+probe of which way the representation error fell.
 
-## `modmul.rs` — сколько стоит умножение по модулю
+## `modmul.rs` — the cost of a modular multiplication
 
 ```bash
 cargo bench --bench modmul
 ```
 
-Обычное `a·b mod n²` против формы Монтгомери **поверх `rug::Integer`**,
-плюс цена разбора байтов в число и точная копия цикла `add_many`.
+Plain `a·b mod n²` against Montgomery form **on top of `rug::Integer`**,
+plus the cost of parsing bytes into a number and an exact copy of the
+`add_many` loop.
 
-Здесь записано, почему Монтгомери на этом уровне отвергнут: он
-собирается из полноразмерных операций с аллокацией на каждый шаг и
-проигрывает в 1.19 раза.
+This is where the record lives of why Montgomery was rejected at that
+level: it is assembled from full-width operations with an allocation at
+every step, and loses by a factor of 1.19.
 
-## `secure_pow.rs` — сколько стоит `mpz_powm_sec`
+## `secure_pow.rs` — the cost of `mpz_powm_sec`
 
 ```bash
 cargo bench --bench secure_pow
 ```
 
-На тех же длинах, что в компонентах китайской теоремы. Отношение
-устойчиво — 1.54–1.55 при 2048 битах, — а абсолютные величины гуляют
-между запусками на несколько процентов.
+At the same lengths as the CRT components. The ratio is stable —
+1.54–1.55 at 2048 bits — while the absolute values wander by a few
+percent between runs.
 
-## `window_select.rs` — цена постоянного по времени чтения
+## `window_select.rs` — the cost of constant-time reading
 
 ```bash
 cargo bench --bench window_select
 ```
 
-Две укладки таблицы рядом, на одних `hs`, `n²` и показателе, с
-проверкой равенства результатов внутри самого прогона: выбор записи по
-индексу против выбора маской.
+Two table layouts side by side, on the same `hs`, `n²` and exponent,
+with an equality check on the results inside the benchmark itself:
+entry selection by index against selection by mask.
 
-Число строк берётся **той же функцией**, что в боевом пути. Прежде
-здесь стояла формула для четырёхбитного окна, и прогон строил таблицу в
-полтора раза больше боевой — то есть публиковал цену, снятую со
-структуры, которой в библиотеке не бывает.
+The row count comes from **the same function** the production path uses.
+It used to hold the formula for a four-bit window, and the benchmark
+built a table one and a half times larger than production — publishing a
+cost measured on a structure the library never builds.
 
-## `exponent_length.rs` — что даст сокращение показателя
+## `exponent_length.rs` — what a shorter exponent would buy
 
 ```bash
 cargo bench --bench exponent_length
 ```
 
-Время `pow_by_table` при 1024, 512 и 256 битах показателя. Полное время
-шифрования получается сложением с постоянной частью, которую меряет
-`measure.py`.
+`pow_by_table` timing at 1024, 512 and 256 exponent bits. Total
+encryption time follows by adding the constant part, which `measure.py`
+measures.
 
-!!! warning "Числа отсюда ВЫВЕДЕНЫ вычитанием"
+!!! warning "These numbers are DERIVED by subtraction"
 
-    Длина показателя снаружи не настраивается — она жёстко следует из
-    длины модуля. И постоянная часть это разность двух независимо
-    замеренных величин около 1030 мкс каждая, поэтому её собственная
-    неопределённость сравнима с ней самой.
+    The exponent length is not configurable from outside — it follows
+    rigidly from the modulus length. And the constant part is the
+    difference of two independently measured quantities of about 1030 µs
+    each, so its own uncertainty is comparable to itself.

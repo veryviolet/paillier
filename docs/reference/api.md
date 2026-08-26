@@ -1,18 +1,18 @@
 # API
 
-Модуль `paillier`. Всё, что он выводит наружу, перечислено здесь.
+The `paillier` module. Everything it exposes is listed here.
 
 ## `generate_keypair(bits=3072)`
 
-Возвращает `(PublicKey, SecretKey)`.
+Returns `(PublicKey, SecretKey)`.
 
-Порождает два **безопасных** простых по `bits/2` бит каждое и проверяет
-получившийся ключ. Ключ короче 2048 бит не порождается: NIST SP 800-57
-требует этой длины для стойкости в 112 бит.
+Generates two **safe** primes of `bits/2` each and validates the
+resulting key. Keys shorter than 2048 bits are not generated: NIST
+SP 800-57 requires that length for 112-bit security.
 
-Стоит секунды и имеет **огромный разброс** — от 1 до 10 секунд при 2048
-битах на одной и той же машине. Это поиск: безопасные простые редки, и
-время до попадания случайно.
+It costs seconds and has a **huge spread** — anywhere from 1 to 10
+seconds at 2048 bits on the same machine. It is a search: safe primes
+are rare, and the time to a hit is random.
 
 ```python
 pub, sec = paillier.generate_keypair(2048)
@@ -22,83 +22,85 @@ pub, sec = paillier.generate_keypair(2048)
 
 ### `PublicKey.from_n(raw)`
 
-Собирает открытый ключ из **одного модуля** — того, что уехал по
-проводу. `hs` выводится здесь же, из `n`, а не принимается извне.
+Builds a public key from **the modulus alone** — the thing that came
+over the wire. `hs` is derived right here, from `n`, rather than
+accepted from outside.
 
-Стоит около 0.03 с при 3072 битах, потому что вместе с ключом строится
-таблица степеней. Делайте это **один раз на сессию**.
+It costs about 0.03 s at 3072 bits, because the table of powers is built
+along with the key. Do this **once per session**.
 
-Отказывает на чётном модуле, на слишком коротком и на слишком длинном.
-Длина отсекается по сырым байтам **до всякой арифметики**: модуль
-приезжает от пира, и 64 мегабайта вместо ключа не должны стоить
-процессу ничего.
+Refuses an even modulus, one that is too short, and one that is too
+long. The length is cut off by raw byte count **before any arithmetic**:
+the modulus arrives from a peer, and 64 megabytes instead of a key must
+not cost the process anything.
 
 ### `modulus_bytes()`
 
-Модуль в байтах, старшим вперёд. Единственное, что уезжает к пиру.
+The modulus in bytes, most significant first. The only thing that
+travels to a peer.
 
 ### `exponent_bits`
 
-Длина случайного показателя в битах — половина длины модуля. Выведена
-наружу, чтобы её можно было проверить **числом**, а не подбором.
+The length of the random exponent in bits — half the modulus length.
+Exposed so it can be checked **by number** rather than by guesswork.
 
 ### `plaintext_bound_bits`
 
-Наибольший принимаемый открытый текст по модулю, в битах: `n/2`,
-ужатое под запас на сумму.
+The largest accepted plaintext in magnitude, in bits: `n/2`, shrunk to
+reserve headroom for a sum.
 
 ## `encrypt_many(pub, values, scale_pow10=8)`
 
-Шифрует список чисел, возвращает список блобов.
+Encrypts a list of numbers, returns a list of blobs.
 
-Идёт **по всем ядрам**. Шифровать по одному в цикле Python — значит
-выбросить множитель в шесть раз.
+Runs **across all cores**. Encrypting one at a time in a Python loop
+throws away a factor of six.
 
-`scale_pow10` — показатель степени десятки, от 0 до 18. Едет в каждом
-блобе первым байтом. См. [Кодирование](../concepts/encoding.md).
+`scale_pow10` is the power-of-ten exponent, from 0 to 18. It travels in
+every blob as the first byte. See
+[Encoding](../concepts/encoding.md).
 
-Отказывает на `NaN`, на бесконечностях, на числах, которые при
-масштабировании переполняют `f64`, и на числах вне допустимого
-диапазона ключа.
+Refuses `NaN`, infinities, numbers that overflow `f64` once scaled, and
+numbers outside the key's admissible range.
 
 ## `add_many(pub, blobs)`
 
-Складывает шифротексты, возвращает один блоб.
+Adds ciphertexts, returns a single blob.
 
-Отказывает: на пустой пачке; на пачке длиннее `2^20`; на шифротексте
-вне `[1, n²)`; на пачке с **разными масштабами**.
+Refuses: an empty batch; a batch longer than `2^20`; a ciphertext
+outside `[1, n²)`; a batch that **mixes scales**.
 
-!!! note "Планка `2^20` — не гарантия"
+!!! note "The `2^20` cap is not a guarantee"
 
-    Счётчик повызовный, и результат можно подать во второй вызов. Что
-    действительно держит сумму в группе — соотношение между нижней
-    границей ключа (`2^2026`) и тем, что вообще кодируется из `f64`
-    (около `2^1024`): до переполнения не хватает тысячи бит.
+    It is per call, and the result can be fed into a second call. What
+    actually keeps sums in the group is the gap between the key floor
+    (`2^2026`) and what is encodable from `f64` at all (about `2^1024`):
+    a thousand bits short of overflow.
 
 ## `decrypt(sec, blob)`
 
-Возвращает `float`. Масштаб берётся из самого блоба.
+Returns a `float`. The scale is taken from the blob itself.
 
-Отказывает на пустом блобе, на неизвестном показателе масштаба и на
-значении, которое не является шифротекстом под этим ключом.
+Refuses an empty blob, an unknown scale exponent, and a value that is
+not a ciphertext under this key.
 
-!!! warning "Проверки «этот шифротекст под этим ключом» нет"
+!!! warning "There is no 'this ciphertext under this key' check"
 
-    И быть не может: из одного `n` она не выводится. Шифротекст,
-    сделанный под другим ключом, обычно приведёт к отказу — но не
-    всегда.
+    Nor can there be: it does not follow from `n` alone. A ciphertext
+    made under a different key will usually lead to a refusal — but not
+    always.
 
 ## `__version__`
 
-Версия пакета. Берётся из `Cargo.toml` на сборке, а не переписывается
-руками.
+The package version, taken from `Cargo.toml` at build time rather than
+typed in a second place.
 
-## Формат блоба
+## Blob format
 
 ```
-[1 байт: показатель масштаба] [шифротекст, старшим байтом вперёд]
+[1 byte: scale exponent] [ciphertext, most significant byte first]
 ```
 
-Шифротекст записан **минимальной** длиной, а не фиксированной ширины:
-замерено `{512: 2, 513: 398}` на четырёхстах шифрованиях ключом 2048
-бит. Нарезать буфер постоянным шагом нельзя.
+The ciphertext is written at **minimal** length, not padded to a fixed
+width: measured `{512: 2, 513: 398}` over four hundred encryptions with
+a 2048-bit key. You cannot slice the buffer at a constant stride.

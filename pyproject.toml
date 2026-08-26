@@ -55,11 +55,11 @@ Changelog = "https://github.com/veryviolet/paillier/blob/main/CHANGELOG.md"
 [tool.maturin]
 # Колёса собираются ПОД КАЖДУЮ версию Python отдельно, без `abi3`.
 #
-# Соблазн взять `abi3` силён — одно колесо вместо четырёх, — но в этом же
-# репозитории записано, чем `abi3` оборачивается, когда метка не
-# соответствует содержимому: `sf-heu==0.4.2b0` помечена `cp38-abi3`,
-# ставится и падает при импорте на символе, удалённом из CPython 3.12.
-# Отдельное колесо на версию не может соврать про совместимость: оно
-# либо собрано под этот интерпретатор, либо его нет.
+# The temptation of `abi3` is real — one wheel instead of four — but a
+# compatibility tag that does not match the contents is worse than no
+# tag: an extension tagged `abi3` while using an unstable symbol
+# installs fine and dies on import on the first interpreter that dropped
+# that symbol. A per-version wheel cannot lie about compatibility: it
+# was either built for this interpreter or it does not exist.
 features = ["pyo3/extension-module"]
 strip = true

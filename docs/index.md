@@ -1,10 +1,10 @@
 # paillier
 
-Аддитивно-гомоморфное шифрование Paillier: своя реализация на Rust поверх
-GMP, привязка к Python через pyo3.
+Additively homomorphic Paillier encryption: a Rust implementation on top
+of GMP, bound to Python through pyo3.
 
-Гомоморфное — значит, что сложить зашифрованные числа можно, не
-расшифровывая их:
+Homomorphic means encrypted numbers can be added without decrypting
+them:
 
 ```python
 import paillier
@@ -12,77 +12,88 @@ import paillier
 pub, sec = paillier.generate_keypair(2048)
 
 blobs = [bytes(b) for b in paillier.encrypt_many(pub, [1.5, 2.25, -0.75])]
-total = paillier.add_many(pub, blobs)      # складываем ШИФРОТЕКСТЫ
+total = paillier.add_many(pub, blobs)      # adding CIPHERTEXTS
 
 paillier.decrypt(sec, total)               # 3.0
 ```
 
-Тот, кто складывает, слагаемых не видит. Тот, у кого закрытый ключ,
-видит только сумму. Ради этого схема и существует.
+Whoever does the adding never sees the terms. Whoever holds the private
+key sees only the sum. That is the whole point of the scheme.
 
-## Что здесь важно знать до использования
+## What you need to know before using it
 
-!!! warning "Это не учебниковый Paillier"
+!!! warning "This is not textbook Paillier"
 
-    Схема — вариант **Дамгорда–Жюрика с коротким показателем**:
+    The scheme is the **Damgård–Jurik variant with a short exponent**:
 
     ```
     c = (1 + m·n) · hs^r mod n²,   hs = h^n,  h = −x² mod n,  |r| = |n|/2
     ```
 
-    вместо учебникового `c = g^m · r^n mod n²`. Отсюда следствие:
-    неразличимость шифротекстов опирается **не на одну DCRA** — нужно
-    дополнительное предположение о коротком показателе. Оно стандартное
-    и опубликованное, но оно есть, и безусловной фразы «стойко по DCRA»
-    здесь сказать нельзя.
+    instead of the textbook `c = g^m · r^n mod n²`. The consequence:
+    ciphertext indistinguishability rests on **more than DCRA alone** —
+    it needs an additional short-exponent assumption. That assumption is
+    standard and published, but it exists, and "secure under DCRA" is
+    not a sentence you can say here unconditionally.
 
-    Разбор: [Схема](concepts/scheme.md),
-    [Стойкость короткого показателя](short-exponent-security.md).
+    Details: [The scheme](concepts/scheme.md),
+    [Short-exponent security](short-exponent-security.md).
 
-!!! warning "Постоянного времени НЕТ"
+!!! warning "There is NO constant time"
 
-    Два побочных канала по времени закрыты, один остаётся открытым —
-    около **0.118 бита** из 1024. Он назван, замерен и сторожится
-    тестом на нерост. Разбор: [Побочные каналы](concepts/timing.md).
+    Two timing side channels are closed, one stays open — about
+    **0.118 bits** out of 1024. It is named, measured, and guarded by a
+    test that watches it does not grow. Details:
+    [Timing side channels](concepts/timing.md).
 
-## Чем отличается от `heu`
+## Numbers
 
-`heu` (Ant Group) — самая быстрая из известных реализаций, и приёмы её
-шифрования перенесены сюда. Сравнение на ключе 2048 бит, одна машина:
+2048-bit key, one machine, medians over five repeats:
 
-| | `paillier` | `heu` |
-|---|---|---|
-| шифрование, все ядра | **6500+ эл/с** | 1407 |
-| шифрование, одно ядро | 980 | **1407** |
-| сложение | **7.3 мкс** | 10.8 |
-| расшифровка | 3.75 мс | **2.86** |
-| шифротекст | **512–513 Б** | 523–524 |
-| ошибка суммы, 10⁵ неотрицательных | **1.2e-06** | 5.0e-04 |
+| operation | cost |
+|---|---|
+| encryption, all cores | **6500+ ops/s** |
+| encryption, one core | 980 ops/s |
+| addition | 7.3 µs per term |
+| decryption | 3.75 ms |
+| key generation | 1.4–2.8 s (spread 1.0–10.3) |
+| ciphertext | 512–513 B |
 
-По ядру `heu` быстрее, и причина названа числом: не цена умножения (она
-одинакова — 5.8 против 5.9 мкс), а их число. Полный разбор со всеми
-замерами — [Сравнение с heu](heu-comparison.md).
+Encryption is 98 % modular multiplications inside the window table;
+encoding, serialisation and everything else come to under half a percent
+together. Key generation has an enormous spread because it is a search:
+safe primes are rare and the time to a hit is random — a single
+measurement there means nothing.
 
-Где выигрываем не случайностью замера:
+All of it reproduces from the repository: `python benches/measure.py`.
+What each benchmark answers and what it deliberately does not:
+[Benchmarks](reference/benches.md).
 
-* **точность на знакопостоянных данных** — счётчиках, квадратах
-  градиентов. `heu` усекает к нулю, мы округляем к ближайшему, и на
-  ста тысячах слагаемых это разница в четыреста раз;
-* **проверки ключа** — свои проверяются, чужие тоже. У `heu` публичный
-  ключ принимается с провода без единой проверки;
-* **`hs` не импортируется, а выводится** из одного `n`. Шифрующему не
-  приходится доверять чужому числу, которое проверить нельзя.
+## What it does that a textbook implementation does not
 
-## Установка
+* **the key is validated** — ours when generated, a peer's when
+  accepted. Skipping validation of a private key is a compile error, not
+  an oversight;
+* **`hs` is derived from `n` in place**, never imported, so the
+  encrypting side never has to trust a foreign number it cannot verify
+  by any computation;
+* **rounding to nearest, not truncation** — on sign-constant data
+  truncation gives an error that grows linearly with the number of
+  terms rather than as `√k`;
+* **refusals instead of plausible numbers** — `NaN`, infinities, an
+  empty sum, a mixed-scale batch, an over-long modulus from a peer.
+
+## Installation
 
 ```bash
 pip install paillier
 ```
 
-Колёса собраны под CPython 3.10, 3.11, 3.12 и 3.13. Подробности —
-[Установка](getting-started/installation.md).
+Wheels are built for CPython 3.10, 3.11, 3.12 and 3.13. Details:
+[Installation](getting-started/installation.md).
 
-## Юридическое
+## Legal
 
-Тексты лицензий, происхождение приёмов и выполнение условий §4 LGPL —
+Licence texts, where the techniques came from, and how the LGPL §4
+conditions are met:
 [`NOTICE.md`](https://github.com/veryviolet/paillier/blob/main/NOTICE.md).

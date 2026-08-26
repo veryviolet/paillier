@@ -1,9 +1,9 @@
 # paillier
 
-**Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх
-GMP, привязка к Python через pyo3.**
+**Additively homomorphic Paillier encryption: a Rust implementation on
+top of GMP, bound to Python through pyo3.**
 
-Сложить зашифрованные числа, не расшифровывая их:
+Add encrypted numbers without decrypting them:
 
 ```python
 import paillier
@@ -11,112 +11,111 @@ import paillier
 pub, sec = paillier.generate_keypair(2048)
 
 blobs = [bytes(b) for b in paillier.encrypt_many(pub, [1.5, 2.25, -0.75])]
-total = paillier.add_many(pub, blobs)      # складываем ШИФРОТЕКСТЫ
+total = paillier.add_many(pub, blobs)      # adding CIPHERTEXTS
 
 paillier.decrypt(sec, total)               # 3.0
 ```
 
-Тот, кто складывает, слагаемых не видит. Тот, у кого закрытый ключ,
-видит только сумму.
+Whoever does the adding never sees the terms. Whoever holds the private
+key sees only the sum.
 
 ```bash
 pip install paillier
 ```
 
-Колёса под CPython 3.10, 3.11, 3.12, 3.13. Ни компилятора, ни GMP на
-машине не нужно.
+Wheels for CPython 3.10, 3.11, 3.12 and 3.13. No compiler and no system
+GMP required.
 
-📖 **[Документация](https://veryviolet.github.io/paillier/)**
+📖 **[Documentation](https://veryviolet.github.io/paillier/)**
 
-## Читать до использования
+## Read this before using it
 
-**Это не учебниковый Paillier.** Схема — вариант Дамгорда–Жюрика с
-коротким показателем: `c = (1 + m·n) · hs^r mod n²`, где основание
-фиксировано, а случаен показатель длиной `|n|/2`. Отсюда почти вся
-скорость — и отсюда же следствие: неразличимость шифротекстов опирается
-**не на одну DCRA**, нужно дополнительное предположение о коротком
-показателе. Оно стандартное и опубликованное, но оно есть, и
-безусловной фразы «стойко по DCRA» здесь сказать нельзя.
+**This is not textbook Paillier.** The scheme is the Damgård–Jurik
+variant with a short exponent: `c = (1 + m·n) · hs^r mod n²`, where the
+base is fixed and the exponent — `|n|/2` bits — is what varies. Almost
+all of the speed comes from that, and so does the consequence:
+ciphertext indistinguishability rests on **more than DCRA alone**. It
+needs an additional short-exponent assumption. That assumption is
+standard and published, but it exists, and "secure under DCRA" is not a
+sentence you can say here unconditionally.
 
-**Постоянного времени НЕТ.** Два побочных канала по времени закрыты,
-один остаётся открытым — около 0.118 бита из 1024. Он назван, замерен и
-сторожится тестом на нерост.
+**There is NO constant time.** Two timing side channels are closed, one
+stays open — about **0.118 bits** out of 1024. It is named, measured,
+and guarded by a test that watches it does not grow.
 
-Оба утверждения разобраны полностью, с замерами и с тем, чего схема не
-даёт: [документация](https://veryviolet.github.io/paillier/).
+Both statements are worked through in full, with measurements and with
+what the scheme does *not*
+give: [documentation](https://veryviolet.github.io/paillier/).
 
-## Числа
+## Numbers
 
-Ключ 2048 бит, одна машина, медианы:
+2048-bit key, one machine, medians over five repeats:
 
-| | `paillier` | `heu` (C++) |
-|---|---|---|
-| шифрование, все ядра | **6500+ эл/с** | 1407 |
-| шифрование, одно ядро | 980 | **1407** |
-| сложение | **7.3 мкс** | 10.8 |
-| расшифровка | 3.75 мс | **2.86** |
-| шифротекст | **512–513 Б** | 523–524 |
-| ошибка суммы, 10⁵ неотрицательных | **1.2e-06** | 5.0e-04 |
+| operation | cost |
+|---|---|
+| encryption, all cores | **6500+ ops/s** |
+| encryption, one core | 980 ops/s |
+| addition | 7.3 µs per term |
+| decryption | 3.75 ms |
+| key generation | 1.4–2.8 s (spread 1.0–10.3) |
+| ciphertext | 512–513 B |
 
-По ядру `heu` быстрее в 1.43 раза, и причина названа числом: не цена
-умножения — она одинакова, 5.8 против 5.9 мкс, — а их число.
+Encryption is 98 % modular multiplications inside the window table;
+encoding, serialisation and the rest come to under half a percent
+together. Key generation has an enormous spread because it is a search:
+safe primes are rare and the time to a hit is random.
 
-Где выигрыш не случайность замера:
+Everything here is reproducible from the repository:
+`python benches/measure.py`.
 
-* **точность на знакопостоянных данных** — счётчиках бакетов, квадратах
-  градиентов. `heu` усекает к нулю, мы округляем к ближайшему, и на ста
-  тысячах слагаемых это разница в четыреста раз;
-* **проверки ключа** — свои проверяются, чужие тоже; у `heu` публичный
-  ключ принимается с провода без единой проверки;
-* **`hs` выводится, а не импортируется** — шифрующему не приходится
-  доверять чужому числу, которое проверить вычислением нельзя.
-
-## Точность настраивается
+## Accuracy is configurable
 
 ```python
 blobs = paillier.encrypt_many(pub, values, scale_pow10=12)
 ```
 
-Масштаб едет **в самом шифротексте**: расшифровка берёт его оттуда, а
-сложение отказывает на пачке с разными масштабами. Договариваться
-сторонам не о чем.
+The scale travels **inside the ciphertext**: decryption reads it from
+there, and addition refuses a batch that mixes scales. The two sides
+have nothing to agree on.
 
-При `scale_pow10 = 12` ошибка суммы миллиона знакопостоянных слагаемых
-уходит под разрешение самого `f64` — ценой сужения диапазона входа с
-`|v| ≲ 9e7` до `≲ 9e3`.
+At `scale_pow10 = 12` the sum error over a million sign-constant terms
+drops below the resolution of `f64` itself — at the cost of narrowing
+the input range from `|v| ≲ 9e7` to `≲ 9e3`.
 
-## Проверки
+## Checks
 
 ```bash
 cargo test --release
 python -m pytest
 ```
 
-Прогоны производительности и точности — в `benches/`, каждый отвечает
-на свой вопрос:
-[справочник](https://veryviolet.github.io/paillier/reference/benches/).
+Performance and accuracy benchmarks live in `benches/`, each answering
+one question:
+[reference](https://veryviolet.github.io/paillier/reference/benches/).
 
-## Сборка из исходников
+## Building from source
 
 ```bash
 pip install maturin
 maturin build --release
 ```
 
-Понадобится стабильный Rust. GMP собирается статически, ставить его
-отдельно не нужно.
+Needs stable Rust. GMP is built and linked statically; you do not need
+to install it separately.
 
-## Лицензии
+## Licences
 
-**Исходники** — MIT OR Apache-2.0, на выбор.
+**The sources** are MIT OR Apache-2.0, at your option.
 
-**Собранные колёса** дополнительно содержат GMP, вкомпилированную
-статически через [`rug`](https://gitlab.com/tspiteri/rug), и потому
-целиком подпадают под **LGPL-3.0+**. Ставя колесо с PyPI, вы получаете
-комбинированное произведение, а не только наш код.
+**The built wheels** additionally contain GMP, statically linked through
+[`rug`](https://gitlab.com/tspiteri/rug), and therefore fall under
+**LGPL-3.0+** as a whole. Installing a wheel from PyPI gets you a
+combined work, not only our code.
 
-Нужен бинарник без LGPL внутри — соберите из исходного архива со своей
-сборкой GMP: `pip install --no-binary paillier paillier`.
+If you need a binary with no LGPL code inside, build it from the source
+distribution against your own GMP:
+`pip install --no-binary paillier paillier`.
 
-Полный разбор, включая выполнение условий §4 LGPL и происхождение
-приёмов, взятых у `heu`: [`NOTICE.md`](NOTICE.md).
+Full breakdown, including how the LGPL §4 conditions are met and where
+the techniques came from:
+[`NOTICE.md`](NOTICE.md).

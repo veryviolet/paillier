@@ -1,34 +1,35 @@
-# Установка
+# Installation
 
 ```bash
 pip install paillier
 ```
 
-## Что именно ставится
+## What actually gets installed
 
-Собранное расширение на Rust. Ни компилятора, ни GMP на машине не
-требуется: GMP собирается статически внутрь колеса при сборке пакета.
+A compiled Rust extension. No compiler and no system GMP are required:
+GMP is built and linked statically into the wheel when the package is
+built.
 
-Колёса собраны **отдельно под каждую версию** CPython — 3.10, 3.11,
-3.12 и 3.13, — и это осознанный отказ от `abi3`.
+Wheels are built **separately for each** CPython version — 3.10, 3.11,
+3.12 and 3.13 — and that is a deliberate refusal of `abi3`.
 
-!!! note "Почему не `abi3`"
+!!! note "Why not `abi3`"
 
-    Одно колесо на все версии выглядит удобнее четырёх. Но метка
-    совместимости, которой нельзя доверять, хуже её отсутствия, и
-    пример перед глазами: `sf-heu==0.4.2b0` помечена `cp38-abi3`,
-    прекрасно ставится и падает при импорте на
-    `_PyObject_NextNotImplemented` — символе, удалённом из CPython 3.12.
+    One wheel for every version looks more convenient than four. But a
+    compatibility tag you cannot trust is worse than no tag at all, and
+    the failure mode is real: an extension tagged `abi3` while actually
+    using an unstable symbol installs perfectly and then dies on import
+    on the first interpreter that removed the symbol.
 
-    Отдельное колесо на версию соврать про совместимость не может: оно
-    либо собрано под этот интерпретатор, либо его нет.
+    A per-version wheel cannot lie about compatibility: either it was
+    built for this interpreter or it does not exist.
 
-Метка платформы — `manylinux_2_17` (она же `manylinux2014`). Это нижняя
-граница glibc, с которой колесо ставится почти на любом живом Linux.
+The platform tag is `manylinux_2_17` (also known as `manylinux2014`),
+the glibc floor that installs on essentially any live Linux.
 
-## Сборка из исходников
+## Building from source
 
-Понадобится Rust (стабильный) и `maturin`:
+You need stable Rust and `maturin`:
 
 ```bash
 pip install maturin
@@ -36,24 +37,24 @@ maturin build --release
 pip install target/wheels/paillier-*.whl
 ```
 
-Либо прямо в текущее окружение, без промежуточного колеса:
+Or straight into the current environment, with no intermediate wheel:
 
 ```bash
 maturin develop --release
 ```
 
-!!! warning "Не собирайте без `--release`"
+!!! warning "Do not build without `--release`"
 
-    В debug-сборке порождение безопасных простых занимает минуты вместо
-    секунд, а замеры постоянства времени не значат ничего.
+    In a debug build, safe-prime generation takes minutes instead of
+    seconds, and the constant-time measurements mean nothing at all.
 
-## Проверка
+## Verifying
 
 ```python
 import paillier
 paillier.__version__
 ```
 
-Версия берётся из `Cargo.toml` **на сборке**, а не переписывается
-руками: две копии номера разъезжаются молча, а разъехавшаяся версия
-врёт про то, какой код установлен.
+The version comes from `Cargo.toml` **at build time** rather than being
+typed in a second place: two copies of a number drift apart silently,
+and a drifted version lies about which code is installed.

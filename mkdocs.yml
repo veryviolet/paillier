@@ -1,14 +1,13 @@
 site_name: paillier
 site_url: https://veryviolet.github.io/paillier/
 site_description: >-
-  Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP,
-  привязка к Python через pyo3.
+  Additively homomorphic Paillier encryption: a Rust implementation on top of
+  GMP, bound to Python through pyo3.
 repo_url: https://github.com/veryviolet/paillier
 repo_name: veryviolet/paillier
 
 theme:
   name: material
-  language: ru
   features:
     - navigation.tabs
     - navigation.sections
@@ -22,17 +21,16 @@ theme:
       accent: teal
       toggle:
         icon: material/brightness-7
-        name: Тёмная тема
+        name: Switch to dark mode
     - scheme: slate
       primary: teal
       accent: teal
       toggle:
         icon: material/brightness-4
-        name: Светлая тема
+        name: Switch to light mode
 
 plugins:
-  - search:
-      lang: ru
+  - search
 
 markdown_extensions:
   - admonition
@@ -49,19 +47,18 @@ markdown_extensions:
       permalink: true
 
 nav:
-  - Начало:
-      - Что это: index.md
-      - Установка: getting-started/installation.md
-      - Первый прогон: getting-started/first-run.md
-  - Как устроено:
-      - Схема и что она добавляет к предположениям: concepts/scheme.md
-      - Побочные каналы по времени: concepts/timing.md
-      - Кодирование и масштаб: concepts/encoding.md
-  - Справочник:
+  - Start here:
+      - What this is: index.md
+      - Installation: getting-started/installation.md
+      - First run: getting-started/first-run.md
+  - How it works:
+      - The scheme and what it assumes: concepts/scheme.md
+      - Timing side channels: concepts/timing.md
+      - Encoding and scale: concepts/encoding.md
+  - Reference:
       - API: reference/api.md
-      - Границы и отказы: reference/limits.md
-      - Прогоны: reference/benches.md
-  - Разбор:
-      - Сравнение с heu: heu-comparison.md
-      - Стойкость короткого показателя: short-exponent-security.md
-  - Изменения: changelog.md
+      - Limits and refusals: reference/limits.md
+      - Benchmarks: reference/benches.md
+  - Analysis:
+      - Short-exponent security: short-exponent-security.md
+  - Changelog: changelog.md

@@ -1,28 +1,23 @@
-//! Порождение безопасных простых.
+//! Safe prime generation.
 //!
-//! Последнее, ради чего держался `fast-paillier`. Своё нужно не из
-//! гордости: через его `Plaintext` числа ходили туда-обратно ЧЕРЕЗ
-//! ДЕСЯТИЧНУЮ СТРОКУ (`to_string().parse()`), потому что тип наружу
-//! `rug::Integer` не отдаёт. На ключе это происходит считаные разы, но
-//! это же вынуждало держать чужой тип во всех подписях.
+//! # A safe prime
 //!
-//! # Безопасное простое
+//! `p = 2p′ + 1` with `p′` prime as well. This is where `λ = 2p′q′`
+//! comes from — a large prime divisor of the order, which is the
+//! security condition for the short exponent
+//! (`docs/short-exponent-security.md`). Blumness (`p ≡ 3 mod 4`) comes
+//! for free: `p′` is odd, so `2p′ + 1 ≡ 3`.
 //!
-//! `p = 2p′ + 1`, где `p′` тоже просто. Именно отсюда `λ = 2p′q′`, то
-//! есть большой простой делитель порядка — условие стойкости короткого
-//! показателя (`docs/short-exponent-security.md`). Блюмовость
-//! (`p ≡ 3 mod 4`) получается даром: `p′` нечётно, значит `2p′ + 1 ≡ 3`.
+//! # Why a double sieve rather than "just test them one by one"
 //!
-//! # Почему двойное решето, а не «проверять подряд»
+//! The density of safe primes is about `2/ln²N`: at 1024 bits that is
+//! one candidate in a quarter of a million. Miller–Rabin at 1024 bits
+//! costs fractions of a millisecond, and a quarter of a million such
+//! tests is minutes per prime.
 //!
-//! Плотность безопасных простых около `2/ln²N`: при 1024 битах это один
-//! кандидат из четверти миллиона. Миллер–Рабин на 1024 битах стоит доли
-//! миллисекунды, и четверть миллиона таких проверок — это минуты на
-//! одно простое.
-//!
-//! Поэтому кандидат сперва просеивается делением на малые простые —
-//! И САМ, И `2p′+1` вместе с ним. Отсев дешёвый, а убирает свыше 90 %
-//! кандидатов до первого возведения в степень.
+//! So a candidate is first sieved by division by small primes — BOTH
+//! itself AND `2p′+1`. The sieving is cheap and removes over 90 % of
+//! candidates before the first exponentiation.
 
 use rand::Rng;
 use rug::integer::{IsPrime, Order};
@@ -30,26 +25,27 @@ use rug::Integer;
 
 use crate::keys::PRIMALITY_ROUNDS;
 
-/// Граница решета. Выше неё отсев перестаёт окупаться: доля кандидатов,
-/// убираемых простым `s`, равна `1/s`, а стоимость деления постоянна.
+/// The sieve bound. Above it, sieving stops paying: the fraction of
+/// candidates removed by a prime `s` is `1/s`, while the cost of a
+/// division is constant.
 const SIEVE_LIMIT: u32 = 1 << 12;
 
-/// Нечётные простые до `SIEVE_LIMIT`.
+/// Odd primes up to `SIEVE_LIMIT`.
 ///
-/// Двойка отсутствует НАМЕРЕННО: `half` нечётно по построению, а
-/// `2·half + 1` нечётно тем более, так что деление на два не отсеет
-/// никогда ничего.
+/// Two is absent DELIBERATELY: `half` is odd by construction and
+/// `2·half + 1` is odd a fortiori, so dividing by two would never
+/// reject anything.
 ///
-/// А вот чётные кандидаты прежде выживали и попадали в список как
-/// «простые». Внешний цикл шёл по всем числам подряд, начиная с трёх, и
-/// двойка не вычёркивала ничего вовсе; чётное вычёркивалось, только
-/// если его брало нечётное простое, а те начинают с `p²`. Так уцелели
-/// 4, 6, 8, 10, 14, 22, 26, 34 и далее — **310 составных на 873
-/// записи**, причём на позициях 2, 4, 6, 7, то есть в делении почти на
-/// каждом кандидате. Ошибочного отказа это не давало (чётное не делит
-/// нечётное), но треть работы решета была бесплодной, и модель
-/// стоимости в докстринге файла — «простое `s` убирает долю `1/s`» —
-/// для этой трети не верна.
+/// Even candidates, however, used to survive and land in the list as
+/// "primes". The outer loop walked every number from three upward, two
+/// crossed nothing off at all, and an even number was only crossed off
+/// if an odd prime reached it — and those start at `p²`. So 4, 6, 8,
+/// 10, 14, 22, 26, 34 and onward survived: **310 composites out of 873
+/// entries**, sitting at positions 2, 4, 6, 7, i.e. paid for on nearly
+/// every candidate. It caused no wrong rejection (an even number does
+/// not divide an odd one), but a third of the sieve's work was futile,
+/// and the cost model in this file's docstring — "a prime `s` removes a
+/// fraction `1/s`" — does not hold for that third.
 fn small_primes() -> Vec<u32> {
     let mut composite = vec![false; (SIEVE_LIMIT + 1) as usize];
     let mut out = Vec::new();
@@ -57,8 +53,8 @@ fn small_primes() -> Vec<u32> {
     while candidate <= SIEVE_LIMIT {
         if !composite[candidate as usize] {
             out.push(candidate);
-            // Шаг `2·candidate`, а не `candidate`: чётные кратные
-            // помечать незачем, они в перебор не попадают.
+            // Step by `2·candidate`, not `candidate`: even multiples
+            // need no marking, they never enter the walk.
             let mut multiple = candidate as u64 * candidate as u64;
             while multiple <= SIEVE_LIMIT as u64 {
                 composite[multiple as usize] = true;
@@ -70,12 +66,13 @@ fn small_primes() -> Vec<u32> {
     out
 }
 
-/// Случайное нечётное число ровно `bits` бит.
+/// A random odd number of exactly `bits` bits.
 ///
-/// Старший бит выставляется ЯВНО: без него длина «около `bits`», и
-/// произведение двух таких простых оказывается короче заявленного
-/// модуля — ровно тот разъезд, из-за которого длина показателя
-/// считалась от запрошенной величины вместо фактической.
+/// The top bit is set EXPLICITLY: without it the length is "about
+/// `bits`", and the product of two such primes comes out shorter than
+/// the declared modulus — exactly the drift that once made the exponent
+/// length be computed from the requested size instead of the actual
+/// one.
 fn random_odd(bits: u32) -> Integer {
     let mut rng = rand::thread_rng();
     let width = ((bits + 7) / 8) as usize;
@@ -88,38 +85,38 @@ fn random_odd(bits: u32) -> Integer {
     value
 }
 
-/// Безопасное простое ровно `bits` бит: `p = 2p′ + 1`, `p′` просто.
+/// A safe prime of exactly `bits` bits: `p = 2p′ + 1` with `p′` prime.
 ///
-/// Возвращает `p`. Стоимость — секунды при 1024 битах; это происходит
-/// один раз на ключ.
+/// Returns `p`. Costs seconds at 1024 bits; it happens once per key.
 pub fn safe_prime(bits: u32) -> Integer {
-    assert!(bits >= 8, "безопасное простое короче восьми бит не ищется");
+    assert!(bits >= 8, "a safe prime shorter than eight bits is not searched for");
     let sieve = small_primes();
     loop {
-        // Ищем `p′` длиной `bits − 1`, тогда `p = 2p′ + 1` выйдет ровно
-        // `bits`.
+        // Look for `p′` of length `bits − 1`, so that `p = 2p′ + 1` comes
+        // out at exactly `bits`.
         let half = random_odd(bits - 1);
 
-        // Решето сразу по обоим: `p′` и `2p′ + 1`. Проверять их по
-        // очереди значило бы платить Миллером–Рабином за кандидатов,
-        // которых видно делением.
+        // Sieve on both at once: `p′` and `2p′ + 1`. Testing them in
+        // turn would mean paying Miller–Rabin for candidates a division
+        // can see through.
         let mut rejected = false;
         for prime in &sieve {
-            // Решето обрывается, когда доросло до самого кандидата.
-            // Без этого при `half < SIEVE_LIMIT` отсеивался КАЖДЫЙ
-            // годный: `half` простое, значит совпадает с одним из
-            // просеивающих, `residue == 0`, отказ. Цикл не заканчивался
-            // никогда — а он крутится под снятым GIL, то есть зависание
-            // непрерываемое, ровно то, ради чего в ключе стоят границы
-            // длины.
+            // The sieve stops once it has grown up to the candidate
+            // itself. Without this, every viable candidate was rejected
+            // whenever `half < SIEVE_LIMIT`: `half` prime means it
+            // coincides with one of the sieving primes, `residue == 0`,
+            // rejection. The loop then never terminated — and it runs
+            // with the GIL released, i.e. an uninterruptible hang,
+            // exactly what the length bounds on keys exist for.
             //
-            // На боевом пути недостижимо (`half ≥ 2^1023`), но функция
-            // публичная, и её контракт объявлен ассертом ниже.
+            // Unreachable on the production path (`half ≥ 2^1023`), but
+            // the function is public and its contract is stated by the
+            // assertion above.
             if Integer::from(*prime) >= half {
                 break;
             }
             let residue = half.mod_u(*prime);
-            // `p′ ≡ 0` — составное; `2p′ + 1 ≡ 0` — составное второе.
+            // `p′ ≡ 0` — composite; `2p′ + 1 ≡ 0` — the second one is.
             if residue == 0 || (2 * residue + 1) % prime == 0 {
                 rejected = true;
                 break;
@@ -144,7 +141,7 @@ pub fn safe_prime(bits: u32) -> Integer {
 mod tests {
     use super::*;
 
-    /// Пробное деление — независимый судья, а не то же решето.
+    /// Trial division — an independent judge, not the same sieve.
     fn is_prime_by_division(value: u32) -> bool {
         if value < 2 {
             return false;
@@ -159,23 +156,23 @@ mod tests {
         true
     }
 
-    /// Решето обязано отдавать РОВНО нечётные простые: ни одного
-    /// составного, ни одного пропущенного.
+    /// The sieve must return EXACTLY the odd primes: no composite, none
+    /// missing.
     ///
-    /// Первая проверка тут важнее второй. Составные в списке ошибочного
-    /// отказа не давали — чётное не делит нечётное, — поэтому ни один
-    /// тест на порождение простых их не видел: `safe_prime` возвращала
-    /// верные числа, просто платя треть работы впустую. Утверждение о
-    /// списке нужно проверять на самом списке.
+    /// The first assertion matters more than the second. Composites in
+    /// the list caused no wrong rejection — an even number does not
+    /// divide an odd one — so no prime-generation test ever saw them:
+    /// `safe_prime` returned correct numbers while wasting a third of
+    /// the work. A claim about the list has to be checked on the list.
     #[test]
-    fn решето_отдаёт_ровно_нечётные_простые() {
+    fn sieve_returns_exactly_the_odd_primes() {
         let sieve = small_primes();
         for value in &sieve {
             assert!(
                 is_prime_by_division(*value),
-                "в списке составное {value}"
+                "composite {value} in the list"
             );
-            assert!(value % 2 == 1, "в списке чётное {value}");
+            assert!(value % 2 == 1, "even {value} in the list");
         }
         let mut expected = Vec::new();
         let mut value = 3u32;
@@ -185,6 +182,6 @@ mod tests {
             }
             value += 2;
         }
-        assert_eq!(sieve, expected, "решето и пробное деление разошлись");
+        assert_eq!(sieve, expected, "sieve and trial division disagree");
     }
 }

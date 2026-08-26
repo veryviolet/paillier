@@ -1,74 +1,65 @@
-"""Округляет кодировщик или усекает — различающим наблюдением.
+"""Does the encoder round or truncate — by discriminating observation.
 
-Косвенно это видно по числам (усечение даёт ошибку в √3 больше), но
-косвенное — не доказательство.
+The error numbers hint at it indirectly (truncation gives an error √3
+larger), but indirect is not proof.
 
-Проба: значение, у которого масштабированная величина имеет дробную
-часть 0.7. Усечение к нулю отбросит её, округление к ближайшему —
-добавит единицу. Ответы расходятся, и по ответу видно правило.
+The probe: a value whose scaled magnitude has fractional part 0.7.
+Truncation toward zero drops it, rounding to nearest adds one. The
+answers differ, and the answer names the rule.
 
-Дробная часть именно 0.7, а не 0.5. Ровная половина кажется самой
-показательной пробой, но `1.0000005` в двоичном float не представимо
-точно, и `value·scale` оказывается чуть меньше или чуть больше половины
-— то есть проба на ничью превращается в пробу на то, куда легла ошибка
-представления. При 0.7 ничьей нет вовсе.
+Fractional part 0.7, not 0.5. A tie looks like the most telling probe,
+but `1.0000005` is not exactly representable in binary `f64`, so
+`value·scale` lands slightly below or slightly above the half — which
+turns a probe of the tie-breaking rule into a probe of which way the
+representation error fell. At 0.7 there is no tie at all.
 
-Знак важен не меньше величины. Усечение к нулю смещает вниз ПО МОДУЛЮ с
-обеих сторон, то есть даёт снос, противоположный знаку числа; на
-симметричном входе сносы гасятся и остаётся `√k`, а на знакопостоянном —
-накапливаются линейно.
+Sign matters as much as magnitude. Truncation toward zero biases
+downward IN MAGNITUDE on both sides, i.e. the bias is opposite to the
+sign of the value; on symmetric input the biases cancel and `√k` is left,
+on sign-constant input they accumulate linearly.
 
-Запуск: `python benches/acc_rounding.py ours` либо `... heu`.
+Run: `python benches/acc_rounding.py`
 """
 import math
-import sys
+
+import paillier
+
+KEY_BITS = 2048
+SCALE_POW10 = 8
 
 
 def what_was_done(value, scale, decoded):
-    """Какое правило объясняет ответ: усечение или округление."""
+    """Which rule explains the answer: truncation or rounding."""
     scaled = value * scale
     toward_zero = math.trunc(scaled)
     to_nearest = math.floor(scaled + 0.5) if scaled > 0 else math.ceil(scaled - 0.5)
     got = round(decoded * scale)
 
     if toward_zero == to_nearest:
-        return f"проба не различает ({got})"
+        return f"probe does not discriminate ({got})"
     if got == toward_zero:
-        return "усечение к нулю"
+        return "truncation toward zero"
     if got == to_nearest:
-        return "к ближайшему"
-    return f"ни то ни другое: {got}"
+        return "round to nearest"
+    return f"neither: {got}"
 
 
 def probes_for(scale):
-    """Значения, у которых `value·scale` имеет дробную часть 0.7."""
+    """Values whose `value·scale` has fractional part 0.7."""
     step = 0.7 / scale
     return [1 + step, -(1 + step), 2 + step, -(2 + step)]
 
 
 def main():
-    which = sys.argv[1] if len(sys.argv) > 1 else "ours"
-    print(f"{'вход':>18} {'обратно':>18} {'что сделано':>26}")
+    scale = 10 ** SCALE_POW10
+    pub, sec = paillier.generate_keypair(KEY_BITS)
 
-    if which == "heu":
-        from heu import phe as hp
-
-        scale = 10 ** 6
-        kit = hp.setup(hp.SchemaType.ZPaillier, 2048)
-        enc, dec = kit.encryptor(), kit.decryptor()
-        encoder = hp.FloatEncoder(hp.SchemaType.ZPaillier, scale)
-        for value in probes_for(scale):
-            back = encoder.decode(dec.decrypt(enc.encrypt(encoder.encode(value))))
-            print(f"{value:>18.9f} {back:>18.9f} {what_was_done(value, scale, back):>26}")
-    else:
-        import paillier as p
-
-        # Масштаб зашит в библиотеку, поэтому пробы берутся под него.
-        scale = 10 ** 8
-        pub, sec = p.generate_keypair(2048)
-        for value in probes_for(scale):
-            back = p.decrypt(sec, bytes(p.encrypt_many(pub, [value])[0]))
-            print(f"{value:>18.11f} {back:>18.11f} {what_was_done(value, scale, back):>26}")
+    print(f"{'input':>18} {'back':>18} {'what happened':>26}")
+    for value in probes_for(scale):
+        blob = bytes(paillier.encrypt_many(pub, [value], SCALE_POW10)[0])
+        back = paillier.decrypt(sec, blob)
+        print(f"{value:>18.11f} {back:>18.11f} "
+              f"{what_was_done(value, scale, back):>26}")
 
 
 if __name__ == "__main__":

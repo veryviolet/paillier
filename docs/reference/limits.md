@@ -1,85 +1,87 @@
-# Границы и отказы
+# Limits and refusals
 
-Здесь собрано всё, на чём библиотека **отказывает**, и почему отказ
-выбран вместо правдоподобного числа.
+Everything the library **refuses**, and why a refusal was chosen over a
+plausible number.
 
-## Общее правило
+## The general rule
 
-Тихий ноль хуже исключения. `NaN`, превратившийся в достоверный ноль и
-уехавший в сумму, не отличим от настоящего нуля ничем — а пропуск в
-столбце признаков это штатный вход, не экзотика.
+A silent zero is worse than an exception. A `NaN` turned into a credible
+zero and carried into a sum is indistinguishable from a real zero — and
+a gap in a feature column is ordinary input, not an exotic case.
 
-## Ключ
+## The key
 
-| условие | что делает |
+| condition | what happens |
 |---|---|
-| модуль короче 2048 бит | отказ: ниже NIST SP 800-57 для 112 бит |
-| модуль длиннее 8192 бит | отказ: защита от отказа в обслуживании |
-| `(p−1)/2` или `(q−1)/2` не просты | отказ: нужны безопасные простые |
-| `\|p − q\|` мала | отказ: раскладывается методом Ферма |
-| `p = q` | отказ: китайской теоремы не существует |
+| modulus shorter than 2048 bits | refused: below NIST SP 800-57 for 112 bits |
+| modulus longer than 8192 bits | refused: denial-of-service guard |
+| `(p−1)/2` or `(q−1)/2` not prime | refused: safe primes are required |
+| `\|p − q\|` small | refused: factors by Fermat's method |
+| `p = q` | refused: no CRT split exists |
 
-Верхняя граница — **не про стойкость, а про отказ в обслуживании**.
-Сборка чужого ключа идёт под снятым GIL, и пока она не вернётся,
-интерпретатор не исполняет ничего, включая обработчики сигналов.
+The upper bound is **not about security, it is about denial of
+service**. Building a peer key runs with the GIL released, and until it
+returns the interpreter executes nothing at all, signal handlers
+included.
 
-Длина чужого модуля отсекается **по сырым байтам, до всякой
-арифметики**. Прежде `n²` считалось до проверки: 64 мегабайта от пира
-давали 4.07 секунды полной глухоты. Сейчас отказ не смотрит на
-содержимое вовсе, и его цена от длины входа не зависит — это
-проверяется тестом, а не обещанием.
+A foreign modulus is cut off **by raw byte count, before any
+arithmetic**. Previously `n²` was computed before the check: 64
+megabytes from a peer bought 4.07 seconds of complete deafness. Now the
+refusal does not look at the content at all, and its cost does not
+depend on the input length — which is asserted by a test rather than
+promised.
 
-## Открытый текст
+## The plaintext
 
-| условие | что делает |
+| condition | what happens |
 |---|---|
-| `NaN`, `±inf` | отказ |
-| переполнение при масштабировании | отказ |
-| по модулю больше границы ключа | отказ |
+| `NaN`, `±inf` | refused |
+| overflow when scaled | refused |
+| magnitude above the key bound | refused |
 
-Граница на значение — `n/2`, ужатое в `2^20` раз под будущую сумму.
-При ключе от 2048 бит это `2^2026`, а наибольшее кодируемое из `f64` —
-около `2^1024`, так что на практике эта проверка сработать не может.
-Она всё равно стоит: длина ключа и масштаб настраиваются, и защита от
-одного сочетания не защищает от другого.
+The bound on a value is `n/2` shrunk by `2^20` to reserve headroom for a
+sum. With a key of 2048 bits or more that is `2^2026`, while the largest
+encodable `f64` is about `2^1024` — so in practice this check cannot
+fire. It stands anyway: key length and scale are configurable, and a
+defence against one combination is not a defence against another.
 
-## Сумма
+## The sum
 
-| условие | что делает |
+| condition | what happens |
 |---|---|
-| пустая пачка | отказ |
-| больше `2^20` слагаемых за вызов | отказ |
-| шифротекст вне `[1, n²)` | отказ с номером слагаемого |
-| разные масштабы в пачке | отказ с обоими масштабами |
+| empty batch | refused |
+| more than `2^20` terms per call | refused |
+| ciphertext outside `[1, n²)` | refused, with the term's index |
+| mixed scales in a batch | refused, naming both scales |
 
-!!! warning "Планка на слагаемые — не гарантия"
+!!! warning "The cap on terms is not a guarantee"
 
-    Она повызовная. Результат `add_many` можно подать во второй вызов,
-    и счётчик начнётся заново; два законных вызова дают `2^40`
-    слагаемых, и никакая проверка этого не увидит — шифротекст суммы
-    неотличим от шифротекста слагаемого.
+    It is per call. The result of `add_many` can be fed into a second
+    call and the counter starts over; two lawful calls give `2^40`
+    terms, and no check will see it — the ciphertext of a sum is
+    indistinguishable from the ciphertext of a term.
 
-    Что держит сумму в группе на самом деле — тысяча бит запаса между
-    границей ключа и тем, что кодируется из `f64`.
+    What really keeps sums in the group is the thousand bits of headroom
+    between the key bound and what is encodable from `f64`.
 
-## Чего проверок НЕТ
+## What is NOT checked
 
-**Что шифротекст сделан этим ключом.** Из одного `n` такая проверка не
-выводится. Чужой шифротекст обычно приведёт к отказу при расшифровке,
-но не всегда.
+**That a ciphertext was made under this key.** It does not follow from
+`n` alone. A foreign ciphertext will usually lead to a refusal on
+decryption, but not always.
 
-**Что шифротекст обратим.** `add_many` проверяет только диапазон:
-значение `n` попадает в `[1, n²)`, но `gcd(n, n²) ≠ 1`, и сумма с ним
-испортится. Отказ тогда придёт позже, у владельца, и без адреса. Это
-осознанный паритет с `heu`: `gcd` на каждом слагаемом стоил бы дороже
-самой операции.
+**That a ciphertext is invertible.** `add_many` checks only the range:
+the value `n` falls inside `[1, n²)`, yet `gcd(n, n²) ≠ 1`, and a sum
+containing it is spoiled. The refusal then arrives later, at the key
+holder, with no address on it. This is deliberate: a `gcd` per term
+would cost more than the operation itself.
 
-**Что модуль не отравлен.** Проверяются длина и нечётность — *partial
-public key validation* по NIST SP 800-56B, то же, что делают все.
-Проба на гладкость порядка не даёт гарантии ни при какой границе:
-при `B = 2^20` она стоит 25 минут и удостоверяет `2^10` работы.
+**That the modulus is not poisoned.** Length and oddness are checked —
+*partial public key validation* per NIST SP 800-56B, which is what
+everyone does. A smoothness probe gives no guarantee at any bound: at
+`B = 2^20` it costs 25 minutes and certifies `2^10` of work.
 
-**Что байт масштаба подлинный.** Он не аутентифицирован, и подмена
-одного байта даёт правдоподобное неверное число. Активному нападающему
-это ничего не добавляет — Paillier пластичен и без того, — но механизм
-масштаба защищает от **недосмотра**, а не от правки на проводе.
+**That the scale byte is authentic.** It is not authenticated, and
+flipping one byte yields a plausible wrong number. This adds nothing for
+an active attacker — Paillier is malleable anyway — but the scale
+mechanism defends against **oversight**, not against edits on the wire.

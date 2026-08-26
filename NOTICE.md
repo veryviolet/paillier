@@ -1,103 +1,87 @@
-# Уведомление о стороннем коде
+# Third-party notice
 
-## Коротко
+## In short
 
-**Исходники этого пакета** — `src/`, `tests/`, `benches/`, `docs/` —
-распространяются под **MIT OR Apache-2.0**, на выбор.
+**The sources of this package** — `src/`, `tests/`, `benches/`, `docs/`
+— are distributed under **MIT OR Apache-2.0**, at your option.
 
-**Собранные колёса** дополнительно содержат GMP, вкомпилированный
-статически через `rug`, и потому целиком подпадают под **LGPL-3.0+**.
-Ставя колесо с PyPI, вы получаете комбинированное произведение, а не
-только наш код.
+**The built wheels** additionally contain GMP, linked statically through
+`rug`, and therefore fall under **LGPL-3.0+** as a whole. Installing a
+wheel from PyPI gets you a combined work, not only our code.
 
-Если это не подходит — соберите из исходного архива со своей сборкой
-GMP: `pip install --no-binary paillier paillier`.
+If that does not suit you, build from the source distribution against
+your own GMP: `pip install --no-binary paillier paillier`.
 
 ## LGPL: `rug`, `gmp-mpfr-sys`, GMP
 
-| что | лицензия |
+| component | licence |
 |---|---|
 | [`rug`](https://gitlab.com/tspiteri/rug) 1.30 | LGPL-3.0+ |
 | [`gmp-mpfr-sys`](https://gitlab.com/tspiteri/gmp-mpfr-sys) 1.7 | LGPL-3.0+ |
-| [GNU MP](https://gmplib.org/) | LGPL-3.0+ (либо GPL-2.0+) |
+| [GNU MP](https://gmplib.org/) | LGPL-3.0+ (or GPL-2.0+) |
 
-Тексты приложены: [`LICENSE-LGPL`](LICENSE-LGPL) и
-[`LICENSE-GPL`](LICENSE-GPL) — LGPL включает условия GPL по ссылке,
-поэтому нужны оба.
+Texts are included: [`LICENSE-LGPL`](LICENSE-LGPL) and
+[`LICENSE-GPL`](LICENSE-GPL) — the LGPL incorporates the GPL terms by
+reference, so both are needed.
 
-### Как выполняются условия §4 LGPL
+### How the LGPL §4 conditions are met
 
-Колесо — «Combined Work» в смысле §4: наш код скомпонован с библиотекой
-статически. Условия выполняются так.
+The wheel is a "Combined Work" in the sense of §4: our code is linked
+with the library statically. The conditions are met as follows.
 
-**§4(a), уведомление.** Этот файл, и он же назван в `README.md` и в
-документации.
+**§4(a), notice.** This file, also named in `README.md` and in the
+documentation.
 
-**§4(b), копии лицензий.** `LICENSE-LGPL` и `LICENSE-GPL` лежат в
-репозитории, в исходном архиве и внутри колеса
+**§4(b), copies of the licences.** `LICENSE-LGPL` and `LICENSE-GPL` are
+in the repository, in the source distribution, and inside the wheel
 (`paillier-*.dist-info/licenses/`).
 
-**§4(d), возможность пересборки.** Выбран вариант **d)(0)**:
-предоставляется всё, что нужно для перекомпоновки нашего кода с ДРУГОЙ
-версией библиотеки.
+**§4(d), ability to relink.** Option **d)(0)** is taken: everything
+needed to recombine our code with a DIFFERENT version of the library is
+provided.
 
-* исходники нашего кода полностью открыты:
+* our sources are fully open:
   <https://github.com/veryviolet/paillier>;
-* тот же код едет в исходном архиве на PyPI (`paillier-X.Y.Z.tar.gz`);
-* сборка воспроизводится одной командой (`maturin build --release`), и
-  версия `rug` не закреплена жёстко — `Cargo.toml` объявляет `rug =
-  "1.24"`, то есть совместимую по semver, и её можно заменить своей,
-  включая изменённую.
+* the same code ships in the source distribution on PyPI
+  (`paillier-X.Y.Z.tar.gz`);
+* the build reproduces with one command (`maturin build --release`), and
+  the `rug` version is not pinned exactly — `Cargo.toml` declares
+  `rug = "1.24"`, i.e. semver-compatible, and it can be replaced with
+  your own, including a modified one.
 
-Точной версии GMP мы не закрепляем и не патчим её: `gmp-mpfr-sys`
-собирает штатный выпуск GMP.
+We neither pin an exact GMP version nor patch it: `gmp-mpfr-sys` builds
+a stock GMP release.
 
-### Как обойтись без LGPL в бинарнике
+### Avoiding LGPL code in the binary
 
-`gmp-mpfr-sys` умеет линковаться с системной GMP вместо статической
-сборки. Мы этого не делаем: колесо `manylinux` не может полагаться на
-GMP, установленную в системе, а пакет, который не ставится без
-предварительного `apt install`, — плохой пакет. Если вам нужен бинарник
-без LGPL-кода внутри, соберите его сами с нужными флагами.
+`gmp-mpfr-sys` can link against a system GMP instead of building it
+statically. We do not do that: a `manylinux` wheel cannot rely on GMP
+being installed system-wide, and a package that will not install without
+a prior `apt install` is a bad package. If you need a binary with no
+LGPL code inside, build one yourself with the appropriate flags.
 
 ## MIT / Apache-2.0
 
-| что | роль | лицензия |
+| component | role | licence |
 |---|---|---|
-| [`pyo3`](https://github.com/PyO3/pyo3) | привязка к Python | MIT OR Apache-2.0 |
-| [`rand`](https://github.com/rust-random/rand) | генератор случайных | MIT OR Apache-2.0 |
-| [`rayon`](https://github.com/rayon-rs/rayon) | параллельное шифрование | MIT OR Apache-2.0 |
-| [`fast-paillier`](https://github.com/LFDT-Lockness/fast-paillier) | **только эталон в тестах** | MIT OR Apache-2.0 |
+| [`pyo3`](https://github.com/PyO3/pyo3) | Python binding | MIT OR Apache-2.0 |
+| [`rand`](https://github.com/rust-random/rand) | random generator | MIT OR Apache-2.0 |
+| [`rayon`](https://github.com/rayon-rs/rayon) | parallel encryption | MIT OR Apache-2.0 |
+| [`fast-paillier`](https://github.com/LFDT-Lockness/fast-paillier) | **test oracle only** | MIT OR Apache-2.0 |
 
 ### `fast-paillier`
 
-Пакет начинался как привязка поверх этого крейта, и это стоит назвать
-прямо. Сейчас он **не входит в сборку библиотеки**: объявлен в
-`dev-dependencies` и используется единственным тестом
-`tests/decrypt_matches_crate.rs` как независимый эталон расшифровки —
-своя реализация, сверяемая сама с собой, ничего не доказывает.
+This package began as a binding on top of that crate, and that is worth
+stating plainly. It is now **not part of the library build**: it is
+declared in `dev-dependencies` and used by a single test,
+`tests/decrypt_matches_crate.rs`, as an independent decryption oracle —
+an implementation checked against itself proves nothing.
 
-Производной работой наш код не является. Проверено построчным
-сравнением исходников: **ни одной совпадающей строки** кода длиннее 25
-символов. В собранном колесе их кода нет — ни символов, ни путей.
+Our code is not a derivative work. Verified by a line-by-line comparison
+of the sources: **not a single shared line** of code longer than 25
+characters. In the built wheel there is none of their code — no symbols,
+no paths.
 
-В `docs/heu-comparison.md` приведены две строки их кода
-(`encryption_key.rs:75` и `:78`) с указанием файла и строки — цитата для
-разбора, не заимствование.
-
-## Apache-2.0: `heu`
-
-[`heu`](https://github.com/secretflow/heu) (Ant Group, Apache-2.0) в
-зависимости не входит вовсе и в колесо не попадает. Но не назвать его
-было бы нечестно: **приёмы ускорения шифрования взяты оттуда** —
-фиксированное основание вместо случайного, короткий показатель, таблица
-предвычисленных степеней. Разбор — `docs/heu-comparison.md`.
-
-Алгоритмы и приёмы авторским правом не охраняются, но происхождение
-называть надо. В том же документе приведены несколько строк их кода
-(`encryptor.cc:26-31`, `:44`, `key_generator.cc:34`) с указанием файла и
-строки — цитаты для сравнения.
-
-Сам вариант схемы — Дамгорда–Жюрика с коротким показателем —
-опубликован в академической литературе и принадлежит не `heu`, а
-предметной области.
+The scheme variant implemented here — Damgård–Jurik with a short
+exponent — is published in the academic literature and belongs to the
+field.

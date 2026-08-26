@@ -1,76 +1,68 @@
-"""ОДИН замер: точность и трудоёмкость всех операций, большая выборка.
+"""ONE benchmark: accuracy and cost of every operation, large sample.
 
-Заменяет россыпь прогонов, каждый из которых мерил свой кусок своим
-способом. Здесь один набор данных, один порядок операций, одни повторы
-и один формат вывода — для любой библиотеки.
+It replaces a scattering of benchmarks, each measuring its own piece its
+own way. Here there is one dataset, one order of operations, one repeat
+count and one output format.
 
-Что меряется:
+What is measured:
 
-* **шифрование** — последовательное (одно значение за вызов) и пакетное
-  (весь список за вызов). У `heu` пакетного нет, там второй столбец
-  повторяет первый;
-* **сложение** — на одно слагаемое, в цепочке из `SUM_TERMS`;
-* **расшифровка** — на один шифротекст;
-* **генерация ключа**;
-* **длина шифротекста** — множество длин, а не одна: они минимальные;
-* **точность** — ошибка круга и ошибка суммы на СИММЕТРИЧНОМ и на
-  НЕОТРИЦАТЕЛЬНОМ входе.
+* **encryption** — serial (one value per call) and batched (the whole
+  list per call);
+* **addition** — per term, in a chain of `SUM_TERMS`;
+* **decryption** — per ciphertext;
+* **key generation**;
+* **ciphertext length** — the set of lengths, not one: they are minimal;
+* **accuracy** — round-trip error and sum error on SYMMETRIC and on
+  NON-NEGATIVE input.
 
-Почему повторы и медиана, а не одно число. Разброс между запусками
-одного и того же кода замерен и составляет около 7 % (634–693 эл/с на
-девяти прогонах). Любой эффект меньше этого одиночным замером не
-измеряется вовсе.
+Why repeats and medians rather than a single number. The spread between
+runs of identical code was measured at about 7 % (634–693 ops/s over
+nine runs). Any effect smaller than that is not measured by a single run
+at all.
 
-Почему эталон точности — `Fraction` от ИСХОДНЫХ чисел. Сумма
-округлённых значений равна результату схемы по построению: сравнение с
-ней измеряет гомоморфность, которая точна, а не ошибку кодирования.
+Why the accuracy reference is a `Fraction` of the ORIGINAL numbers. The
+sum of rounded values equals the scheme's result by construction:
+comparing against it measures homomorphism, which is exact, not the
+encoding error.
 
-Почему два входа. На симметричном входе правило округления не видно:
-сносы разных знаков гасятся. Усечение к нулю проявляется только на
-знакопостоянных данных — а это счётчики бакетов и квадраты градиентов.
+Why two inputs. On symmetric input the rounding rule is invisible:
+biases of opposite signs cancel. Truncation toward zero shows up only on
+sign-constant data — and that is what bucket counters and squared
+gradients are.
 
-Масштаб кодирования у всех библиотек выставляется ОДИНАКОВЫЙ. Иначе
-сравнивается умолчание кодировщика, а не схема.
-
-Запуск:
-    python benches/measure.py ours
-    python benches/measure.py heu
-
-`phe` и `lightphe` здесь НЕТ намеренно. Они были нужны один раз, чтобы
-выбрать, от чего отталкиваться, и выбор сделан. Держать их в прогоне
-значило бы держать числа, которые никто не перемеряет, — а
-неперемеряемое число в таблице рано или поздно начинает врать.
+Run: `python benches/measure.py`
 """
 import random
 import statistics
-import sys
 import time
 from fractions import Fraction
 
-KEY_BITS = 2048
-SCALE = 10 ** 8
+import paillier
 
-# Выборка под времена. 2000 шифрований — это 1.4 с у самой быстрой
-# библиотеки и 20 с у самой медленной: хватает, чтобы медиана была
-# устойчивой, и не превращает прогон в ночной.
+KEY_BITS = 2048
+SCALE_POW10 = 8
+
+# Sample size for timings. 2000 encryptions is a couple of seconds:
+# enough for a stable median without turning the run into an overnight
+# job.
 SAMPLE = 2000
-SERIAL_SAMPLE = 200   # последовательное шифрование дороже, берём меньше
+SERIAL_SAMPLE = 200   # serial encryption is dearer, take fewer
 DECRYPT_SAMPLE = 100
 SUM_TERMS = 1000
 REPEATS = 5
 KEYGEN_REPEATS = 5
 
-# Выборка под накопление ошибки. Отдельная и большая: эффект правила
-# округления виден именно на длине.
+# Sample size for error accumulation. Separate and large: the effect of
+# the rounding rule shows up precisely with length.
 DRIFT_TERMS = 100_000
 
 
 def timed(fn, repeats=REPEATS):
-    """Медиана и разброс, а не лучшее время.
+    """Median and spread, not the best time.
 
-    Лучшее из N — это оценка нижней границы, а не типичного поведения, и
-    сравнивать её с медианой другой величины нельзя. Здесь везде
-    медиана.
+    Best-of-N estimates a lower bound, not typical behaviour, and
+    comparing it against another quantity's median is invalid. Medians
+    everywhere here.
     """
     taken = []
     for _ in range(repeats):
@@ -81,7 +73,7 @@ def timed(fn, repeats=REPEATS):
 
 
 def inputs():
-    """Два набора: симметричный и неотрицательный, плюс точные суммы."""
+    """Two sets — symmetric and non-negative — plus exact sums."""
     random.seed(20260826)
     symmetric = [random.gauss(0.0, 1000.0) for _ in range(DRIFT_TERMS)]
     random.seed(20260827)
@@ -96,141 +88,83 @@ def exact(values):
     return total
 
 
-# ---------------------------------------------------------------------
-# Обёртки: у каждой библиотеки свой интерфейс, дальше он один
-# ---------------------------------------------------------------------
-
-class Ours:
-    name = "paillier"
-
-    def __init__(self):
-        import paillier
-
-        self.p = paillier
-        self.pub, self.sec = paillier.generate_keypair(KEY_BITS)
-
-    def keygen(self):
-        self.p.generate_keypair(KEY_BITS)
-
-    def encrypt_batch(self, values):
-        return [bytes(b) for b in self.p.encrypt_many(self.pub, values)]
-
-    def encrypt_serial(self, values):
-        return [bytes(self.p.encrypt_many(self.pub, [v])[0]) for v in values]
-
-    def add(self, blobs):
-        return self.p.add_many(self.pub, blobs)
-
-    def decrypt(self, blob):
-        return self.p.decrypt(self.sec, blob)
-
-    def size(self, blob):
-        return len(blob)
+def encrypt_batch(pub, values):
+    return [bytes(b) for b in paillier.encrypt_many(pub, values, SCALE_POW10)]
 
 
-class Heu:
-    name = "heu"
+def encrypt_serial(pub, values):
+    return [
+        bytes(paillier.encrypt_many(pub, [v], SCALE_POW10)[0]) for v in values
+    ]
 
-    def __init__(self):
-        from heu import phe
-
-        self.phe = phe
-        self.kit = phe.setup(phe.SchemaType.ZPaillier, KEY_BITS)
-        self.enc = self.kit.encryptor()
-        self.dec = self.kit.decryptor()
-        self.ev = self.kit.evaluator()
-        self.encoder = phe.FloatEncoder(phe.SchemaType.ZPaillier, SCALE)
-
-    def keygen(self):
-        self.phe.setup(self.phe.SchemaType.ZPaillier, KEY_BITS)
-
-    def encrypt_batch(self, values):
-        # Пакетного шифрования у `heu` нет — это и есть его свойство,
-        # а не недосмотр замера.
-        return self.encrypt_serial(values)
-
-    def encrypt_serial(self, values):
-        return [self.enc.encrypt(self.encoder.encode(float(v))) for v in values]
-
-    def add(self, blobs):
-        total = blobs[0]
-        for blob in blobs[1:]:
-            total = self.ev.add(total, blob)
-        return total
-
-    def decrypt(self, blob):
-        return self.encoder.decode(self.dec.decrypt(blob))
-
-    def size(self, blob):
-        return len(blob.serialize())
-
-
-LIBRARIES = {"ours": Ours, "heu": Heu}
-
-
-# ---------------------------------------------------------------------
 
 def main():
-    which = sys.argv[1] if len(sys.argv) > 1 else "ours"
-    library = LIBRARIES[which]()
+    pub, sec = paillier.generate_keypair(KEY_BITS)
     symmetric, nonnegative = inputs()
 
-    print(f"# {library.name}, ключ {KEY_BITS} бит, масштаб {SCALE:.0e}")
-    print(f"# выборка: {SAMPLE} шифрований, {SUM_TERMS} слагаемых, "
-          f"{REPEATS} повторов, медиана")
+    print(f"# paillier {paillier.__version__}, {KEY_BITS}-bit key, "
+          f"scale 1e{SCALE_POW10}")
+    print(f"# sample: {SAMPLE} encryptions, {SUM_TERMS} terms, "
+          f"{REPEATS} repeats, median")
     print()
 
     def row(what, median, low, high, unit):
-        print(f"{what:<34} {median:>10.3f} {unit:<8} "
-              f"(от {low:.3f} до {high:.3f})")
+        print(f"{what:<30} {median:>10.3f} {unit:<6} "
+              f"(from {low:.3f} to {high:.3f})")
 
-    # --- трудоёмкость ---
+    # --- cost ---
     median, low, high, _ = timed(
-        lambda: library.encrypt_serial(symmetric[:SERIAL_SAMPLE])
+        lambda: encrypt_serial(pub, symmetric[:SERIAL_SAMPLE])
     )
     per = lambda t: t / SERIAL_SAMPLE * 1e3
-    row("шифрование, последовательно", per(median), per(low), per(high), "мс")
-    print(f"{'':<34} {SERIAL_SAMPLE / median:>10.0f} эл/с")
+    row("encryption, serial", per(median), per(low), per(high), "ms")
+    print(f"{'':<30} {SERIAL_SAMPLE / median:>10.0f} ops/s")
 
     median, low, high, blobs = timed(
-        lambda: library.encrypt_batch(symmetric[:SAMPLE])
+        lambda: encrypt_batch(pub, symmetric[:SAMPLE])
     )
     per = lambda t: t / SAMPLE * 1e3
-    row("шифрование, пакетом", per(median), per(low), per(high), "мс")
-    print(f"{'':<34} {SAMPLE / median:>10.0f} эл/с")
-
-    median, low, high, total = timed(lambda: library.add(blobs[:SUM_TERMS]))
-    per = lambda t: t / (SUM_TERMS - 1) * 1e6
-    row("сложение, на слагаемое", per(median), per(low), per(high), "мкс")
+    row("encryption, batched", per(median), per(low), per(high), "ms")
+    print(f"{'':<30} {SAMPLE / median:>10.0f} ops/s")
 
     median, low, high, _ = timed(
-        lambda: [library.decrypt(b) for b in blobs[:DECRYPT_SAMPLE]]
+        lambda: paillier.add_many(pub, blobs[:SUM_TERMS])
+    )
+    per = lambda t: t / (SUM_TERMS - 1) * 1e6
+    row("addition, per term", per(median), per(low), per(high), "us")
+
+    median, low, high, _ = timed(
+        lambda: [paillier.decrypt(sec, b) for b in blobs[:DECRYPT_SAMPLE]]
     )
     per = lambda t: t / DECRYPT_SAMPLE * 1e3
-    row("расшифровка", per(median), per(low), per(high), "мс")
+    row("decryption", per(median), per(low), per(high), "ms")
 
-    median, low, high, _ = timed(library.keygen, repeats=KEYGEN_REPEATS)
-    row("генерация ключа", median, low, high, "с")
+    median, low, high, _ = timed(
+        lambda: paillier.generate_keypair(KEY_BITS), repeats=KEYGEN_REPEATS
+    )
+    row("key generation", median, low, high, "s")
 
-    sizes = sorted({library.size(b) for b in blobs[:SAMPLE]})
-    print(f"{'длина шифротекста':<34} {str(sizes):>10} байт")
+    sizes = sorted({len(b) for b in blobs[:SAMPLE]})
+    print(f"{'ciphertext length':<30} {str(sizes):>10} bytes")
 
-    # --- точность ---
+    # --- accuracy ---
     print()
-    circle = library.decrypt(blobs[0])
+    circle = paillier.decrypt(sec, blobs[0])
     error = abs(Fraction(circle) - Fraction(symmetric[0]))
-    print(f"{'ошибка круга':<34} {float(error):>10.3e}")
+    print(f"{'round-trip error':<30} {float(error):>10.3e}")
 
-    for label, values in (("симметричный", symmetric), ("неотрицательный", nonnegative)):
+    scale = 10 ** SCALE_POW10
+    for label, values in (("symmetric", symmetric),
+                          ("non-negative", nonnegative)):
         for terms in (SUM_TERMS, DRIFT_TERMS):
-            encrypted = library.encrypt_batch(values[:terms])
-            got = library.decrypt(library.add(encrypted))
+            encrypted = encrypt_batch(pub, values[:terms])
+            got = paillier.decrypt(sec, paillier.add_many(pub, encrypted))
             error = abs(Fraction(got) - exact(values[:terms]))
-            walk = (terms / 12) ** 0.5 / SCALE
-            drift = terms / (2 * SCALE)
+            walk = (terms / 12) ** 0.5 / scale
+            drift = terms / (2 * scale)
             print(
-                f"{'сумма, ' + label + f', {terms}':<34} {float(error):>10.3e}"
-                f"   блуждание {walk:.2e}   снос {drift:.2e}"
+                f"{'sum, ' + label + f', {terms}':<30} {float(error):>10.3e}"
+                f"   walk {walk:.2e}   drift {drift:.2e}"
             )
 
 

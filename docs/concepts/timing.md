@@ -1,115 +1,122 @@
-# Побочные каналы по времени
+# Timing side channels
 
-**Постоянного времени эта библиотека НЕ даёт и не заявляет.** Два канала
-закрыты, один открыт, назван и измерен. Ниже — все три, потому что
-разница между «названо» и «закрыто» здесь решающая.
+**This library does NOT provide constant time and does not claim to.**
+Two channels are closed, one is open, named and measured. All three are
+below, because the difference between "named" and "closed" is decisive
+here.
 
-## Что вообще означает «постоянное время»
+## What "constant time" even means
 
-Не «одинаковое число микросекунд» — от загрузки машины время гуляет
-всегда. Требование другое: **изменение секрета не должно менять
-наблюдаемое поведение**.
+Not "the same number of microseconds" — timing wanders with machine
+load regardless. The requirement is different: **changing the secret
+must not change observable behaviour**.
 
-Секрет здесь — показатель `r`, случайный на каждое сообщение. Если
-наблюдатель узнает `r`, он снимает открытый текст целиком: считает
-`hs^r` (основание и модуль публичны), делит на него шифротекст,
-получает `1 + m·n`, вычитает единицу, делит на `n`.
+The secret here is the exponent `r`, fresh for every message. An
+observer who learns `r` recovers the plaintext outright: compute `hs^r`
+(base and modulus are public), divide the ciphertext by it, get
+`1 + m·n`, subtract one, divide by `n`.
 
-Наблюдатель — не человек с секундомером по сети, а **процесс на той же
-машине**, делящий с нами кэш процессора.
+The observer is not a person with a stopwatch on the network — it is a
+**process on the same machine**, sharing the CPU cache with us.
 
-## Канал по весу показателя — ЗАКРЫТ
+## Exponent-weight channel — CLOSED
 
-Первая редакция таблицы пропускала нулевые цифры: нулевое окно —
-умножения нет. Время прямо равнялось числу ненулевых цифр `r`.
-Замерено: от 0.2 мкс на пустом показателе до 1576 на полном, линейно,
-по 6.1 мкс на цифру.
+The first version of the table skipped zero digits: a zero window meant
+no multiplication. Time was then directly proportional to the number of
+non-zero digits of `r`. Measured: from 0.2 µs on an empty exponent to
+1576 on a full one, linear, at 6.1 µs per digit.
 
-Закрыто тем, что умножение делается **на каждом окне**, а в нулевой
-записи лежит `n² + 1`.
+Closed by multiplying **at every window**, with `n² + 1` sitting in the
+zero entry.
 
-!!! note "Почему `n² + 1`, а не `1`"
+!!! note "Why `n² + 1` and not `1`"
 
-    Единица однолимбовая: `result · 1` GMP считает за один проход, и
-    следующий `% n²` возвращается сразу. Нулевое окно тогда снова почти
-    бесплатно.
+    One is a single-limb number: GMP computes `result · 1` in one pass,
+    and the following `% n²` returns immediately. A zero window is then
+    nearly free again.
 
-    Как это ловилось: я подставил единицу и ждал подорожания на одну
-    шестнадцатую. Замер дал 0.6 % вместо 6.7 %, и я прочёл это как
-    хорошую новость — хотя недостающие шесть процентов и были той
-    работой, которая не делается.
+    How this was caught: I substituted one and expected a slowdown of
+    one sixteenth. The measurement showed 0.6 % instead of 6.7 %, and I
+    read that as good news — though the missing six percent *were* the
+    work that was not being done.
 
-    **Дешевле ожидаемого — это не подарок, а сигнал.**
+    **Cheaper than expected is not a gift. It is a signal.**
 
-Сторожит `tests/timing_channel.rs`. Признак — **наклон** времени по
-весу, а не абсолютное время: абсолютное зависит от машины, наклон нет.
+Guarded by `tests/timing_channel.rs`. The criterion is the **slope** of
+time against weight, not absolute time: absolute time depends on the
+machine, slope does not.
 
-## Кэш-канал — ЗАКРЫТ
+## Cache channel — CLOSED
 
-Запись таблицы бралась по индексу, равному секретной цифре. Сама
-операция не ветвится, но **адрес обращения зависит от секрета**, и
-сосед по кэшу видит, какую строку мы подтянули.
+A table entry used to be fetched by an index equal to the secret digit.
+The operation itself does not branch, but the **memory address depends
+on the secret**, and a neighbour sharing the cache sees which line we
+pulled in.
 
-Сейчас читается вся строка, а нужная запись выбирается арифметической
-маской без единого ветвления. Ряд адресов одинаков при любом
-показателе.
+Now the whole row is read and the wanted entry is selected with an
+arithmetic mask, with no branch anywhere. The sequence of addresses is
+identical for any exponent.
 
-Цена этого измерена и оказалась не той, что я считал. В коде стояло
-«закрыть значило бы платить в шестнадцать раз» — число завышено более
-чем на порядок: измерено **1–5 %**, в сквозном прогоне не видно вовсе.
+The cost of that was measured and turned out not to be what I had
+assumed. The code said "closing it would mean paying sixteen times
+over" — a figure inflated by more than an order of magnitude: measured
+**1–5 %**, invisible in an end-to-end run.
 
-!!! note "Укладка словами, а не байтами"
+!!! note "Laid out in words, not bytes"
 
-    Побайтное постоянное чтение стоило +26 %, пословное — единицы
-    процентов. Цена упирается в число итераций, а не в объём данных.
+    Byte-wise constant-time reading cost +26 %; word-wise, a few
+    percent. The price is bounded by the number of iterations, not by
+    the volume of data.
 
-## Канал по ведущим нулям — ОТКРЫТ
+## Leading-zeros channel — OPEN
 
-Цикл стартует с единицы, и пока младшие цифры `r` нулевые, накопитель
-остаётся однолимбовым — умножения на него дешевле. Замерено: около
-**−6.3 мкс на каждый ведущий нуль**.
+The loop starts from one, and while the low digits of `r` are zero the
+accumulator stays single-limb, making those multiplications cheaper.
+Measured: about **−6.3 µs per leading zero**.
 
-Величина утечки — энтропия длины ряда ведущих нулей. Цифра нулевая с
-вероятностью `q = 2^−w`, длина геометрическая, и
+The size of the leak is the entropy of the run of leading zeros. A digit
+is zero with probability `q = 2^−w`, the run length is geometric, and
 
 ```
 H = [−(1−q)·lg(1−q) − q·lg q] / (1−q)
 ```
 
-При нынешней ширине окна `w = 6` это **0.118 бита** из 1024.
+At the current window width `w = 6` that is **0.118 bits** out of 1024.
 
-!!! info "Число следует из ширины окна"
+!!! info "The number follows from the window width"
 
-    При `w = 4` та же формула даёт 0.36. Расширение окна с четырёх бит
-    до шести уменьшило утечку втрое, не тронув ни строки в самом цикле.
-    Это единственная величина в репозитории, описывающая **открытый**
-    канал, поэтому она обязана следовать из кода, а не пережить его
-    правку.
+    At `w = 4` the same formula gives 0.36. Widening the window from
+    four bits to six cut the leak threefold without touching a single
+    line of the loop. This is the only quantity in the repository that
+    describes an **open** channel, so it has to follow from the code
+    rather than survive an edit to it.
 
-Против запаса `2^512` это ничто, и остаток допущен осознанно.
+Against a `2^512` margin this is nothing, and the remainder is accepted
+knowingly.
 
-Единственное известное лечение — избыточное представление, где единица
-не однолимбовая, то есть **форма Монтгомери**. Она отвергнута по
-скорости, и связь стоит назвать прямо: отвергнутый приём — единственное
-известное лечение оставшегося канала.
+The only known cure is a redundant representation in which one is not
+single-limb — that is, **Montgomery form**. It was rejected on speed,
+and the connection deserves to be stated plainly: the rejected technique
+is the only known cure for the remaining channel.
 
-Сторожит `tests/timing_channel.rs::позиционный_остаток_не_вырос` — не
-на отсутствие, а на то, чтобы остаток не рос.
+Guarded by `tests/timing_channel.rs::позиционный_остаток_не_вырос` — not
+for absence, but for the remainder not growing.
 
-## Расшифровка
+## Decryption
 
-Там секрет другой и хуже: показатель выведен из `λ`, долговременного
-секрета ключа. Утечка при шифровании стоит доли бита про одноразовое
-`r`; утечка при расшифровке копится по всем расшифровкам за весь срок
-ключа.
+There the secret is different, and worse: the exponent derives from `λ`,
+the long-lived secret of the key. A leak during encryption costs
+fractions of a bit about a one-shot `r`; a leak during decryption
+accumulates over every decryption for the whole life of the key.
 
-Поэтому возведение идёт через `mpz_powm_sec`, а не `mpz_powm`:
-документация GMP требует именно этого для секретных показателей.
-Стоит 1.55 раза, и это единственное место, где мы платим за стойкость
-по-крупному.
+That is why exponentiation goes through `mpz_powm_sec` rather than
+`mpz_powm`: GMP's documentation requires exactly this for secret
+exponents. It costs a factor of 1.55, and it is the only place where we
+pay for security in a big way.
 
-## Про `heu` не утверждается ничего
+## Nothing is claimed about other implementations
 
-В его собственном коде запроса постоянного времени нет нигде, но
-возведение уходит в SPI длинной арифметики, исходников которого я не
-читал. **Отсутствие запроса — не доказательство отсутствия свойства.**
+Whether any other Paillier library is constant-time is not asserted here
+either way. **Absence of a stated guarantee is not proof that the
+property is missing**, and its presence in a README is not proof that it
+is there.

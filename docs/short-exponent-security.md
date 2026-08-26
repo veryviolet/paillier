@@ -1,492 +1,494 @@
-# Переход на `h^r`: что меняется в стойкости
+# Moving to `h^r`: what changes in the security argument
 
-Разбор перед реализацией. Приём взят из `heu`
-(`paillier_zahlen/key_generator.cc:43-57`, `encryptor.cc:26-31`), но
-разобран независимо.
+Analysis written before the implementation. The scheme variant is
+published in the academic literature; what follows works through what it
+costs in assumptions and what it demands of the key.
 
-**Третья редакция.** Первая требовала от порядка `h` величины вместо
-негладкости — на ключе, где все её проверки зелены, открытый текст
-снимался за семь секунд. Вторая это исправила, но ввела пробу на
-гладкость как защиту от подменённого `hs`; проба не даёт гарантии ни при
-какой границе и стоит 149 секунд на импорт нашего ключа. Здесь она
-заменена на устройство, при котором подменить нечего.
+**Third edition.** The first demanded magnitude of `ord(h)` instead of
+non-smoothness — on a key where all of its checks were green, the
+plaintext fell out in seven seconds. The second fixed that but
+introduced a smoothness probe as a defence against a substituted `hs`;
+the probe gives no guarantee at any bound and cost 149 seconds to import
+our own key. Here it is replaced by an arrangement in which there is
+nothing to substitute.
 
-## Что именно меняется
+## What exactly changes
 
-**Было** (`fast-paillier`, `encryption_key.rs:78`):
+**Before** (`fast-paillier`, `encryption_key.rs:78`):
 
 ```
-r ← равномерно из Z*_n
+r ← uniform from Z*_n
 c = (1 + m·n) · r^n mod n²
 ```
 
-**Станет:**
+**After:**
 
 ```
-шифрующий, один раз на модуль n:
-    x  ← случайное, gcd(x, n) = 1
+encrypting side, once per modulus n:
+    x  ← random, gcd(x, n) = 1
     h  = −x² mod n
     hs = h^n mod n²
 
-при шифровании:
-    r ← случайное, |n|/2 бит
+on every encryption:
+    r ← random, |n|/2 bits
     c = (1 + m·n) · hs^r mod n²
 ```
 
-Существенно: `hs` **выводит шифрующий сам** из одного `n`. Он не едет по
-проводу и не берётся из чужого ключа.
+Crucially: **the encrypting side derives `hs` itself** from `n` alone.
+It does not travel over the wire and is not taken from someone else's
+key.
 
-## Почему расшифровка не ломается
+## Why decryption does not break
 
 ```
 hs^r = (h^n)^r = (h^r)^n mod n²
 ```
 
-Множитель имеет вид `ρ^n` при `ρ = h^r`, то есть остаётся законным
-рандомизатором обычного Paillier, и расшифровка `L(c^λ mod n²)·µ mod n`
-работает без единой правки.
+The factor has the form `ρ^n` with `ρ = h^r`, i.e. it remains a
+legitimate randomiser of ordinary Paillier, and decryption
+`L(c^λ mod n²)·µ mod n` works without a single change.
 
-Приводить `ρ` можно хоть по `n`, хоть по `n²`: `a^n mod n²` зависит
-только от `a mod n`, потому что при `a = b + kn` биномиальное
-разложение оставляет от лишних слагаемых кратные `n²`.
+`ρ` may be reduced modulo `n` or modulo `n²` indifferently: `a^n mod n²`
+depends only on `a mod n`, because for `a = b + kn` the binomial
+expansion leaves only multiples of `n²` from the extra terms.
 
-Владельцу ключа при этом **не нужно знать, какое `hs` взял шифрующий**.
-Проверено: два шифрующих с разными `hs` под одним `n` дают шифротексты,
-которые складываются и расшифровываются верно.
+The key holder, moreover, **does not need to know which `hs` the
+encrypting side chose**. Verified: two encrypting parties with different
+`hs` under one `n` produce ciphertexts that add and decrypt correctly.
 
-## Требование к ключу: порядок должен быть НЕГЛАДКИМ
+## The key requirement: the order must be NON-SMOOTH
 
-Не «большим». Разница решающая.
+Not "large". The distinction is decisive.
 
-Контрпример: `p = 2·M_p+1`, `q = 2·M_q+1`, где `M_p`, `M_q` —
-произведения различных малых простых. Тогда `p ≡ q ≡ 3 (mod 4)`,
-`gcd(p−1, q−1) = 2`, `|p − q|` велика, `ord(h) = 597` бит — всё
-«выполнено». Но `λ` гладкая, Полиг–Хеллман снимает `r` целиком:
-открытый текст восстанавливается за 7 секунд.
+Counterexample: `p = 2·M_p+1`, `q = 2·M_q+1` where `M_p`, `M_q` are
+products of distinct small primes. Then `p ≡ q ≡ 3 (mod 4)`,
+`gcd(p−1, q−1) = 2`, `|p − q|` is large, `ord(h)` is 597 bits —
+everything "checks out". But `λ` is smooth, Pohlig–Hellman recovers `r`
+outright, and the plaintext is restored in 7 seconds.
 
-Правильное требование: **`ord(hs)` обязан иметь большой простой
-делитель.** (`ord(h)` и `ord(hs)` совпадают: возведение в `n`-ю степень
-— изоморфизм на подгруппу `n`-х вычетов.)
+The correct requirement: **`ord(hs)` must have a large prime divisor.**
+(`ord(h)` and `ord(hs)` coincide: raising to the `n`-th power is an
+isomorphism onto the subgroup of `n`-th residues.)
 
-**Безопасные простые дают это конструктивно**: при `p = 2p′+1`,
-`q = 2q′+1` получается `λ = 2p′q′`, и наибольший простой делитель —
-порядка половины длины модуля. Проверено `tests/order_of_hs.rs`:
-двенадцать ключей на 256-битных простых и один боевой длины, у всех
+**Safe primes give this by construction**: with `p = 2p′+1`, `q = 2q′+1`
+you get `λ = 2p′q′`, and the largest prime divisor is of the order of
+half the modulus length. Verified by `tests/order_of_hs.rs`: twelve keys
+on 256-bit primes and one of production length, all with
 `ord(hs) = λ`.
 
-Здесь стояло «в 200 случаях из 200» — число без артефакта, как и
-«полный перебор всех x» ниже.
+Blum primes do **not** give this. They give something else:
+`(h|p) = (h|q) = −1` while `(h|n) = +1`, i.e. `⟨h⟩ ⊆ J_n` — a property
+about location, not about magnitude.
 
-Блюмовы простые этого **не дают**. Они дают другое: `(h|p) = (h|q) = −1`
-при `(h|n) = +1`, то есть `⟨h⟩ ⊆ J_n` — свойство про расположение, а не
-про величину.
+So **the main key check is that the primes really are safe**: `(p−1)/2`
+and `(q−1)/2` are prime. Blumness, the `gcd` and the gap are auxiliary.
 
-Поэтому **главная проверка ключа — что простые действительно
-безопасные**: `(p−1)/2` и `(q−1)/2` просты. Блюмовость, `gcd` и разность
-— вспомогательные.
+This statement stands as an executable test rather than as reasoning:
+`tests/smooth_order_attack.rs` builds exactly such a counterexample — a
+modulus longer than the floor, Blum primes, `gcd(p−1, q−1) = 2`, primes
+far apart — and lifts the plaintext off it given **only `n` and the
+ciphertext**. The method is Pollard's `p−1`; it factors the modulus,
+after which decryption proceeds as for the key holder.
 
-Это утверждение стоит исполняемым тестом, а не рассуждением:
-`tests/smooth_order_attack.rs` строит ровно такой контрпример — модуль
-длиннее нижней границы, простые блюмовы, `gcd(p−1, q−1) = 2`, простые
-далеки друг от друга, — и снимает с него открытый текст, располагая
-**только `n` и шифротекстом**. Метод — Поллард `p−1`; он раскладывает
-модуль, после чего расшифровка идёт как у владельца ключа.
+### What this counterexample does NOT prove
 
-### Чего этот контрпример НЕ доказывает
+The first version of the test recovered the exponent `r` by
+Pohlig–Hellman and called that an attack on the short exponent. That was
+wrong twice over.
 
-Первая редакция теста снимала показатель `r` методом Полига–Хеллмана и
-называла это атакой на короткий показатель. Так было неверно дважды.
+First, two quantities the observer does not have were carried across the
+line "from here on, only `n` and the ciphertext": `hs` itself — derived
+by the encrypting side from a random `x` and never handed out
+(`dir(PublicKey)` contains only `modulus_bytes`, `exponent_bits`,
+`plaintext_bound_bits`, `from_n`) — and the order of `hs`, which was
+computed from `λ`, i.e. from `p` and `q`.
 
-Во-первых, за черту «дальше только `n` и шифротекст» проносились две
-величины, которых у наблюдателя нет: сам `hs` — он выводится шифрующим
-из случайного `x` и наружу не отдаётся (`dir(PublicKey)` содержит только
-`modulus_bytes`, `exponent_bits`, `plaintext_bound_bits`, `from_n`), — и
-порядок `hs`, который вычислялся из `λ`, то есть из `p` и `q`.
+Second, and more importantly: such a key breaks **with no connection to
+the short exponent at all**. A smooth `p−1` opens Pollard's `p−1`, and
+that is a method against the MODULUS, not against the randomiser.
+Canonical Paillier with a full-length exponent falls on the same key in
+exactly the same way.
 
-Во-вторых, и это существеннее: такой ключ ломается **вообще без всякой
-связи с коротким показателем**. Гладкое `p−1` открывает Полларда `p−1`,
-а это метод против МОДУЛЯ, а не против рандомизатора. Канонический
-Paillier с полным показателем на том же ключе падает точно так же.
+So the counterexample proves "a smooth `p−1` ruins any Paillier" — a
+true statement, and enough to demand safe primes, but not the one that
+was written. The non-smoothness requirement specific to the short
+exponent is guarded by `DegenerateHs` (`tests/degenerate_x.rs`), and
+with safe primes it holds by construction: the set of reachable orders
+of `hs` is `{2, 2p′, 2q′, 2p′q′}`, so no smooth value above two exists
+among them.
 
-Так что контрпример доказывает «гладкое `p−1` губит любой Paillier» —
-утверждение верное и достаточное, чтобы требовать безопасных простых, но
-не то, что было написано. Требование неглаткости порядка `hs`,
-специфичное именно для короткого показателя, стережёт `DegenerateHs`
-(`tests/degenerate_x.rs`), а при безопасных простых оно выполняется
-конструктивно: множество достижимых порядков `hs` есть
-`{2, 2p′, 2q′, 2p′q′}`, то есть гладких значений выше двойки среди них
-нет.
+This is a CONSEQUENCE, not an observation. `Z*_n ≅ Z_{2p′} × Z_{2q′}`,
+and `hs = h^n`; in `Z*_{n²} ≅ Z*_{p²} × Z*_{q²}`, raising to the power
+`n = pq` leaves component orders dividing `2p′` and `2q′`, so `ord(hs)`
+divides `lcm(2p′, 2q′) = 2p′q′`. Odd divisors are excluded (`h = −x²`
+has even order), and `1` and `2` are cut off by `DegenerateHs`.
 
-Это СЛЕДСТВИЕ, а не наблюдение. `Z*_n ≅ Z_{2p′} × Z_{2q′}`, а
-`hs = h^n`; в `Z*_{n²} ≅ Z*_{p²} × Z*_{q²}` возведение в степень
-`n = pq` оставляет в компонентах порядки, делящие `2p′` и `2q′`, откуда
-`ord(hs)` делит `lcm(2p′, 2q′) = 2p′q′`. Нечётные делители отпадают
-(`h = −x²` чётного порядка), а `1` и `2` отсекает `DegenerateHs`.
+This used to say: "an exhaustive sweep of all `x` on five REAL keys".
+Such a sweep is impossible on any machine — `Z*_n` at `|n| ≥ 2048` has
+`2^2047` elements — and there was no artefact behind the phrase. The
+statement was true; the evidence was invented.
 
-Здесь стояло: «полный перебор всех `x` на пяти НАСТОЯЩИХ ключах». Такой
-перебор невозможен ни при какой машине — `Z*_n` при `|n| ≥ 2048`
-содержит `2^2047` элементов, — и никакого артефакта за этой фразой не
-было. Утверждение верное, свидетельство было выдуманным.
+What exists now (`tests/order_of_hs.rs`): a sweep that is HONESTLY
+exhaustive, but on a toy key `p = 23`, `q = 59`, where the search runs
+over 1354 values and covers all of them; a sample of twelve keys on
+256-bit primes; and one key of production length, so that "the argument
+does not depend on length" is not left as words.
 
-Что есть теперь (`tests/order_of_hs.rs`): перебор ЧЕСТНО полный, но на
-игрушечном ключе `p = 23`, `q = 59`, где перебор идёт по 1354
-значениям и обходятся все; выборка из двенадцати ключей на 256-битных простых; и один
-ключ боевой длины — чтобы «довод не зависит от длины» не осталось
-словами.
+### Blum primes rest on statistics, not on construction
 
-### `heu` держится на статистике, а не на конструкции
+The usual alternative is Blum primes — cheaper to find, and the security
+argument then rests on smooth `λ` being practically nonexistent for a
+random 1024-bit prime. That argument is probabilistic, and a
+probabilistic argument is not a check: nothing in such an
+implementation refuses a key that happens to be bad.
 
-`key_generator.cc:34,36` зовёт `RandPrimeOver(half, PrimeType::BBS)` —
-блюмовы простые, не безопасные. Стойкость там опирается на то, что у
-случайного 1024-битного простого `λ` гладкой практически не бывает.
-Довод вероятностный и в коде не записан.
+We take the strict side deliberately, and pay for it in key generation
+time.
 
-Значит из `heu` нельзя перенести проверку ключа — её там нет. Мы
-отступаем от него в сторону строгости сознательно.
+## Why `hs` is not imported
 
-## Почему `hs` не импортируется
+An implementation could put `hs` into the public key and accept it off
+the wire. Then `h` is not published either, so nobody can verify
+`hs = (−x²)^n` even in principle.
 
-`heu` кладёт `h_s_` в публичный ключ и принимает его с провода дословно
-(`public_key.h:86-87`: распаковка, `Init()`, ни одной проверки). При
-этом `h` не публикуется, поэтому проверить `hs = (−x²)^n` не может никто
-в принципе.
+Verifying an imported `hs` by computation is **impossible**, and that is
+not a question of diligence. The probe "`hs^E ≠ 1` for `E` the product
+of primes up to `B`" certifies only `√B` of work at bound `B`, while
+costing `π(B)·|n|` squarings:
 
-Проверить импортированный `hs` вычислением **невозможно**, и это не
-вопрос усердия. Проба «`hs^E ≠ 1` при `E` — произведении простых до
-`B`» при границе `B` удостоверяет лишь `√B` работы, а стоит `π(B)·|n|`
-возведений в квадрат:
-
-| `B` | `π(B)` | стоимость при `\|n\| = 3072` | удостоверяет |
+| `B` | `π(B)` | cost at `\|n\| = 3072` | certifies |
 |---|---|---|---|
-| `2^16` | 6 542 | 2 мин | `2^8` |
-| `2^20` | 82 025 | 25 мин | `2^10` |
-| `2^24` | 1 077 871 | 5.5 ч | `2^12` |
+| `2^16` | 6 542 | 2 min | `2^8` |
+| `2^20` | 82 025 | 25 min | `2^10` |
+| `2^24` | 1 077 871 | 5.5 h | `2^12` |
 
-Чтобы удостоверить 128 бит, нужно `B = 2^256`. Сверх того, проба
-безразлична к степеням: Полиг–Хеллман стоит `Σ eᵢ·√pᵢ`, и ключ, у
-которого все простые множители меньше 500, пробу при `2^20` проходит, а
-открытый текст отдаёт за 0.1 секунды.
+To certify 128 bits you would need `B = 2^256`. On top of that the probe
+is blind to exponents: Pohlig–Hellman costs `Σ eᵢ·√pᵢ`, and a key whose
+prime factors are all below 500 passes the probe at `2^20` while giving
+up the plaintext in 0.1 seconds.
 
-**Поэтому `hs` не импортируется, а выводится.** Шифрующий берёт своё
-`x` и считает `hs` сам из одного `n` — 0.30 с на ключ пира, считается
-один раз и кэшируется. Подменять нечего.
+**Hence `hs` is not imported but derived.** The encrypting side takes
+its own `x` and computes `hs` from `n` alone — 0.30 s for a peer key,
+computed once and cached. There is nothing to substitute.
 
-Остаточный риск — злонамеренный **`n`** с гладкой `λ`. Его не ловит
-никакое вычисление по `(n, hs)`, и он остаётся в силе для любой схемы,
-включая исходную. В нашем протоколе `n` приходит от владельца ключа,
-который и так расшифровывает всё, что мы ему шлём, — то есть выигрыша у
-такой подмены нет.
+The residual risk is a malicious **`n`** with smooth `λ`. No computation
+over `(n, hs)` catches it, and it applies to any variant of the scheme,
+the original included. In our protocol `n` comes from the key holder,
+who decrypts everything we send them anyway — so such a substitution
+buys nothing.
 
-## Модель угроз в нашем протоколе
+## The threat model in our protocol
 
-Ключ порождает активная сторона и **сама же им шифрует**: владелец ключа
-и шифрующий — одно лицо.
+The key is generated by the active side, which **also encrypts with
+it**: key holder and encrypting party are the same.
 
-Чужим ключом мы шифруем ровно в одном месте — нули пустых бакетов на
-пассивной стороне. Что там можно узнать подменой, активная сторона и так
-получает по устройству протокола. Провод при этом под mTLS.
+We encrypt under a foreign key in exactly one place — the zeros of empty
+buckets on the passive side. Whatever could be learned there by
+substitution, the active side already gets by the protocol's design.
+The wire is under mTLS.
 
-То есть острой угрозы здесь нет. Вывод `hs` на месте вместо импорта
-делается не поэтому, а потому, что он **проще** импорта с проверкой и
-снимает целый класс возможностей, не требуя ни одной проверки.
+So there is no acute threat here. Deriving `hs` in place instead of
+importing it is done not for that reason but because it is **simpler**
+than importing with validation, and removes a whole class of
+possibilities without requiring a single check.
 
-## Запас стойкости короткого показателя
+## The security margin of a short exponent
 
-Пусть `ord(hs) = S · L`, где `S` — гладкая часть, то есть произведение
-малых простых `pᵢ` в степенях `eᵢ`.
+Let `ord(hs) = S · L`, where `S` is the smooth part — a product of small
+primes `pᵢ` with exponents `eᵢ`.
 
 ```
 max( Σ eᵢ·√pᵢ ,  2^(|r|/2) / √S )
 ```
 
-Первое — Полиг–Хеллман по гладкой части. Второе — кенгуру Полларда в
-интервале, **сокращённом этой же гладкой частью**: логарифм по модулю
-`S` берётся дёшево, и кенгуру остаётся интервал длиной `2^|r|/S`, то
-есть `2^(|r|/2)/√S` шагов.
+The first term is Pohlig–Hellman over the smooth part. The second is
+Pollard's kangaroo over an interval **shortened by that same smooth
+part**: the logarithm modulo `S` comes cheap, leaving the kangaroo an
+interval of length `2^|r|/S`, i.e. `2^(|r|/2)/√S` steps.
 
-Здесь прежде стояло
+This used to say
 
 ```
-min( 2^(|r|/2),  √(наибольший простой делитель ord(hs)) )
+min( 2^(|r|/2),  √(largest prime divisor of ord(hs)) )
 ```
 
-и это неверно дважды. Во-первых, кенгуру там не знает про `S`: формула
-судит по НАИБОЛЬШЕМУ простому делителю, тогда как работу нападающему
-сокращает гладкая часть. Во-вторых, `min` берёт дешевейшую из двух
-атак, но настоящая атака одна и складывается из обеих частей.
+which is wrong twice over. First, the kangaroo term there does not know
+about `S`: the formula judges by the LARGEST prime divisor, whereas what
+shortens the attacker's work is the smooth part. Second, `min` picks the
+cheaper of two attacks, but the real attack is one and combines both
+parts.
 
-Разница не умозрительная: ключ с `ord(hs) = 2^100 · L` старая формула
-оценит в `2^512` там, где настоящая цена `2^462`.
+The difference is not academic: a key with `ord(hs) = 2^100 · L` is
+rated `2^512` by the old formula where the real cost is `2^462`.
 
-На наших ключах разницы нет — `ord(hs) = 2p′q′`, значит `S = 2`, и обе
-формулы дают одно. Но это КРИТЕРИЙ, по которому судится ключ, и совпасть
-с верным в одном частном случае для критерия недостаточно.
+On our keys there is no difference — `ord(hs) = 2p′q′`, so `S = 2`, and
+both formulas agree. But this is the CRITERION a key is judged by, and
+agreeing with the correct one in a single special case is not enough for
+a criterion.
 
-Оценка `2^(|r|/2)` сама по себе
-неверна: на гладком ключе она даёт `2^152` там, где настоящая стоимость
-семь секунд.
+The estimate `2^(|r|/2)` on its own is wrong too: on a smooth key it
+gives `2^152` where the real cost is seven seconds.
 
-При наших ключах — безопасные простые, `bits = 3072` по умолчанию,
-значит `|r| = 1536` — оба слагаемых велики. Но запас зависит от ключа
-целиком, а не только от длины показателя.
+### The `|n|/2` exponent is four times longer than needed, and that is a decision
 
-### Показатель `|n|/2` избыточен вчетверо, и это решение, а не дефект
+Compute by the formula above. At `|n| = 2048` the exponent gives
+`2^512`, at 3072 it gives `2^768`. The modulus itself is worth 112–128
+bits (NIST SP 800-57). So the exponent is protected four times better
+than the key it guards: `|r| = 256` would give `2^128` — level.
 
-Считаем по формуле выше. При `|n| = 2048` показатель даёт `2^512`, при
-3072 — `2^768`. А сам модуль стоит 112–128 бит (NIST SP 800-57). То
-есть показатель защищён вчетверо надёжнее ключа, который он охраняет:
-`|r| = 256` дало бы `2^128` — вровень.
+What this costs in speed. Measured (`benches/exponent_length.rs`,
+`|n| = 2048`, median of five series):
 
-Что это стоит по скорости. Замерено (`benches/exponent_length.rs`,
-`|n| = 2048`, медиана пяти серий):
-
-| показатель | окон | `pow_by_table` |
+| exponent | windows | `pow_by_table` |
 |---|---|---|
-| 1024 бита (сейчас) | 171 | 1048 мкс |
-| 512 | 86 | 502 мкс |
-| 256 | 43 | 262 мкс |
+| 1024 bits (current) | 171 | 1048 µs |
+| 512 | 86 | 502 µs |
+| 256 | 43 | 262 µs |
 
-Полное последовательное шифрование на той же машине — 1006–1050 мкс на
-элемент (`benches/measure.py`), медиана 1020. Значит постоянная часть,
-от длины показателя не зависящая, — **меньше двадцати мкс**, около двух
-процентов. Отсюда:
+Full sequential encryption on the same machine is 1006–1050 µs per
+element (`benches/measure.py`), median 1020. So the constant part,
+independent of exponent length, is **under twenty µs**, about two
+percent. Hence:
 
-| показатель | полное время | эл/с в потоке |
+| exponent | total time | ops/s per thread |
 |---|---|---|
-| 1024 бита | 1020 мкс | 980 |
-| 512 | ~520 мкс | ~1900 |
-| 256 | ~280 мкс | **~3500** |
+| 1024 bits | 1020 µs | 980 |
+| 512 | ~520 µs | ~1900 |
+| 256 | ~280 µs | **~3500** |
 
-При `heu` 1407 эл/с по ядру сокращение до 256 бит **обгоняет его**
-в два с половиной раза.
+Shortening to 256 bits would therefore buy roughly a factor of three and
+a half in single-threaded throughput.
 
-Два предостережения, и оба существенны.
+Two caveats, both substantial.
 
-Во-первых, числа ВЫВЕДЕНЫ вычитанием, а не измерены сквозным прогоном:
-длина показателя снаружи не настраивается, она жёстко следует из `|n|`.
+First, the numbers are DERIVED by subtraction, not measured end to end:
+the exponent length is not configurable from outside, it follows rigidly
+from `|n|`.
 
-Во-вторых, постоянная часть — разность двух независимо замеренных
-величин около 1030 мкс каждая, поэтому её собственная неопределённость
-сравнима с ней самой. Правый столбец округлён до сотни именно поэтому:
-точнее эти замеры не дают.
+Second, the constant part is the difference of two independently
+measured quantities of about 1030 µs each, so its own uncertainty is
+comparable to itself. The right-hand column is rounded to the nearest
+hundred for exactly that reason: these measurements do not support more
+precision.
 
-Числа здесь менялись трижды, и лишь однажды — от уточнения. Сперва
-стояло «примерно 2600 эл/с», не следовавшее ни из какого замера; потом
-`2360–2630`, выведенное честно, но при `WINDOW_BITS = 4`. Нынешние —
-при шести битах, и к прежнему коду отношения не имеют.
+The numbers in this section have changed three times, and only once
+because of a refinement. First it said "about 2600 ops/s", which
+followed from no measurement at all; then `2360–2630`, derived honestly
+but at `WINDOW_BITS = 4`. The current ones are at six bits and have
+nothing to do with the earlier code.
 
-Прежде здесь стояло «примерно 2600 эл/с» — величина, как теперь видно,
-близкая к правде, но не следовавшая ни из какого замера: линейность по
-окнам была измерена, а постоянная часть в расчёт не входила вовсе.
+I had an argument here, and it turned out to be **wrong**. I wrote that
+at `|r| = |n|/2` the value `hs^r` is statistically close to uniform on
+`⟨hs⟩`, and that at 256 bits there is no such closeness — i.e. that
+shortening changes the basis of indistinguishability.
 
-Здесь у меня был довод, и он оказался **неверным**. Я писал, что при
-`|r| = |n|/2` величина `hs^r` статистически близка к равномерной на
-`⟨hs⟩`, а при 256 битах близости нет, — то есть что сокращение меняет
-основание неразличимости.
+The premise is false. `hs = h^n`, and in `Z*_{n²} ≅ Z*_{p²} × Z*_{q²}`
+raising to the power `n = pq` leaves component orders `2p′` and `2q′`,
+so `ord(hs) = lcm(2p′, 2q′) = 2p′q′ = λ`. A drop to `2p′` or `2q′`
+happens with probability `1/q′`, `1/p′` — vanishingly rare.
 
-Посылка ложна. `hs = h^n`, а в `Z*_{n²} ≅ Z*_{p²} × Z*_{q²}` возведение
-в степень `n = pq` оставляет в компонентах порядки `2p′` и `2q′`, откуда
-`ord(hs) = lcm(2p′, 2q′) = 2p′q′ = λ`. Падение до `2p′` или `2q′`
-случается с вероятностью `1/q′`, `1/p′`, то есть исчезающе редко.
+This used to say "**400 out of 400** gave the full `λ`" — numbers with
+no artefact behind them, like "five real keys" above. The check exists
+now and says exactly what it does: `tests/order_of_hs.rs` — twelve keys
+on 256-bit primes and one of production length, all with `ord(hs) = λ`.
 
-Здесь стояло «**400 из 400** дали полную `λ`» — числа без артефакта, как
-и «пять настоящих ключей» выше. Проверка теперь есть и говорит ровно то,
-что делает: `tests/order_of_hs.rs` — двенадцать ключей на 256-битных
-простых и один боевой длины, у всех `ord(hs) = λ`.
+So the order is not `2^(|n|/2)` but `≈ 2^(|n|−1)`. At `|n| = 2048` a
+1024-bit exponent covers `2^1024` out of `2^2047` — a fraction of
+`2^−1023`, and the statistical distance to uniform is `1 − 2^−1023`.
+**There is no statistical closeness even at `|n|/2`.**
 
-Значит порядок не `2^(|n|/2)`, а `≈ 2^(|n|−1)`. При `|n| = 2048`
-показатель в 1024 бита покрывает `2^1024` из `2^2047` — долю `2^−1023`,
-статистическое расстояние до равномерного равно `1 − 2^−1023`.
-**Статистической близости нет и при `|n|/2`.**
+Hence the correct framing of the choice: both options rest on the SAME
+assumption — the short-exponent one, item 1 below — and differ only in
+the size of the margin, `2^512` against `2^128`. That does not make the
+shortening free: narrowing the margin fourfold in bits is real. But the
+decision must be made on the margin, not on "a narrower foundation": the
+foundation is the same.
 
-Отсюда верная формулировка выбора: оба варианта стоят на ОДНОМ
-предположении — о коротком показателе, пункт 1 ниже, — и различаются
-только величиной запаса, `2^512` против `2^128`. Бесплатным сокращение
-от этого не становится: сужение запаса вчетверо по битам реально. Но
-решать надо по запасу, а не по «более узкому основанию»: основание одно
-и то же.
+## Requirements on our key generation
 
-## Требования к нашей генерации ключа
+What the crate provides: `decryption_key.rs:31-32` calls
+`generate_safe_prime(rng, 1536)` twice, and `backend.rs:115-148` builds
+`p′`, tests it for primality, takes `p = 2p′+1` and tests again. Genuine
+safe primes.
 
-Что даёт крейт: `decryption_key.rs:31-32` зовёт
-`generate_safe_prime(rng, 1536)` дважды, а `backend.rs:115-148` строит
-`p′`, проверяет на простоту, берёт `p = 2p′+1` и проверяет снова.
-Настоящие безопасные простые.
+What the crate does **not** do:
 
-Чего крейт **не** делает:
+* **there is no `|p − q|` check in it at all.** The property holds
+  probabilistically, and a probabilistic property is not a check — so an
+  explicit one has to be added on our side.
+* **`from_primes` and deserialisation bypass everything.** Only `p ≠ q`,
+  `λ ≠ 0` and invertibility of `λ` are checked. And the crate's own
+  docstring on `from_primes` states that the primes **must** be safe —
+  without checking it.
 
-* **проверки `|p − q|` в нём нет вовсе.** Свойство держится
-  вероятностно. Явную проверку делает `heu`
-  (`key_generator.cc:38-39`), а не мы, — значит её надо добавить.
-* **`from_primes` и десериализация минуют всё.** Проверяются только
-  `p ≠ q`, `λ ≠ 0` и обратимость `λ`. Причём докстринг самого крейта у
-  `from_primes` гласит, что простые **обязаны** быть безопасными, — и не
-  проверяет этого.
+So "our keys satisfy the requirements automatically" is true only for
+the `generate_keypair` path; everything else has to be validated.
 
-Поэтому «наши ключи удовлетворяют требованиям автоматически» верно
-только для пути `generate_keypair`, а всё остальное надо проверять.
+Plus, when deriving `h` we check the sign:
+`jacobi(h, p) = jacobi(h, q) = −1`. If the sign is lost and `h = x²`
+results, the order drops while every correctness check stays green. The
+check is only possible where `p` and `q` are available, i.e. at the key
+holder.
 
-Плюс при выводе `h` проверяем знак: `jacobi(h, p) = jacobi(h, q) = −1`.
-Если знак потеряется и выйдет `h = x²`, порядок упадёт, а все проверки
-на корректность останутся зелёными. Проверка возможна только там, где
-есть `p` и `q`, то есть у владельца ключа.
+## The assumptions that get added
 
-## Предположения, которые добавляются
+1. **Short exponent.** `h^r` with short `r` is indistinguishable from
+   `h^R` with a full-length one. Standard, published, but new relative
+   to the original scheme.
+2. **DCR restricted to `J_n`.** The randomiser ranges over an
+   index-two subgroup. This does not give away the plaintext, but our
+   ciphertexts are publicly distinguishable from stock ones: all of them
+   have Jacobi symbol `+1`, whereas stock ones split roughly evenly. The
+   scheme's fingerprint is visible on the wire.
+3. **Constant time in `r`.** The secret has moved from the base to the
+   exponent: it used to be a secret base and a public exponent `n`, now
+   it is a public base and a secret exponent. The window table is
+   indexed by its bits — a target for cache measurement, and recovering
+   `r` yields `m`.
 
-1. **Короткий показатель.** `h^r` при коротком `r` неотличимо от `h^R`
-   при полном. Стандартное, опубликованное, но новое относительно
-   исходной схемы.
-2. **DCR, ограниченное `J_n`.** Рандомизатор пробегает подгруппу индекса
-   два. Открытый текст это не выдаёт, но наши шифротексты публично
-   отличимы от стоковых: у всех символ Якоби `+1`, тогда как у стоковых
-   он делится примерно поровну. Отпечаток схемы виден на проводе.
-3. **Постоянство времени по `r`.** Секрет переехал из основания в
-   показатель: было секретное основание и публичный показатель `n`,
-   стало публичное основание и секретный показатель. Оконная таблица
-   индексируется его битами — мишень для замера через кэш, а
-   восстановление `r` даёт `m`.
+A fourth assumption — about a second field in the public key — is gone:
+`hs` does not travel over the wire, the key stays a single `n`, there is
+nothing to lose.
 
-Четвёртого предположения — про второе поле в публичном ключе — больше
-нет: `hs` не едет по проводу, ключ остаётся одним `n`, терять нечего.
+## How the implementation is checked
 
-## Чем проверяем реализацию
+1. Round trip against the crate's unmodified decryption: positive,
+   negative, zero, range boundaries.
+2. Homomorphism, including a sum crossing zero.
+3. Compatibility: a ciphertext of the new form decrypts with the stock
+   function — a check of the claim `hs^r = (h^r)^n`.
+4. **Different `hs` under one `n` add up.** Two encrypting parties
+   derive their own `hs`; the sum of their ciphertexts decrypts
+   correctly. Without this, deriving in place has no right to exist.
+5. A thousand encryptions of one value — all distinct.
+6. **Randomiser collision across DIFFERENT plaintexts.** Check 5 is
+   blind to that, and it is exactly what reusing `r` after a process
+   fork with a shared seed looks like. The criterion is computed from
+   the public key alone: `(c₁·c₂⁻¹ mod n²) mod n ≠ 1`.
+7. **The primes really are safe**: `(p−1)/2` and `(q−1)/2` are prime.
+   The main key check.
+8. Blumness, `gcd(p−1, q−1) = 2`, `|p − q|` — auxiliary, each with its
+   own refusal.
+9. The sign of `h`: `jacobi(h, p) = jacobi(h, q) = −1`.
+10. The exponent length is pinned BY NUMBER and computed from the ACTUAL
+    length of `n`. It must be checked at a size where the requested and
+    actual values diverge — otherwise the test is green by coincidence.
+11. The key's end-to-end path: serialise → transmit → encrypt → decrypt.
+12. **Randomisation on the `from_n` path, not only at the key holder.**
+    All randomisation checks used to stand on the owner's key, and the
+    mutation "`hs = 1` only in `from_n`" passed the whole suite — that
+    is, there was no privacy for exactly the party the technique exists
+    for.
+13. **A floor on key length.** There was none at all, and
+    `generate_keypair(32)` returned a 32-bit modulus with a green suite.
+    A refusal is asserted, because everything else on such a key is
+    fine.
+14. **The foreign modulus.** A poisoned `n` yields a poisoned `hs`
+    however diligently it is derived in place. Two things are checked:
 
-1. Круг на немодифицированной расшифровке крейта: положительные,
-   отрицательные, ноль, границы диапазона.
-2. Гомоморфность, включая переход суммы через ноль.
-3. Совместимость: шифротекст нового вида расшифровывается стоковой
-   функцией — проверка утверждения `hs^r = (h^r)^n`.
-4. **Разные `hs` под одним `n` складываются.** Два шифрующих выводят
-   своё `hs`; сумма их шифротекстов расшифровывается верно. Без этого
-   вывод на месте не имеет права на существование.
-5. Тысяча шифрований одного значения — все различны.
-6. **Столкновение рандомизатора при РАЗНЫХ открытых текстах.** Проверка
-   5 к этому слепа, а именно так выглядит повторное использование `r`
-   после ветвления процесса с общим зерном. Признак считается только по
-   публичному ключу: `(c₁·c₂⁻¹ mod n²) mod n ≠ 1`.
-7. **Простые действительно безопасные**: `(p−1)/2` и `(q−1)/2` просты.
-   Главная проверка ключа.
-8. Блюмовость, `gcd(p−1, q−1) = 2`, `|p − q|` — вспомогательные,
-   отдельными отказами.
-9. Знак `h`: `jacobi(h, p) = jacobi(h, q) = −1`.
-10. Длина показателя закреплена ЧИСЛОМ и считается от ФАКТИЧЕСКОЙ длины
-    `n`. Проверять надо на размере, где запрошенная и фактическая
-    величины расходятся, — иначе тест зелен по совпадению.
-11. Сквозной путь ключа: сериализация → передача → шифрование →
-    расшифровка.
-12. **Рандомизация на пути `from_n`, а не только у владельца.** Все
-    проверки рандомизации стояли на ключе владельца, и мутация «`hs = 1`
-    только в `from_n`» проходила сьют целиком — то есть приватности не
-    было у той самой стороны, ради которой приём и существует.
-13. **Нижняя граница длины ключа.** Её не было вовсе, и
-    `generate_keypair(32)` возвращал 32-битный модуль при зелёном
-    сьюте. Проверяется отказ, потому что всё остальное на таком ключе в
-    порядке.
-14. **Чужой модуль.** Отравленный `n` даёт отравленный `hs`, сколько
-    его ни выводи на месте. Проверяются две вещи:
+    - oddness;
+    - length, floor and ceiling.
 
-    - нечётность;
-    - длина снизу и сверху.
+    And that is **all** — precisely *partial public key validation* from
+    NIST SP 800-56B, i.e. what everyone does. Neither closes the case
+    "no privacy but a correct round trip": a short modulus weakens
+    privacy rather than removing it. The checks that did close such
+    cases have been removed; what that costs is below.
 
-    И это **всё**. Ровно *partial public key validation* из NIST SP
-    800-56B, то есть то, что делают все. Ни одна из двух не закрывает
-    случай «приватности нет, а круг верен» — короткий модуль приватность
-    ослабляет, а не снимает. Проверки, которые такие случаи закрывали,
-    сняты; чего это стоит — ниже.
+### Why the foreign-modulus probes are gone
 
-### Почему проверок чужого модуля больше нет
+There used to be three more probes here — trial division by small
+primes, Brent's rho and Pollard's `p−1` — plus a compositeness check.
+All removed, and the analysis is worth recording, because the path to
+them was an error of reasoning rather than an oversight.
 
-Здесь были ещё три пробы — перебор малыми простыми, ро-Брента и Поллард
-`p−1` — и проверка составности. Всё снято, и разбор стоит записать,
-потому что путь к ним был ошибкой рассуждения, а не недосмотром.
+The argument was: a poisoned modulus opens the passive side's
+ciphertexts to any eavesdropper, while the key holder loses nothing, so
+they might well do it. The argument is correct. What is incorrect is the
+conclusion that the modulus should therefore be checked by computation.
 
-Довод был такой: отравленный модуль открывает шифротексты пассивной
-стороны любому перехватчику, владелец ключа при этом не теряет ничего,
-потому и может так поступить. Довод верен. Неверен вывод, что отсюда
-следует проверять модуль вычислением.
+**It does not work.** From `n` alone you cannot establish that it is a
+product of two large distinct primes: that is factorisation. Any probe
+gives a bound and costs exactly as much as stepping over it costs the
+attacker, who reads the sources and picks a factor beyond the bound.
+Measured: rho with a `2^16` budget reaches about 32 bits, and a 40-bit
+safe factor — the very example the probe was written for — passed
+straight through it.
 
-**Не работает.** Из одного `n` нельзя установить, что он произведение
-двух больших различных простых: это задача факторизации. Любая проба
-даёт границу и стоит ровно столько, сколько нападающему её перешагнуть,
-а он читает исходники и выберет множитель за границей. Замерено: ро с
-бюджетом `2^16` достаёт примерно до 32 бит, и 40-битный безопасный
-множитель — тот самый пример, ради которого проба и писалась, —
-проходил её насквозь.
+**It is expensive.** The probes cost two thirds of parsing a foreign key
+(0.46 s out of 0.69 s at `|n| = 2048`) and tripled the window during
+which the node does not answer signals: from 2.4 to 6.8 s on a maximal
+modulus, with the GIL released. That is, the denial-of-service defence
+itself became a denial of service.
 
-**Дорого.** Пробы стоили две трети разбора чужого ключа (0.46 с из
-0.69 с при `|n| = 2048`) и утроили окно, в течение которого узел не
-отвечает на сигналы: с 2.4 до 6.8 с на предельном модуле, под снятым
-GIL. То есть защита от отказа в обслуживании сама стала отказом в
-обслуживании.
+**It is the wrong place.** The problem is solved not by a passive check
+but by a proof of the modulus's form from its owner:
+Gennaro–Micciancio–Rabin for square-freeness, van de Graaf–Peralta for
+"exactly two primes". That is finite work with a clear end, but its
+place is a challenge-response in the node handshake, not a function in a
+library.
 
-**Не туда.** Задача решается не пассивной проверкой, а доказательством
-формы модуля от владельца: Gennaro–Micciancio–Rabin для свободы от
-квадратов, van de Graaf–Peralta для «ровно два простых». Это конечная
-работа с ясным концом, но место для неё — вызов-ответ в рукопожатии
-узлов, а не функция в библиотеке.
+So the correct framing is: **`validate_public` cannot be finished, but
+the problem can.** Until such a proof exists, trust in `n` comes from
+mTLS and the invitation, and that is a CHOICE, not an impossibility.
 
-Так что верная формулировка: **`validate_public` закончить нельзя, а
-задачу — можно.** Пока доказательства нет, доверие к `n` берётся из
-mTLS и приглашения, и это ВЫБОР, а не невозможность.
+### Compositeness was removed by a separate decision, and the three arguments above do not apply to it
 
-### Составность снята отдельным решением, и три довода выше к ней не относятся
+This has to be separated honestly. The check that `n` is not prime and
+not an exact prime power was removed together with the probes, but it is
+**not a probe**:
 
-Это надо разделить честно. Проверка `n` на простоту и на точную степень
-простого была снята вместе с пробами, но она **не проба**:
+- `is_probably_prime` is a decision procedure, not a bounded search. It
+  has no threshold for an attacker to step over: a prime modulus is
+  caught reliably;
+- it costs 2.3 ms at `|n| = 2048` — half a percent of the 0.46 s the
+  probes were removed for;
+- and it catches more than malice: a peer with a broken generator that
+  sends a prime is accepted silently.
 
-- `is_probably_prime` — решающая процедура, а не поиск с границей. У неё
-  нет порога, который нападающий перешагнёт: простой модуль ловится
-  достоверно;
-- стоит она 2.3 мс при `|n| = 2048` — полпроцента от тех 0.46 с, ради
-  которых снимались пробы;
-- и ловит она не только злой умысел: пир со сломанным генератором,
-  приславший простое, принимается молча.
+So "it does not work" is false for it, "it is expensive" is false, and
+"wrong place" speaks about the ideal cure rather than about why a
+reliable check should be dropped today.
 
-То есть довод «не работает» к ней неверен, «дорого» — неверен, а «не
-туда» говорит про идеальное лечение, а не про то, зачем снимать
-достоверную проверку сегодня.
+It was removed on a different ground: **we do exactly what the standard
+prescribes and no more.** NIST SP 800-56B does not include compositeness
+in partial public key validation. That is a decision about the library's
+boundaries, not a conclusion from the reasoning above.
 
-Снята она по другому основанию: **делаем ровно то, что делают все.**
-`heu` составность не проверяет, NIST SP 800-56B её в partial validation
-не включает. Это решение о границах библиотеки, а не вывод из
-рассуждения выше.
+The price of that decision, measured and written down so it cannot be
+missed: a 2048-bit prime `n` is accepted by `from_n` in 0.010 s, the
+ciphertexts are distinct — randomisation intact, round trip intact — and
+an observer holding only `n` reads every plaintext, because `λ = n−1`. A
+prime power passes the same way. Reverting costs two lines.
 
-Цена решения, замеренная и записанная, чтобы её нельзя было не заметить:
-2048-битное простое `n` принимается `from_n` за 0.010 с, шифротексты при
-этом различны — рандомизация цела, круг цел, — а наблюдатель, у которого
-есть только `n`, читает все открытые тексты, потому что `λ = n−1`.
-Степень простого проходит так же. Возврат стоит две строки.
+15. **Headroom for the sum.** Per-value range checking is not enough: on
+    a 1024-bit key three lawful values added up to a finite, plausible
+    number of the wrong sign. Headroom is reserved at encryption time,
+    and `add_many` holds a cap per call.
 
-Как это устроено у соседей, проверено по коду: `heu` при приёме чужого
-ключа не делает вообще ничего — `public_key.h:84-87` берёт `n_` и `h_s_`
-из msgpack дословно и зовёт `Init()`, который считает только `n²`,
-`n/2`, `key_size` и оконную таблицу. Все проверки у `heu` — на своём
-ключе, при генерации.
-15. **Запас под сумму.** Поштучной проверки диапазона мало: на
-    1024-битном ключе три законных значения складывались в конечное
-    правдоподобное число не того знака. Запас резервируется при
-    шифровании, и `add_many` держит планку на один вызов.
+    That pair is NOT a guarantee, and the code says so: the counter is
+    per call, the result of `add_many` can be fed into a second call,
+    and two lawful calls give `2^40` terms. What holds the invariant is
+    the relation between the key floor and what is encodable from `f64`
+    at all: `2^2026`–`2^2027` against `2^1024`. Two values because the
+    product of two 1024-bit primes lands on both 2048 and 2047 bits;
+    a single `2^2027` used to stand here and was refuted by every other
+    key. It is asserted by a number — but a number derived from the
+    ACTUAL modulus length (`modulus_bits − 21`), not a literal, which is
+    why the test never knew about the discrepancy.
 
-    Гарантией эта пара НЕ является, и так написано в коде: счётчик
-    повызовный, результат `add_many` подаётся во второй вызов, и два
-    законных вызова дают `2^40` слагаемых. Держит инвариант соотношение
-    между нижней границей ключа и тем, что вообще кодируется из `f64`:
-    `2^2026`–`2^2027` против `2^1024`. Два значения потому, что
-    произведение двух 1024-битных простых выходит и на 2048 бит, и на
-    2047; здесь стояло одиночное `2^2027`, которое опровергал каждый
-    второй ключ. Утверждается это числом — но числом ОТ ФАКТИЧЕСКОЙ
-    длины модуля (`modulus_bits − 21`), а не литералом, поэтому тест
-    расхождения не знал.
+    The bound is computed by ONE function for both the encryption
+    predicate and the getter. Separately, a mutation of the multiplier
+    in the predicate passed the whole suite — the getter kept returning
+    the right number. That is the same defect as with the exponent
+    length, repeated one line over.
 
-    Граница считается ОДНОЙ функцией на предикат шифрования и на
-    геттер. Врозь мутация множителя в предикате проходила сьют целиком
-    — геттер продолжал возвращать верное число. Это тот же дефект, что
-    был с длиной показателя, повторённый в соседней строке.
-16. **Отказ, а не паника.** `PanicException` наследует `BaseException`
-    и сквозь `except Exception` вызывающего проходит насквозь.
+16. **Refusal, not panic.** `PanicException` inherits `BaseException`
+    and passes straight through a caller's `except Exception`.
 
-## Чего этот переход не даёт
+## What this transition does not give
 
-Заготовленного запаса готовых `hs^r`. Ускорил бы ещё, но повторное
-использование `r` ломает семантическую безопасность. Только с гарантией
-однократного расхода, и это отдельная работа.
+A precomputed pool of ready `hs^r` values. It would speed things up
+further, but reusing `r` breaks semantic security. Only with a
+guarantee that every value is spent exactly once — and that is separate
+work.
