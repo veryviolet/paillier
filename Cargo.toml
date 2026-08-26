@@ -2,6 +2,9 @@
 name = "paillier"
 version = "0.3.0"
 edition = "2021"
+# Лицензия ИСХОДНИКОВ крейта. Собранное колесо шире: в него статически
+# входит GMP под LGPL-3.0+, и `pyproject.toml` объявляет это отдельно.
+# Разбор — `NOTICE.md`.
 license = "MIT OR Apache-2.0"
 description = "Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP с привязкой к Python"
 readme = "README.md"

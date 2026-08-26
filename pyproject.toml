@@ -7,8 +7,18 @@ name = "paillier"
 description = "Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP, привязка к Python через pyo3"
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT OR Apache-2.0"
-license-files = ["LICENSE-MIT", "LICENSE-APACHE"]
+# Выражение описывает КОЛЕСО, а не только наши исходники.
+#
+# Наш код — MIT OR Apache-2.0. Но `rug` и `gmp-mpfr-sys` под LGPL-3.0+,
+# и GMP вкомпилирована в расширение СТАТИЧЕСКИ: проверено строками
+# `GNU MP assertion failed` внутри `.so` и тем, что `ldd` не показывает
+# ни одной внешней libgmp. То есть колесо — комбинированное произведение
+# по §4 LGPL, и объявлять его просто "MIT OR Apache-2.0" значит врать в
+# метаданных пакета.
+#
+# Разбор и выполнение условий §4 — в `NOTICE.md`.
+license = "(MIT OR Apache-2.0) AND LGPL-3.0-or-later"
+license-files = ["LICENSE-MIT", "LICENSE-APACHE", "LICENSE-LGPL", "LICENSE-GPL", "NOTICE.md"]
 authors = [{ name = "Kirill Groshenkov", email = "kir.groshenkov@gmail.com" }]
 keywords = [
     "paillier",

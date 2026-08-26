@@ -81,3 +81,8 @@ pip install paillier
 
 Колёса собраны под CPython 3.10, 3.11, 3.12 и 3.13. Подробности —
 [Установка](getting-started/installation.md).
+
+## Юридическое
+
+Тексты лицензий, происхождение приёмов и выполнение условий §4 LGPL —
+[`NOTICE.md`](https://github.com/veryviolet/paillier/blob/main/NOTICE.md).
