@@ -1,158 +1,117 @@
-//! Ключи: порождение, проверка и вывод `hs`.
+//! Key validation and derivation of `h`, `hs`.
 //!
-//! Здесь живёт всё, от чего зависит стойкость короткого показателя.
-//! Разбор — в `docs/short-exponent-security.md`.
+//! Everything here guards against ONE failure mode: a key on which the
+//! round trip works, homomorphism works, every correctness test is
+//! green — and privacy is gone. Such a key does not announce itself in
+//! any way; it has to be refused at the door.
 //!
-//! Устройство в одну строку: `hs` **не импортируется**, а выводится
-//! шифрующим из одного `n`. Проверить импортированный `hs` вычислением
-//! невозможно — проба на гладкость при границе `B` удостоверяет лишь
-//! `√B` работы, а стоит `π(B)·|n|` возведений в квадрат; чтобы
-//! удостоверить 128 бит, нужна граница `2^256`. Вывод на месте
-//! закрывает этот класс целиком.
+//! Two paths, and they check different things, for a reason.
 //!
-//! Класс — но не всё сразу, и прежде здесь стояло именно «не требует ни
-//! одной проверки чужого материала». Неверно: `hs` выводится ИЗ `n`, и
-//! отравленный модуль даёт отравленный `hs`. Сам `n` проверяется
-//! `validate_public` — длина сверху и снизу, и это всё, что делают
-//! все: *partial public key validation* из NIST SP 800-56B. Почему не
-//! больше — там же в докстринге.
+//! **Our own key** (`validate_private`) is checked in full: safe primes,
+//! Blumness, the `gcd`, the prime gap, the length. We generated it, we
+//! know `p` and `q`, and everything about it is checkable.
+//!
+//! **A peer's modulus** (`validate_public`) is checked for oddness and
+//! length, and nothing else. That is *partial public key validation*
+//! from NIST SP 800-56B — precisely what the standard prescribes, and
+//! the reasoning for why nothing more belongs here is in the docstring
+//! of that function.
 
 use rug::integer::IsPrime;
 use rug::Integer;
 
-/// Насколько разность простых может быть короче самих простых.
+/// How far `|p − q|` may fall short of the prime length before the
+/// modulus is refused.
 ///
-/// Значение из FIPS 186-4 (B.3.1): `|p−q| ≥ prime_bits − 100`. В
-/// `fast-paillier` такой проверки нет вовсе — она наша.
-///
-/// Константа переписывалась дважды, и оба раза была неверна.
-///
-/// Первая редакция брала константу `heu` — разность короче простого не
-/// более чем на два бита (`key_generator.cc:23,39`). Она отвергала
-/// штатный ключ: у двух случайных простых верхние биты сходятся сплошь
-/// и рядом, замерено `|p−q| = 507` при `|p| = 512`. Константа `heu`
-/// безопасна ТОЛЬКО вместе с циклом перегенерации, который там и стоит;
-/// перенести её без цикла нельзя.
-///
-/// Вторая редакция подкрутила порог до `prime_bits/2 + 8`, и это было
-/// хуже. Число шагов Ферма при `|p−q| = |p|/2 + k` равно
-/// `(p−q)²/(8√n) = 2^(2k−3)` и **от размера ключа не зависит вовсе**:
-/// при `k = 8` это `2^13` шагов что на 512-битных простых, что на
-/// 1536-битных. Ключ, принятый той проверкой, разложен методом Ферма за
-/// 3589 шагов — это сделано, а не оценено, и стоит тестом
+/// FIPS 186-4 B.3.1 requires `|p − q| ≥ 2^(prime_bits − 100)`, and the
+/// bound is not decorative: with close primes Fermat's method factors
+/// the modulus in about `k` steps where the gap is `2^(prime_bits − k)`,
+/// so at `k = 8` that is `2^13` steps whether the primes are 512 bits or
+/// 1536. A key accepted by a check without this bound was factored by
+/// Fermat in 3589 steps — that was done, not estimated, and it stands as
 /// `tests/keygen_props.rs`.
 ///
-/// При `prime_bits − 100` и `|p| = 1536` Ферма требует порядка `2^1333`
-/// шагов, а измеренные 507 бит разности при 512-битных простых проходят
-/// с запасом в 95 бит.
+/// At `prime_bits − 100` with `|p| = 1536`, Fermat needs on the order of
+/// `2^1333` steps, and the measured 507 bits of gap on 512-bit primes
+/// pass with 95 bits to spare.
 const PQ_DIFFERENCE_SLACK_BITS: u32 = 100;
 
-/// Раундов Миллера–Рабина: и при порождении простого, и при проверке
-/// принятого ключа.
+/// Miller–Rabin rounds: both when generating a prime and when checking
+/// an accepted key.
 ///
-/// Публичная и ЕДИНСТВЕННАЯ. Прежде такая же константа стояла второй
-/// копией в `primes.rs`, с комментарием «разъехаться этим двум
-/// значениям нельзя» — а держало их только то, что я о них помнил.
-/// Порождать строже, чем проверять, значит принимать чужие ключи
-/// слабее собственных; наоборот — отвергать свои же.
+/// Public and THE ONLY ONE. There used to be a second copy of this
+/// constant in `primes.rs` with a comment saying "these two must not
+/// drift apart" — and the only thing holding them together was that I
+/// remembered them. Generating more strictly than we validate would mean
+/// accepting foreign keys weaker than our own; the other way round would
+/// mean rejecting our own.
 pub const PRIMALITY_ROUNDS: u32 = 40;
 
-/// Наименьший допустимый модуль, в битах.
+/// The smallest admissible modulus, in bits.
 ///
-/// NIST SP 800-57 ч.1 рев.5, таблица 2: стойкость 112 бит требует
-/// модуля не короче 2048. Всё, что короче, — не криптография.
+/// NIST SP 800-57 part 1 rev. 5, table 2: 112-bit strength requires a
+/// modulus of at least 2048. Anything shorter is not cryptography.
 ///
-/// Границы не было вовсе, и `generate_keypair(32)` возвращал 32-битный
-/// модуль при полностью зелёном сьюте: круг верен, гомоморфность верна,
-/// `validate_private` доволен, а `n` раскладывается за микросекунды.
-/// Ровно тот беззвучный отказ, ради которого этот файл и написан.
+/// There was no floor at all, and `generate_keypair(32)` returned a
+/// 32-bit modulus with which `validate_private` was perfectly happy and
+/// which factors in microseconds. Exactly the silent failure this file
+/// is written against.
 ///
-/// Побочно закрывается зависание: `generate_safe_prime` на восьми битах
-/// крутится вечно, а идёт он под снятым GIL, поэтому процесс не
-/// прерывается ни Ctrl-C, ни `SIGINT` — проверено `timeout -s INT`.
+/// It also closes a hang: safe-prime generation at eight bits spins
+/// forever, and it spins with the GIL released, so the process cannot be
+/// interrupted by Ctrl-C or `SIGINT` — verified with `timeout -s INT`.
 ///
-/// Величина НОМИНАЛЬНАЯ, и это важно. Произведение двух простых по
-/// `MIN_MODULUS_BITS/2` бит выходит и на 2048 бит, и на 2047: старшие
-/// биты сомножителей могут не дать переноса. Требовать 2048 от самого
-/// произведения — значит отвергать половину штатных ключей, поэтому
-/// владелец судится по длине ПРОСТЫХ, а импортированный модуль — по
+/// The value is NOMINAL, and that matters. The product of two primes of
+/// `MIN_MODULUS_BITS/2` bits each lands on 2048 bits and on 2047: the
+/// top bits of the factors may fail to carry. Demanding 2048 from the
+/// product itself would reject half of all legitimate keys, so the owner
+/// is judged by the length of the PRIMES and an imported modulus by
 /// `MIN_MODULUS_BITS − 1`.
 pub const MIN_MODULUS_BITS: u32 = 2048;
 
-/// Наибольший принимаемый чужой модуль, в битах.
+/// The largest admissible foreign modulus, in bits.
 ///
-/// Не про стойкость, а про отказ в обслуживании. `validate_public`
-/// растёт квадратично по длине модуля — 0.17 с при 2048 битах, 5.8 с
-/// при 16384, — и идёт под снятым GIL, поэтому обработчик сигналов
-/// Python не исполняется, пока она не вернётся: измерено 26 секунд
-/// глухоты на 32768-битном входе. Модуль приезжает по проводу от пира.
+/// Not about strength — about denial of service. Assembling a peer key
+/// derives `hs`, which is an exponentiation modulo `n²`, and it runs
+/// with the GIL released: until it returns, the Python interpreter
+/// executes nothing, signal handlers included. The modulus arrives over
+/// the wire from a peer.
 ///
-/// 8192 — вчетверо больше самого длинного ключа, который кому-нибудь
-/// нужен.
+/// 8192 is four times the longest key anyone needs.
 pub const MAX_MODULUS_BITS: u32 = 8192;
 
-/// Свидетельство того, что `validate_private` отработала и приняла ключ.
+/// Evidence that `validate_private` ran and accepted the key.
 ///
-/// Поле кортежа приватно, поэтому собрать `Validated` вне этого модуля
-/// нельзя ничем: ни литералом, ни `Default`, ни `clone` из воздуха.
-/// Единственный источник — `validate_private`.
+/// The tuple field is private, so `Validated` cannot be constructed
+/// outside this module by any means: not by a literal, not by `Default`,
+/// not by cloning one out of thin air. The only source is
+/// `validate_private`.
 ///
-/// Смысл ровно один: сделать пропуск проверки ошибкой КОМПИЛЯЦИИ.
-/// `SecretKey` в `lib.rs` держит это поле, и без токена не собирается.
-/// Тест здесь не годится — на честном входе ключ с проверкой и без неё
-/// одинаков, а тест на текст исходника проходит насквозь, если вызов
-/// заменить комментарием с тем же текстом.
-/// `PartialEq` нужен только тестам, которые сравнивают `Result`
-/// целиком. Собрать `Validated` он не помогает: сравнивать можно лишь
-/// то, что уже получено из `validate_private`.
+/// The point is exactly one: to make skipping the check a COMPILE error.
+/// `SecretKey` in `lib.rs` holds this field, and without the token it
+/// does not build. A test will not do here — on honest input a key with
+/// and without validation is identical, and a test that greps the source
+/// passes happily if the call is replaced by a comment with the same
+/// text.
+///
+/// `PartialEq` exists only for tests that compare a whole `Result`. It
+/// does not help construct a `Validated`: you can only compare something
+/// already obtained from `validate_private`.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Validated(());
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum KeyError {
-    /// `(p−1)/2` или `(q−1)/2` не просто — простые не безопасные.
-    ///
-    /// ГЛАВНАЯ проверка ключа. Именно безопасные простые дают
-    /// `λ = 2p′q′`, то есть большой простой делитель порядка.
-    /// Блюмовость этого не даёт: существует ключ, где она выполнена,
-    /// порядок 597 бит, а открытый текст снимается за семь секунд,
-    /// потому что `λ` гладкая.
     NotSafePrimes,
-    /// `p ≢ 3 (mod 4)` или `q ≢ 3 (mod 4)`. Вспомогательная: даёт
-    /// `⟨h⟩ ⊆ J_n`, то есть свойство про расположение, не про величину.
     NotBlum,
-    /// `gcd(p−1, q−1) ≠ 2`. Вспомогательная.
     BadGcd,
-    /// Простые слишком близки — разложение методом Ферма.
     PrimesTooClose,
-    /// Знак `h` потерян: получился квадратичный вычет.
     HNotAntiResidue,
-    /// `x` вне `[2, n−2]` либо не взаимно просто с `n`.
     BadX,
-    /// `hs` вырожден: его порядок не больше двух.
-    ///
-    /// Единственный отказ, который ловит `x = 1`. Тот проходит и
-    /// `gcd(x, n) = 1`, и проверку символом Якоби — при блюмовых
-    /// простых `jacobi(−1, p) = jacobi(−1, q) = −1`, — но даёт
-    /// `h = −1` и `hs = n²−1`, а `hs^r` принимает ровно ДВА значения.
-    /// Круг и гомоморфность при этом верны, и наблюдатель, знающий
-    /// только `n`, читает открытый текст из любого шифротекста.
-    ///
-    /// Это не атака, а отказ генератора случайных: обнулённый буфер
-    /// даёт `x = 0` и ловится по `gcd`, неинициализированный даёт
-    /// `x = 1` и не ловится больше ничем.
     DegenerateHs,
-    /// Возведение в степень не определено.
     PowModUndefined,
-    /// Модуль короче `MIN_MODULUS_BITS`.
     ModulusTooShort,
-    /// Модуль длиннее `MAX_MODULUS_BITS`.
     ModulusTooLong,
-    /// За отведённое число попыток годное `x` не нашлось.
-    ///
-    /// На честном `n` недостижимо: негодных значений считаные штуки.
-    /// Достижимо на вырожденном модуле — и тогда это единственный
-    /// сигнал, что с ним что-то не так.
     NoUsableX,
 }
 
@@ -206,43 +165,12 @@ impl std::fmt::Display for KeyError {
 
 impl std::error::Error for KeyError {}
 
-/// Проверки НАШЕГО ключа при порождении. Требуют `p` и `q`, поэтому
-/// возможны только у владельца.
+/// Full validation of our own key. Returns the witness that the check
+/// took place.
 ///
-/// `fast-paillier` из этого не проверяет ничего: безопасные простые он
-/// строит, но нигде не утверждает, а `from_primes` и десериализация
-/// обходят и это — причём докстринг самого крейта у `from_primes`
-/// гласит, что простые ОБЯЗАНЫ быть безопасными.
-///
-/// Чего здесь НЕТ сознательно: проверки `gcd(λ, n) = 1`. Каждая
-/// проверка в этом файле сторожит **беззвучный** отказ — тот, при
-/// котором круг и гомоморфность зелены, а приватности нет: `x = 1`,
-/// `hs = 1`, гладкий порядок. Их не поймает никто, кроме нас.
-/// `gcd(λ, n) ≠ 1` — противоположный случай: `µ` не существует,
-/// расшифровка не определена, и `from_primes` возвращает ошибку. Это
-/// самый громкий отказ из возможных, и он уже пойман ниже по течению —
-/// единственным условием, в котором крейт строже нас.
-///
-/// Важное для тестов: на ключе, порождённом безопасными простыми, три
-/// вспомогательные ветки **недостижимы**. `p = 2p′+1` с нечётным
-/// простым `p′` даёт `p ≡ 3 (mod 4)` тождественно, а `gcd(2p′, 2q′) = 2`
-/// при `p′ ≠ q′`. Проверять их надо собранными руками `p` и `q`, иначе
-/// тест зелен всегда и не запускает ни одной из них.
-///
-/// # Почему возвращает токен, а не `()`
-///
-/// Чтобы пропуск проверки **не компилировался**. Вызов однажды уже
-/// исчезал из `generate_keypair` — прогон мутаций упал, не восстановив
-/// файл, — и сьют показывал 42 из 42, потому что на честном входе обе
-/// ветки дают один и тот же ключ.
-///
-/// Тест на текст исходника это не закрывает: вызов, заменённый
-/// КОММЕНТАРИЕМ с тем же текстом, проходит его насквозь, а честный
-/// вынос вызова в помощника — валит. Проверено исполнением, обе
-/// половины.
-///
-/// Поэтому проводку стережёт компилятор: `Validated` собирается только
-/// здесь, а `SecretKey` без него не построить.
+/// The order of the checks is deliberate: the most substantive one — are
+/// the primes safe — comes first, so its error is what the caller sees
+/// when several conditions fail at once.
 pub fn validate_private(
     p: &Integer,
     q: &Integer,
@@ -252,6 +180,9 @@ pub fn validate_private(
     {
         return Err(KeyError::ModulusTooShort);
     }
+    // THE main check. Everything below is auxiliary: a non-smooth order
+    // of `hs` is what the short exponent stands on, and safe primes are
+    // what makes it non-smooth by construction rather than by luck.
     for prime in [p, q] {
         let half = Integer::from(prime - 1u32) / 2u32;
         if half.is_probably_prime(PRIMALITY_ROUNDS) == IsPrime::No {
@@ -272,66 +203,55 @@ pub fn validate_private(
     Ok(Validated(()))
 }
 
-/// Проверки ЧУЖОГО модуля: нечётность (у вызывающего) и длина.
+/// Validation of a FOREIGN modulus: oddness and length, and nothing
+/// else.
 ///
-/// # Почему ТОЛЬКО это
+/// # Why nothing else
 ///
-/// Так делают все. Это *partial public key validation* из NIST SP
-/// 800-56B: модуль нечётный, длина в объявленном диапазоне — и всё.
-/// Уверенность в форме модуля даёт не проверяющий вычислением, а
-/// владелец или сертификат.
+/// There used to be three probes here — trial division by small primes,
+/// Brent's rho, Pollard's `p−1` — plus a compositeness check. All
+/// removed, and the reasoning belongs here because the path to them was
+/// an error of reasoning rather than an oversight.
 ///
-/// `heu`, откуда взят короткий показатель, не делает и этого:
-/// `public_key.h:84-87` берёт `n_` и `h_s_` из msgpack дословно и зовёт
-/// `Init()`, а тот считает только `n²`, `n/2`, `key_size` и оконную
-/// таблицу. Ни одной проверки. Все проверки у `heu` — на СВОЁМ ключе,
-/// при генерации (`key_generator.cc`), и у нас тоже: см.
-/// `validate_private`, которая строже.
+/// **They do not work.** From `n` alone you cannot establish that it is
+/// a product of two large distinct primes: that is factorisation. Any
+/// probe gives a bound and costs exactly what stepping over it costs the
+/// attacker, who reads the sources and picks a factor beyond it.
+/// Measured: rho with a `2^16` budget reaches about 32 bits, and a
+/// 40-bit safe factor — the very example the probe was written for —
+/// passed straight through.
 ///
-/// Здесь была история, стоящая записи. Прежде эта функция ещё искала
-/// малый множитель (перебор плюс ро-Брента) и гладкость `p−1`
-/// (Поллард). Пробы сняты, и вот почему:
+/// **They are expensive.** The probes cost two thirds of parsing a
+/// foreign key (0.46 s out of 0.69 s at `|n| = 2048`) and tripled the
+/// window during which the node answers no signals: from 2.4 to 6.8 s on
+/// a maximal modulus, with the GIL released. The denial-of-service
+/// defence became a denial of service.
 ///
-/// - **не работает.** Из одного `n` нельзя установить, что он есть
-///   произведение двух больших различных простых: это задача
-///   факторизации. Любая проба даёт границу и стоит ровно столько,
-///   сколько нападающему её перешагнуть, а он читает этот файл и
-///   выберет множитель за границей. Замерено: ро с бюджетом `2^16`
-///   достаёт примерно до 32 бит, и 40-битный безопасный множитель — тот
-///   самый пример, ради которого проба и писалась, — проходил её
-///   насквозь;
-/// - **дорого.** Пробы стоили две трети разбора чужого ключа (0.46 с из
-///   0.69 с при `|n| = 2048`) и утроили окно, в течение которого узел не
-///   отвечает на сигналы: с 2.4 до 6.8 с на предельном модуле, под
-///   снятым GIL;
-/// - **не туда.** Задача решается не пассивной проверкой, а
-///   доказательством формы модуля от владельца — это вызов-ответ на
-///   проводе, протоколы известны (Gennaro–Micciancio–Rabin для свободы
-///   от квадратов, van de Graaf–Peralta для «ровно два простых»).
-///   Место для него — рукопожатие узлов, а не эта функция.
+/// **They are in the wrong place.** The problem is solved not by a
+/// passive check but by a proof of the modulus's form from its owner:
+/// Gennaro–Micciancio–Rabin for square-freeness, van de Graaf–Peralta
+/// for "exactly two primes". That is finite work with a clear end, but
+/// its place is a challenge-response in a handshake, not a function in a
+/// library.
 ///
-/// Отдельно — про СОСТАВНОСТЬ, потому что смешивать её с пробами
-/// нечестно. Проверка `n` на простоту и на точную степень простого тоже
-/// снята, но ни один довод выше к ней не относится:
-/// `is_probably_prime` — решающая процедура, а не поиск с границей, у
-/// неё нет порога, который нападающий перешагнёт; стоит она 2.3 мс при
-/// `|n| = 2048`, то есть полпроцента от снятого; и ловит она не только
-/// умысел, но и пира со сломанным генератором.
+/// So the correct framing: **this function cannot be finished, but the
+/// problem can.**
 ///
-/// Снята она по другому основанию: делаем ровно то, что делают все.
-/// `heu` составность не проверяет, NIST SP 800-56B её в partial
-/// validation не включает. Цена решения замерена: 2048-битное простое
-/// `n` принимается за 0.010 с, рандомизация при этом цела, а
-/// наблюдатель с одним лишь `n` читает все открытые тексты, потому что
-/// `λ = n−1`. Возврат стоит две строки.
+/// The compositeness check is a separate story and the three arguments
+/// above do not apply to it: `is_probably_prime` is a decision
+/// procedure, not a bounded search; it costs 2.3 ms at 2048 bits; and it
+/// catches more than malice — a peer with a broken generator that sends
+/// a prime is otherwise accepted silently. It was removed on a different
+/// ground: partial public key validation per NIST SP 800-56B does not
+/// include it, and we do what the standard prescribes and no more.
 ///
-/// **Доверие к `n` лежит вне этой библиотеки**: модуль приезжает от
-/// узла, с которым установлено взаимное mTLS-соединение и который
-/// приглашён человеком. Это ВЫБОР, а не невозможность, и закрывается он
-/// доказательством на проводе.
+/// The price of that decision, measured so it cannot be missed: a
+/// 2048-bit PRIME `n` is accepted in 0.010 s, the ciphertexts are
+/// distinct — randomisation intact, round trip intact — and an observer
+/// holding only `n` reads every plaintext, because `λ = n−1`.
 pub fn validate_public(n: &Integer) -> Result<(), KeyError> {
-    // На бит ниже номинала: произведение двух простых по 1024 бита
-    // выходит и на 2048 бит, и на 2047.
+    // One bit below nominal: the product of two 1024-bit primes lands on
+    // 2048 bits and on 2047.
     if n.significant_bits() + 1 < MIN_MODULUS_BITS {
         return Err(KeyError::ModulusTooShort);
     }
@@ -343,8 +263,9 @@ pub fn validate_public(n: &Integer) -> Result<(), KeyError> {
 
 /// `h = −x² mod n`.
 ///
-/// Диапазон `x` сужен до `[2, n−2]`: единица и `n−1` дают `h = −1`, а
-/// вырождение отсюда не ловится ни `gcd`, ни символом Якоби.
+/// The range of `x` is narrowed to `[2, n−2]`: one and `n−1` both give
+/// `h = −1`, and that degeneracy is caught neither by a `gcd` nor by a
+/// Jacobi symbol.
 pub fn derive_h(x: &Integer, n: &Integer) -> Result<Integer, KeyError> {
     if *x < 2 || *x > Integer::from(n - 2u32) {
         return Err(KeyError::BadX);
@@ -356,20 +277,17 @@ pub fn derive_h(x: &Integer, n: &Integer) -> Result<Integer, KeyError> {
     Ok(Integer::from(n - square) % n)
 }
 
-/// `h = −x² mod n` со знаком, проверенным символом Якоби.
+/// `h = −x² mod n` with the sign verified by the Jacobi symbol.
 ///
-/// Знак проверяется там, где есть `p` и `q`, — то есть у владельца
-/// ключа. Шифрующий, выводящий `hs` из одного `n`, этого сделать не
-/// может.
+/// The sign can only be checked where `p` and `q` are available — that
+/// is, by the key holder. A party that derives `hs` from `n` alone
+/// cannot do it, and that is not a gap in the checks: with an honest `n`
+/// the sign is correct by construction, and with a dishonest one it is
+/// the least of the troubles.
 ///
-/// Почему пропуск проверки у шифрующего допустим: при честном `n`
-/// (безопасные простые) `p ≡ q ≡ 3 (mod 4)` выполняется само собой, и
-/// знак верен по построению. При нечестном `n` знак — наименьшая из бед.
-///
-/// Прежде здесь стоял другой довод — «расшифровка при любом `x` верна».
-/// Он неверен как обоснование: верность расшифровки ничего не говорит о
-/// качестве рандомизатора, и именно такая подмена «корректно» на
-/// «стойко» оправдала бы и пропуск проверки на `x = 1`.
+/// What the check is for: if the sign is lost and `h = x²` results, the
+/// order drops to the subgroup of squares while every correctness test
+/// stays green.
 pub fn derive_h_checked(
     x: &Integer,
     p: &Integer,
@@ -383,25 +301,19 @@ pub fn derive_h_checked(
     Ok(h)
 }
 
-/// `hs = h^n mod n²`, с отказом на вырождении.
+/// `hs = h^n mod n²`, with the degenerate case refused.
 ///
-/// Считается ОДИН РАЗ на модуль и кэшируется: 0.030 с при `|n| = 3072`.
-/// На каждое сообщение это съело бы весь выигрыш от короткого
-/// показателя — одно шифрование там укладывается в единицы
-/// миллисекунд.
-///
-/// Ошибку **не подменяем значением**. Прежде здесь стояло
-/// `unwrap_or_else(|_| 1)`, а `hs = 1` даёт `c = 1 + m·n` ровно, то есть
-/// снимает приватность целиком. Нейтрального значения по умолчанию у
-/// элемента группы не бывает, а единица — наихудшее из возможных.
+/// `ord(hs) ≤ 2` is the only degeneracy a single `x` can produce, and
+/// the only one the checks above do not catch. The predicate is EXACT,
+/// not a heuristic: with safe primes `Z*_n ≅ Z_{2p′} × Z_{2q′}` contains
+/// no element of order four, so `x⁴ ≡ 1` implies `x² ≡ ±1` and hence
+/// `h = −1`, which shows up here as `hs = n²−1`.
 pub fn derive_hs(h: &Integer, n: &Integer) -> Result<Integer, KeyError> {
     let nn = Integer::from(n * n);
     let hs = h
         .clone()
         .pow_mod(n, &nn)
         .map_err(|_| KeyError::PowModUndefined)?;
-    // `ord(hs) ≤ 2` — единственное вырождение, которое может дать
-    // одиночное `x`, и единственное, которое не ловят проверки выше.
     if hs <= 1 || hs == Integer::from(&nn - 1u32) {
         return Err(KeyError::DegenerateHs);
     }

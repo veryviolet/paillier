@@ -1,36 +1,35 @@
-//! Paillier для Guardora: своя реализация на GMP, привязка через pyo3.
+//! Paillier: our own implementation on GMP, bound to Python via pyo3.
 //!
-//! Криптография ЗДЕСЬ, а не в зависимости: порождение безопасных
-//! простых, шифрование коротким показателем, гомоморфное сложение,
-//! расшифровка по китайской теореме. `fast-paillier` остался ТОЛЬКО
-//! эталоном в тестах (`dev-dependencies`) — своя реализация, сверяемая
-//! сама с собой, ничего не доказывает.
+//! The cryptography is HERE, not in a dependency: safe-prime generation,
+//! short-exponent encryption, homomorphic addition, CRT decryption.
+//! `fast-paillier` remains ONLY as a reference in tests
+//! (`dev-dependencies`) — an implementation checked against itself
+//! proves nothing.
 //!
-//! Блоб = байт масштаба + шифротекст старшим байтом вперёд. Записи
-//! МИНИМАЛЬНЫЕ, а не фиксированной ширины: замерено `{512: 2, 513: 398}`
-//! на четырёхстах шифрованиях ключом 2048 бит. Нарезать буфер постоянным
-//! шагом нельзя.
+//! A blob is a scale byte followed by the ciphertext, most significant
+//! byte first. Entries are MINIMAL, not padded to a fixed width:
+//! measured `{512: 2, 513: 398}` over four hundred encryptions with a
+//! 2048-bit key. You cannot slice the buffer at a constant stride.
 //!
-//! Число здесь врало дважды. Сперва стояло `[255, 256]` — длины при
-//! ключе в 1024 бита, который ниже `MIN_MODULUS_BITS` и породиться уже
-//! не может. Потом `[511, 512]` — верно, но ДО введения байта масштаба,
-//! то есть докстринг, описывающий формат, не знал о единственном, что
-//! этот формат изменило.
+//! That number has lied twice. First it said `[255, 256]` — the lengths
+//! at a 1024-bit key, which is below `MIN_MODULUS_BITS` and can no
+//! longer be generated. Then `[511, 512]` — correct, but from before the
+//! scale byte, i.e. the docstring describing the format did not know
+//! about the only thing that changed the format.
 //!
-//! Бэкенд `rug` выбран не по вкусу: бэкенд `num-bigint`, включённый в
-//! крейте по умолчанию, тянет `glass_pumpkin`, а тот — `core2`, у
-//! которого **все** версии отозваны автором. С `backend-rug` этой
-//! цепочки нет вовсе, и он же считает на GMP.
+//! The `rug` backend was not chosen by taste: the crate's default
+//! `num-bigint` backend pulls in `glass_pumpkin`, which pulls in
+//! `core2`, **all** versions of which were yanked by its author. With
+//! `backend-rug` that chain does not exist, and it computes on GMP.
 //!
-//! Шифрование идёт КОРОТКИМ ПОКАЗАТЕЛЕМ: вместо `r^n` со случайным
-//! основанием — `hs^r` с фиксированным. Приём взят из `heu`, разобран
-//! в `docs/heu-comparison.md`; что при этом добавляется к
-//! предположениям о стойкости — в `docs/short-exponent-security.md`.
+//! Encryption uses a SHORT EXPONENT: instead of `r^n` with a random
+//! base, `hs^r` with a fixed one. What that adds to the security
+//! assumptions is in `docs/short-exponent-security.md`.
 
-// Единственная дверь, через которую свидетельство `keys::Validated`
-// всё же подделывается, — `unsafe`: `mem::zeroed` собирает тип нулевого
-// размера из ничего. Закрываем её здесь, а не надеемся, что никто не
-// напишет. `unsafe` в этом крейте не нужен нигде.
+// The one door through which the `keys::Validated` witness could still
+// be forged is `unsafe`: `mem::zeroed` builds a zero-sized type out of
+// nothing. We close it here rather than hoping nobody writes it.
+// `unsafe` is not needed anywhere in this crate.
 #![forbid(unsafe_code)]
 
 pub mod fast;
@@ -49,90 +48,94 @@ use rug::Integer;
 
 use fast::{build_window_table, pow_by_table, windows_for, windows_of};
 
-/// Масштаб по умолчанию: `10^8`.
+/// The default scale: `10^8`.
 ///
-/// Оставлен прежним намеренно. Он даёт САМЫЙ ШИРОКИЙ диапазон входа
-/// (до `|v| ≈ 9e7`), а сужение диапазона ради точности — решение
-/// вызывающего, который знает свои данные, а не умолчание библиотеки.
+/// Deliberately left as it was. It gives the WIDEST input range (up to
+/// `|v| ≈ 9e7`), and narrowing the range for accuracy is a decision for
+/// the caller who knows their data, not a default of the library.
 const DEFAULT_SCALE_POW10: u8 = 8;
 
-/// Наибольший принимаемый показатель масштаба.
+/// The largest accepted scale exponent.
 ///
-/// Выше `10^18` кодировать нечего: `2^53/10^18` меньше `1e-2`, то есть
-/// точно кодируются уже только числа мельче сотой, и ошибка становится
-/// относительной на всём осмысленном входе.
+/// Above `10^18` there is nothing left to encode: `2^53/10^18` is below
+/// `1e-2`, so only numbers smaller than a hundredth encode exactly and
+/// the error is relative across the whole meaningful input.
 const MAX_SCALE_POW10: u8 = 18;
 
-/// Масштаб кодирования float в целое: СТЕПЕНЬ ДЕСЯТКИ, едет в
-/// шифротексте первым байтом.
+/// The encoding scale: a POWER OF TEN, carried in the ciphertext as its
+/// first byte.
 ///
-/// # Почему свойство шифротекста, а не настройка
+/// # Why a property of the ciphertext rather than a setting
 ///
-/// Несовпадение масштабов даёт не отказ, а правдоподобное неверное
-/// число: зашифровали с `1e8`, расшифровали с `1e12` — результат меньше
-/// в десять тысяч раз, конечный, без единого признака. Сложили
-/// шифротексты разных масштабов — сумма бессмысленна, а различить их
-/// нечем: шифротексты неотличимы.
+/// A scale mismatch produces not a refusal but a plausible wrong number:
+/// encrypt at `1e8`, decrypt at `1e12` and the result is ten thousand
+/// times smaller, finite, with no sign of anything wrong. Add
+/// ciphertexts of different scales and the sum is meaningless, with
+/// nothing to tell them apart: ciphertexts are indistinguishable.
 ///
-/// Хуже того, у нас пассивная сторона шифрует ЧУЖИМ ключом, собирая его
-/// из одного `n` (`PublicKey::from_n`). В `n` масштаба нет — значит при
-/// настройке «сбоку» пир взял бы умолчание и молча разошёлся с
-/// владельцем ключа.
+/// Worse, a party that only encrypts builds a peer key from `n` alone
+/// (`PublicKey::from_n`), and `n` carries no scale — so with a setting
+/// "on the side" it would take the default and silently disagree with
+/// the key holder.
 ///
-/// Поэтому `decrypt` берёт масштаб ИЗ САМОГО БЛОБА, а `add_many`
-/// отказывает на пачке с разными масштабами. Разойтись физически нечем.
+/// Hence `decrypt` reads the scale FROM THE BLOB ITSELF, and `add_many`
+/// refuses a batch that mixes scales. There is physically nothing to
+/// disagree about.
 ///
-/// Цена — один байт на шифротекст, 0.2 % длины.
+/// The cost is one byte per ciphertext, 0.2 % of its length.
 ///
-/// # Округление — к ближайшему
+/// # Rounding is to nearest
 ///
-/// Не усечением. Усечение к нулю смещает каждое слагаемое вниз по
-/// модулю, и на ЗНАКОПОСТОЯННЫХ данных ошибка суммы растёт ЛИНЕЙНО по
-/// числу слагаемых, а не как `√k`. Счётчики бакетов и квадраты
-/// градиентов знакопостоянны. Замер — `benches/acc_rounding.py`.
+/// Not truncation. Truncation toward zero biases every term downward in
+/// magnitude, and on SIGN-CONSTANT data the sum's error then grows
+/// LINEARLY in the number of terms rather than as `√k`. Bucket counters
+/// and squared gradients are sign-constant. Analysis and measurement:
+/// `benches/acc_rounding.py`.
 ///
-/// # Два края, а не один
+/// # Two edges, not one
 ///
-/// **Снизу.** Всё, что по модулю меньше `1/(2·10^e)`, кодируется нулём.
-/// Свойство неподвижной точки, а не потеря.
+/// **Below.** Anything smaller in magnitude than `1/(2·10^e)` encodes to
+/// zero. A property of fixed point, not a loss.
 ///
-/// **Сверху.** Ошибка равна `1/(2·10^e)` и АБСОЛЮТНА только пока
-/// `|v|·10^e` представимо в f64 точно, то есть примерно до
-/// `|v| ≈ 2^53/10^e`. Выше произведение округляется само, и ошибка
-/// становится ОТНОСИТЕЛЬНОЙ.
+/// **Above.** The error is `1/(2·10^e)` and ABSOLUTE only while
+/// `|v|·10^e` is exactly representable in f64, i.e. up to about
+/// `|v| ≈ 2^53/10^e`. Above that the product itself is rounded and the
+/// error becomes RELATIVE.
 ///
-/// | `e` | ошибка | верхняя граница `|v|` | сумма 10⁶ знакопостоянных |
+/// | `e` | error | upper bound on `|v|` | sum of 10⁶ sign-constant |
 /// |---|---|---|---|
 /// | 8 | 5e-09 | ~9e7 | 4.69e-06 |
 /// | 12 | 5e-13 | ~9e3 | **1.86e-08** |
 /// | 15 | 5e-16 | ~9e0 | 1.86e-08 |
 ///
-/// Правый столбец — ОДИН розыгрыш на строку, и читать его надо как
-/// порядок, а не как величину.
+/// The right-hand column is ONE draw per row and should be read as an
+/// order of magnitude, not a value.
 ///
-/// Что здесь следует из механизма, а не из выборки: при `e = 12` ошибка
-/// кодирования на миллионе слагаемых около `3e-10`, а расстояние между
-/// соседними `f64` вблизи суммы (порядка `5e8`) — около `1.2e-07`. То
-/// есть кодирование сдвигает значение меньше чем на сотую доли шага, и
-/// результат почти всегда ложится на ТОТ ЖЕ float, что и точная сумма.
-/// Тогда ошибка равна ПОЛУ `f64` — ошибке самого `float()` от точной
-/// суммы, ниже которой не опустится никакая схема, возвращающая `f64`.
+/// What follows from the mechanism rather than from the sample: at
+/// `e = 12` the encoding error over a million terms is about `3e-10`,
+/// while the spacing between adjacent f64 near a sum of order `5e8` is
+/// about `1.2e-07`. The encoding shifts the value by less than a
+/// hundredth of a step, so the result almost always lands on the SAME
+/// float as the exact sum. The error is then the f64 FLOOR — the error
+/// of `float()` applied to the exact sum, below which no scheme
+/// returning an `f64` can go.
 ///
-/// Изредка тот же крошечный сдвиг перебрасывает округление на соседний
-/// float, и ошибка становится порядка шага. На трёх розыгрышах по
-/// миллиону `e = 12` дал ровно пол; на четвёртом (замер ревьюера) —
-/// втрое больше пола. Оба исхода нормальны и оба про округление f64, а
-/// не про схему.
+/// Occasionally that same tiny shift tips the rounding to the
+/// neighbouring float and the error becomes of the order of a step. Over
+/// three million-term draws `e = 12` hit the floor exactly; on a fourth,
+/// three times the floor. Both outcomes are normal and both are about
+/// f64 rounding, not about the scheme.
 ///
-/// Здесь стояло «при `e = 12` упирается в пол» без оговорок — вывод из
-/// одного розыгрыша. Верное утверждение: начиная с `e = 12` ошибка
-/// схемы уходит ПОД разрешение `f64`, и увеличивать масштаб дальше
-/// незачем — только диапазон сужается.
+/// This used to say "at `e = 12` it hits the floor" without
+/// qualification — a conclusion from a single draw. The correct
+/// statement: from `e = 12` the scheme's error drops BELOW the
+/// resolution of f64, and raising the scale further is pointless — it
+/// only narrows the range.
 fn scale_of(pow10: u8) -> f64 {
     10f64.powi(pow10 as i32)
 }
 
-/// Проверка показателя, приехавшего снаружи или из шифротекста.
+/// Validation of an exponent arriving from outside or from a ciphertext.
 fn checked_scale(pow10: u8) -> Result<f64, String> {
     if pow10 > MAX_SCALE_POW10 {
         return Err(format!(
@@ -144,117 +147,117 @@ fn checked_scale(pow10: u8) -> Result<f64, String> {
     Ok(scale_of(pow10))
 }
 
-/// Сколько слагаемых обязана выдержать сумма без переполнения.
+/// How many terms a sum must withstand without overflowing.
 ///
-/// Поштучной проверки диапазона МАЛО. Три законных значения по
-/// `2.29e299` каждое проходят её на 1024-битном ключе, а их сумма
-/// выходит за `n/2` и расшифровывается как `−4.57e299` — конечное,
-/// правдоподобное число не того знака. Ровно тот отказ, который описан
-/// в тексте ошибки о диапазоне, только этажом выше.
+/// Per-value range checking is NOT enough. Three lawful values of
+/// `2.29e299` each pass it on a 1024-bit key, while their sum leaves
+/// `n/2` and decrypts as `−4.57e299` — a finite, plausible number of the
+/// wrong sign. Exactly the failure the range error message describes,
+/// one storey up.
 ///
-/// Проверить сумму на месте нельзя: слагаемые зашифрованы. Поэтому
-/// запас резервируется ЗАРАНЕЕ — принимается только такое `x`, что
-/// `|x| ≤ n/(2·SUM_HEADROOM_TERMS)`, и `add_many` берёт не более
-/// `SUM_HEADROOM_TERMS` слагаемых.
+/// The sum cannot be checked in place: the terms are encrypted. So
+/// headroom is reserved IN ADVANCE — only `x` with
+/// `|x| ≤ n/(2·SUM_HEADROOM_TERMS)` is accepted, and `add_many` takes at
+/// most `SUM_HEADROOM_TERMS` terms.
 ///
-/// Чем эта пара НЕ является: гарантией по построению. Прежде здесь так
-/// и было написано, и это неверно — счётчик повызовный, а результат
-/// `add_many` можно подать во второй вызов. Два законных вызова дают
-/// `2^40` слагаемых, и никакая проверка этого не видит: шифротекст
-/// суммы неотличим от шифротекста слагаемого.
+/// What this pair is NOT: a guarantee by construction. It used to be
+/// written that way, and that is wrong — the counter is per call, and
+/// the result of `add_many` can be fed into a second one. Two lawful
+/// calls give `2^40` terms, and no check sees it: the ciphertext of a
+/// sum is indistinguishable from the ciphertext of a term.
 ///
-/// Что держит сумму в группе НА САМОМ ДЕЛЕ — соотношение между нижней
-/// границей ключа и тем, что вообще кодируется из `f64`. При модуле от
-/// 2048 бит граница на значение равна `2^2026` или `2^2027`, а
-/// наибольшее кодируемое число — около `2^1024`: до переполнения не
-/// хватает тысячи бит, то есть `2^1000` слагаемых. Это и утверждается
-/// числом в `test_запас_под_сумму_перекрывает_весь_диапазон_f64`.
+/// What ACTUALLY keeps a sum inside the group is the relation between
+/// the key floor and what is encodable from `f64` at all. With a modulus
+/// from 2048 bits the bound on a value is `2^2026` or `2^2027`, while
+/// the largest encodable number is about `2^1024`: a thousand bits short
+/// of overflow, i.e. `2^1000` terms.
 ///
-/// Два значения, а не одно, по той же причине, что описана у
-/// `MIN_MODULUS_BITS`: произведение двух простых по 1024 бита выходит
-/// и на 2048 бит, и на 2047. Здесь стояло одиночное `2^2027` — и
-/// каждый второй ключ его опровергал. Тест этим не задет: он считает
-/// границу от ФАКТИЧЕСКОЙ длины модуля, а не сверяется с литералом.
+/// Two values rather than one for the reason described at
+/// `MIN_MODULUS_BITS`: the product of two 1024-bit primes lands on 2048
+/// bits and on 2047. A single `2^2027` used to stand here and was
+/// refuted by every other key. The test is unaffected: it computes the
+/// bound from the ACTUAL modulus length rather than comparing against a
+/// literal.
 ///
-/// Счётчик при этом оставлен: он ловит вызывающего, который подаёт
-/// заведомо не то, — но называть его гарантией нельзя.
+/// The counter is kept anyway: it catches a caller passing obviously
+/// wrong input — but it must not be called a guarantee.
 const SUM_HEADROOM_TERMS: u32 = 1 << 20;
 
 #[pyclass]
 struct PublicKey {
-    /// `n` в виде `rug::Integer` — обёртка крейта наружу его не отдаёт,
-    /// а нам он нужен на каждом шифровании.
+    /// `n` as a `rug::Integer` — needed on every encryption.
     n: Integer,
     nn: Integer,
-    /// Длина показателя в БАЙТАХ — половина длины модуля.
+    /// Exponent length in BYTES — half the modulus length.
     ///
-    /// Считается ОДНОЙ функцией `exponent_bytes_for` от ОДНОЙ величины
-    /// — фактической длины `n`.
+    /// Computed by ONE function, `exponent_bytes_for`, from ONE quantity
+    /// — the actual length of `n`.
     ///
-    /// Вынести формулу в функцию оказалось мало: аргументы остались
-    /// разными. `generate_keypair` передавал запрошенные `bits`,
-    /// `from_n` — `n.significant_bits()`, и при `bits = 1026` модуль
-    /// выходил на 1025 бит, давая 520 байт у владельца и 512 у пира.
-    /// Тест против этого был зелен потому, что стоял на `bits = 1024`,
-    /// где величины совпадают случайно.
+    /// Putting the formula in a function turned out not to be enough:
+    /// the arguments stayed different. `generate_keypair` passed the
+    /// requested `bits`, `from_n` passed `n.significant_bits()`, and at
+    /// `bits = 1026` the modulus came out at 1025 bits, giving 520 bytes
+    /// at the owner and 512 at the peer. The test against that was green
+    /// because it stood at `bits = 1024`, where the two coincide by
+    /// accident.
     exponent_bytes: usize,
-    /// Предвычисленные степени `hs` — см. `WINDOW_BITS`.
+    /// Precomputed powers of `hs` — see `fast::WINDOW_BITS`.
     ///
-    /// Держится в ключе, а не строится на сообщение: в этом весь смысл.
-    /// Ключ пира собирается один раз и живёт всю сессию, таблица вместе
-    /// с ним.
+    /// Held in the key rather than built per message: that is the whole
+    /// point. A peer key is assembled once and lives for the session,
+    /// and the table with it.
     ///
-    /// Само `hs` отдельным полем НЕ хранится: оно лежит первой степенью
-    /// нулевого окна. Держать обе формы значило бы держать состояние,
-    /// которое может разъехаться, — а `hs = h^n mod n²` выводится ЗДЕСЬ,
-    /// из одного `n`, и его происхождение разобрано у `keys::derive_hs`
-    /// и у `from_n`.
+    /// `hs` is NOT stored as a separate field: it is the first power of
+    /// the zeroth window. Holding both forms would mean holding state
+    /// that can drift, and `hs = h^n mod n²` is derived HERE, from `n`
+    /// alone.
     ///
-    /// Здесь дважды стояло утверждение о РАСПОЛОЖЕНИИ — сперва
-    /// «`table[0][0]` и есть оно», потом «`table[0][1]`», — и оба раза
-    /// оно переставало быть правдой молча, при правке укладки. Теперь
-    /// записи вообще не индексируются снаружи: строка лежит словами и
-    /// читается целиком (`fast::WindowTable`).
+    /// A claim about LAYOUT stood here twice — first "it is
+    /// `table[0][0]`", then "`table[0][1]`" — and both times it stopped
+    /// being true silently, on a change to the layout. Entries are no
+    /// longer indexed from outside at all: the row is stored as words
+    /// and read in full (`fast::WindowTable`).
     table: fast::WindowTable,
 }
 
 #[pymethods]
 impl PublicKey {
-    /// Собрать открытый ключ из ОДНОГО `n`, выведя `hs` на месте.
+    /// Assemble a public key from ONE `n`, deriving `hs` in place.
     ///
-    /// Это и есть точка, ради которой приём существует: шифрующий не
-    /// получает `hs` извне и потому не обязан ему доверять. Проверить
-    /// импортированный `hs` вычислением невозможно — проба на гладкость
-    /// при границе `B` удостоверяет лишь `√B` работы, а стоит
-    /// `π(B)·|n|` возведений.
+    /// This is the point of the technique: the encrypting side does not
+    /// receive `hs` from outside and therefore need not trust it.
+    /// Verifying an imported `hs` by computation is impossible — a
+    /// smoothness probe with bound `B` certifies only `√B` of work while
+    /// costing `π(B)·|n|` exponentiations.
     ///
-    /// Отравленный модуль при этом даёт отравленный `hs`, сколько его
-    /// ни выводи на месте, — но лечится это НЕ здесь. Проверяем то же,
-    /// что все: нечётность и длину (`keys::validate_public`, там же
-    /// разобрано, почему не больше). `heu` не проверяет и этого.
+    /// A poisoned modulus still yields a poisoned `hs`, however
+    /// diligently derived — but that is not cured HERE. We check what
+    /// everyone checks: oddness and length (`keys::validate_public`,
+    /// where the reasoning for checking no more lives).
     ///
-    /// Вывод `hs` стоит 0.030 с при `|n| = 3072`, поэтому ключ пира
-    /// собирается ОДИН РАЗ и держится, а не пересобирается на сообщение.
+    /// Deriving `hs` costs 0.030 s at `|n| = 3072`, so a peer key is
+    /// assembled ONCE and kept, not rebuilt per message.
     ///
-    /// Знак `h` здесь не проверяется: для этого нужны `p` и `q`,
-    /// которых у шифрующего нет. При честном `n` знак верен по
-    /// построению, при нечестном — наименьшая из бед.
+    /// The sign of `h` is not checked here: that needs `p` and `q`,
+    /// which the encrypting side does not have. With an honest `n` the
+    /// sign is correct by construction; with a dishonest one it is the
+    /// least of the troubles.
     #[staticmethod]
     fn from_n(py: Python<'_>, raw: &[u8]) -> PyResult<PublicKey> {
-        // Длина отсекается по СЫРЫМ БАЙТАМ, прежде чем что-либо
-        // посчитано. Порядок здесь и есть предмет проверки.
+        // The length is cut off by RAW BYTES before anything is
+        // computed. The order here is the point of the check.
         //
-        // Прежде `n²` считалось до `validate_public` и вне
-        // `allow_threads`. Граница `MAX_MODULUS_BITS` заведена ровно
-        // против отказа в обслуживании, но стояла ПОСЛЕ самой дорогой
-        // операции, и та шла с удержанным GIL. Замерено на входе от
-        // пира: 64 МБ вместо модуля — 4.07 с, в течение которых
-        // интерпретатор не исполняет вообще ничего, включая обработчик
-        // `SIGINT`. Плюс двукратное усиление по памяти на длине,
-        // которую задаёт нападающий.
+        // Previously `n²` was computed before `validate_public` and
+        // outside `allow_threads`. The `MAX_MODULUS_BITS` bound exists
+        // precisely against denial of service, but stood AFTER the most
+        // expensive operation, and that operation ran with the GIL held.
+        // Measured on input from a peer: 64 MB instead of a modulus —
+        // 4.07 s during which the interpreter executes nothing at all,
+        // `SIGINT` handler included. Plus a twofold memory amplification
+        // at a length the attacker chooses.
         //
-        // Отсев по `raw.len()` не требует даже разбора числа. Дальше
-        // всё под снятым GIL.
+        // Filtering on `raw.len()` does not even require parsing the
+        // number. Everything after this runs with the GIL released.
         let limit_bytes = (keys::MAX_MODULUS_BITS as usize + 7) / 8;
         if raw.len() > limit_bytes {
             return Err(PyValueError::new_err(format!(
@@ -276,7 +279,8 @@ impl PublicKey {
             })
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
         let exponent_bytes = exponent_bytes_for(n.significant_bits());
-        let table = py.allow_threads(|| build_window_table(&hs, &nn, windows_for(exponent_bytes)));
+        let table = py
+            .allow_threads(|| build_window_table(&hs, &nn, windows_for(exponent_bytes)));
         Ok(PublicKey {
             n,
             nn,
@@ -285,38 +289,36 @@ impl PublicKey {
         })
     }
 
-    /// Модуль в байтах — то единственное, что уезжает к пиру.
+    /// The modulus in bytes — the only thing that travels to a peer.
     fn modulus_bytes(&self, py: Python<'_>) -> Py<PyBytes> {
         PyBytes::new(py, &self.n.to_digits::<u8>(Order::MsfBe)).unbind()
     }
 
-    /// Длина показателя в битах.
+    /// Exponent length in bits.
     ///
-    /// Выведена наружу ради проверки. Судить о ней по столкновениям
-    /// среди шифрований нельзя: замерено, что при 64-битном показателе
-    /// совпадений среди шестисот шифрований не бывает, а стойкость там
-    /// уже `2^32` — минуты работы. Проверять надо число, а не
-    /// следствие.
+    /// Exposed so it can be checked. Judging it by collisions among
+    /// ciphertexts does not work: measured, a 64-bit exponent produces
+    /// no collision in six hundred encryptions, while its strength is
+    /// already `2^32` — minutes of work. Check the number, not a
+    /// consequence of it.
     #[getter]
     fn exponent_bits(&self) -> usize {
         self.exponent_bytes * 8
     }
 
-    /// Наибольший принимаемый открытый текст, в битах: `n/2`, ужатое в
-    /// `SUM_HEADROOM_TERMS` раз.
+    /// The largest accepted plaintext in magnitude, in bits: `n/2`
+    /// shrunk by `SUM_HEADROOM_TERMS`.
     ///
-    /// Выведено наружу, чтобы запас можно было проверить ЧИСЛОМ, а не
-    /// подбором значения, которое проверка отвергнет. При нижней границе
-    /// ключа в 2048 бит запас составляет `2^2026`–`2^2027` (смотря,
-    /// вышло произведение простых на 2048 бит или на 2047), а
-    /// наибольшее число, которое вообще кодируется из `f64`, — около
-    /// `2^1024`: проверка диапазона при таком сочетании сработать
-    /// НЕ МОЖЕТ.
+    /// Exposed so the headroom can be checked BY NUMBER rather than by
+    /// hunting for a value the check will reject. At the 2048-bit floor
+    /// the headroom is `2^2026`–`2^2027` (depending on whether the
+    /// product landed on 2048 bits or 2047), while the largest number
+    /// encodable from `f64` at all is about `2^1024`: the range check
+    /// CANNOT fire at that combination.
     ///
-    /// Она всё равно стоит, и это осознанно: длина ключа и `SCALE` —
-    /// две независимые ручки, и запас между ними держится не сам собой,
-    /// а вот этим неравенством. Сторожить его на месте дешевле, чем
-    /// надеяться, что обе ручки всегда будут крутить вместе.
+    /// It stands anyway, deliberately: key length and scale are both
+    /// configurable, and a defence against one combination is not a
+    /// defence against another.
     #[getter]
     fn plaintext_bound_bits(&self) -> u32 {
         plaintext_bound(&self.n).significant_bits()
@@ -325,38 +327,22 @@ impl PublicKey {
 
 #[pyclass]
 struct SecretKey {
-    /// Расшифровка НАША, а не крейта.
-    ///
-    /// Крейт возводит в степень, выведенную из `λ`, через `mpz_powm`, а
-    /// документация GMP для секретных показателей требует
-    /// `mpz_powm_sec`. `λ` — долговременный секрет, один на весь срок
-    /// ключа: утечка через него накапливается по всем расшифровкам, а
-    /// не начинается заново на каждом сообщении, как было с разовым `r`.
-    ///
-    /// Разбор — в `secret::Decryptor`.
     inner: secret::Decryptor,
-    /// Свидетельство `keys::validate_private`.
+    /// The witness that `keys::validate_private` ran.
     ///
-    /// Поле не читается — оно существует, чтобы пропуск проверки не
-    /// КОМПИЛИРОВАЛСЯ. Собрать `Validated` вне модуля `keys` нельзя, а
-    /// значит нельзя собрать и `SecretKey`, не позвав проверку.
-    ///
-    /// Так вышло не от любви к типам. Вызов однажды исчез из
-    /// `generate_keypair`, и сьют показывал 42 из 42: на честном входе
-    /// ключ с проверкой и без неё одинаков. Тест на текст исходника
-    /// тоже не годится — он проходит насквозь, если вызов заменить
-    /// комментарием с тем же текстом, и краснеет, если вызов честно
-    /// вынести в помощника. Компилятор не обманывается ни тем, ни
-    /// другим.
+    /// Not decoration: the field cannot be constructed outside `keys`,
+    /// so a `SecretKey` assembled without validation does not COMPILE.
+    /// A test would not do — on honest input a validated and an
+    /// unvalidated key are identical.
     _validated: keys::Validated,
 }
 
-/// Кодирование float в целое.
+/// Encode a float as an integer at the given scale.
 ///
-/// Отказ вместо тихого нуля: `Integer::from_f64` возвращает `None` на
-/// `NaN` и `±inf`, а `unwrap_or_default()` превращал их в достоверный
-/// ноль, который уезжал в сумму. Пропуск в столбце признаков — штатный
-/// вход, не экзотика.
+/// A refusal rather than a silent zero: `Integer::from_f64` returns
+/// `None` on `NaN` and `±inf`, and `unwrap_or_default()` turned those
+/// into a credible zero that then travelled into the sum. A gap in a
+/// feature column is ordinary input, not an exotic case.
 fn encode(value: f64, scale: f64) -> Result<Integer, String> {
     if !value.is_finite() {
         return Err(format!(
@@ -375,11 +361,11 @@ fn encode(value: f64, scale: f64) -> Result<Integer, String> {
         .ok_or_else(|| format!("value {value:e} has no integer encoding"))
 }
 
-/// Обратное к `encode`.
+/// The inverse of `encode`.
 ///
-/// Отказ, а не `unwrap_or(0.0)`. Парная функция существует ровно ради
-/// того, чтобы нефинитное не становилось достоверным нулём, — а здесь
-/// стоял тихий ноль на любой неразобранной строке.
+/// A refusal, not `unwrap_or(0.0)`. The paired function exists precisely
+/// so that a non-finite value does not become a credible zero — and a
+/// silent zero used to sit here on any unparsed string.
 fn decode_integer(m: &Integer, scale: f64) -> Result<f64, String> {
     let text = m.to_string();
     let scaled: f64 = text
@@ -396,13 +382,13 @@ fn decode_integer(m: &Integer, scale: f64) -> Result<f64, String> {
     Ok(scaled / scale)
 }
 
-/// Разбор блоба: первый байт — показатель масштаба, остальное —
-/// шифротекст старшим байтом вперёд.
+/// Split a blob: the first byte is the scale exponent, the rest is the
+/// ciphertext, most significant byte first.
 ///
-/// Отказ, а не догадка. Пустой блоб и неизвестный показатель — это
-/// вход, который НЕ является шифротекстом под этой схемой, и принимать
-/// его, подставив умолчание, значило бы вернуть правдоподобное число не
-/// того масштаба.
+/// A refusal, not a guess. An empty blob and an unknown exponent are
+/// input that is NOT a ciphertext under this scheme, and accepting it by
+/// substituting a default would mean returning a plausible number at the
+/// wrong scale.
 fn split_blob(blob: &[u8]) -> Result<(u8, Integer), String> {
     let (head, body) = blob.split_first().ok_or_else(|| {
         "ciphertext is empty: it must start with a scale exponent byte"
@@ -412,48 +398,43 @@ fn split_blob(blob: &[u8]) -> Result<(u8, Integer), String> {
     Ok((*head, Integer::from_digits(body, Order::MsfBe)))
 }
 
-/// Сборка блоба: показатель, затем шифротекст.
+/// Assemble a blob: the exponent, then the ciphertext.
 fn join_blob(pow10: u8, cipher: &Integer) -> Vec<u8> {
-    let mut out = Vec::with_capacity(1 + (cipher.significant_bits() as usize + 7) / 8);
+    let mut out =
+        Vec::with_capacity(1 + (cipher.significant_bits() as usize + 7) / 8);
     out.push(pow10);
     out.extend_from_slice(&cipher.to_digits::<u8>(Order::MsfBe));
     out
 }
 
-/// Наибольший принимаемый открытый текст по модулю: `n/2`, ужатое в
-/// `SUM_HEADROOM_TERMS` раз.
+/// The largest accepted plaintext in magnitude: `n/2` shrunk by
+/// `SUM_HEADROOM_TERMS`.
 ///
-/// ОДНА функция на два места — предикат шифрования и геттер. Прежде
-/// формула стояла в обоих по отдельности, и мутация множителя в
-/// предикате проходила сьют целиком: геттер продолжал возвращать верное
-/// число, а шифрование принимало что угодно. Это ровно тот же дефект,
-/// что был с длиной показателя, — и он повторился в соседней строке.
+/// Computed by ONE function for both the encryption predicate and the
+/// getter. Kept apart, a mutation of the multiplier in the predicate
+/// passed the whole suite — the getter kept returning the right number.
 fn plaintext_bound(n: &Integer) -> Integer {
     Integer::from(n / (2u32 * SUM_HEADROOM_TERMS))
 }
 
-/// Длина показателя в байтах при модуле в `modulus_bits` бит.
+/// Exponent length in bytes, from the ACTUAL modulus length.
 ///
-/// Половина длины модуля. Единственное место, где эта величина
-/// вычисляется: два выражения в двух местах разъезжаются молча, а
-/// укорочение показателя — беззвучная потеря стойкости.
+/// One function and one argument, for the reason described at
+/// `PublicKey::exponent_bytes`.
 fn exponent_bytes_for(modulus_bits: u32) -> usize {
     ((modulus_bits / 2 + 7) / 8) as usize
 }
 
-/// Сколько попыток подобрать годное `x`.
+/// How many values of `x` to try before giving up.
 ///
-/// На честном `n` негодных значений считаные штуки, и цикл завершается
-/// с первой попытки. Граница нужна потому, что цикл крутится под снятым
-/// GIL: без неё зависание было бы непрерываемым.
+/// On an honest modulus unusable values are a handful, so exhausting the
+/// budget points at the modulus rather than at bad luck.
 const HS_ATTEMPTS: u32 = 64;
 
-/// Взять случайное `x` и вывести из него `hs`.
+/// Derive `hs` for a modulus, optionally with the owner's primes.
 ///
-/// `x` берётся из `[2, n−2]`: единица и `n−1` дают `h = −1`, и это не
-/// ловится ни `gcd`, ни символом Якоби — рандомизатор при этом
-/// принимает ровно два значения, а круг и гомоморфность остаются
-/// верными.
+/// The owner checks the sign of `h` with a Jacobi symbol; a party
+/// holding only `n` cannot.
 fn derive_hs_for(
     n: &Integer,
     owner: Option<(&Integer, &Integer)>,
@@ -464,24 +445,20 @@ fn derive_hs_for(
         let mut raw = vec![0u8; width];
         rng.fill(&mut raw[..]);
         let candidate = Integer::from_digits(&raw, Order::MsfBe) % n;
-        // Владелец ключа проверяет знак `h` символом Якоби; шифрующий,
-        // у которого есть только `n`, этого сделать не может.
         let derived = match owner {
             Some((p, q)) => keys::derive_h_checked(&candidate, p, q, n),
             None => keys::derive_h(&candidate, n),
         };
         let h = match derived {
             Ok(h) => h,
-            // Вне `[2, n−2]`, не взаимно просто, либо знак не тот —
-            // берём следующее.
+            // Outside `[2, n−2]`, not coprime, or the wrong sign — take
+            // the next one.
             Err(keys::KeyError::BadX)
             | Err(keys::KeyError::HNotAntiResidue) => continue,
             Err(other) => return Err(other),
         };
         match keys::derive_hs(&h, n) {
             Ok(hs) => return Ok(hs),
-            // Нетривиальный корень из единицы: на модуль их всего
-            // несколько, и это не ошибка, а редкий случай.
             Err(keys::KeyError::DegenerateHs) => continue,
             Err(other) => return Err(other),
         }
@@ -489,13 +466,7 @@ fn derive_hs_for(
     Err(keys::KeyError::NoUsableX)
 }
 
-/// `bits` — длина МОДУЛЯ `n`. Крейт по умолчанию берёт безопасные
-/// простые по 1536 бит, то есть `n` на 3072 бита.
-///
-/// Нижняя граница проверяется ДО поиска простых, а не после. Причина не
-/// в экономии: `generate_safe_prime` на восьми битах крутится вечно, и
-/// крутится под снятым GIL, поэтому `SIGINT` до процесса не доходит —
-/// `generate_keypair(16)` не прерывался ни Ctrl-C, ни `timeout -s INT`.
+/// Generate a key pair with SAFE primes and validate it.
 #[pyfunction]
 #[pyo3(signature = (bits = 3072))]
 fn generate_keypair(
@@ -511,11 +482,6 @@ fn generate_keypair(
             keys::MIN_MODULUS_BITS
         )));
     }
-    // Граница сверху нужна и здесь. Она была введена только для чужого
-    // модуля, а свой оставался неограниченным: `generate_keypair(200000)`
-    // жил через одиннадцать секунд и `SIGINT` его не брал — тот же
-    // непрерываемый класс, ради которого вводилась граница снизу,
-    // закрытый с одной стороны.
     if bits > keys::MAX_MODULUS_BITS {
         return Err(PyValueError::new_err(format!(
             "modulus of {bits} bits is refused: the ceiling is {}. \
@@ -524,10 +490,6 @@ fn generate_keypair(
             keys::MAX_MODULUS_BITS
         )));
     }
-    // Простые НАШИ. Прежде их давал `fast-paillier`, и числа ходили
-    // оттуда через десятичную строку, потому что `Plaintext` наружу
-    // `rug::Integer` не отдаёт. Ради генератора и одного `gcd` держать
-    // зависимость незачем — см. `primes::safe_prime`.
     let (p_rug, q_rug) = py.allow_threads(|| {
         let half = bits / 2;
         (primes::safe_prime(half), primes::safe_prime(half))
@@ -539,10 +501,9 @@ fn generate_keypair(
     let hs = py
         .allow_threads(|| derive_hs_for(&n, Some((&p_rug, &q_rug))))
         .map_err(|e| PyValueError::new_err(e.to_string()))?;
-    // От ФАКТИЧЕСКОЙ длины модуля, а не от запрошенной: произведение
-    // двух простых по `bits/2` бит выходит и на `bits`, и на `bits−1`.
     let exponent_bytes = exponent_bytes_for(n.significant_bits());
-    let table = py.allow_threads(|| build_window_table(&hs, &nn, windows_for(exponent_bytes)));
+    let table =
+        py.allow_threads(|| build_window_table(&hs, &nn, windows_for(exponent_bytes)));
     Ok((
         PublicKey {
             n,
@@ -551,13 +512,6 @@ fn generate_keypair(
             table,
         },
         SecretKey {
-            // Что здесь МОЖЕТ пойти не так: только `p == q` или не
-            // взаимно простые. Прежде текст называл `gcd(λ, n) ≠ 1` —
-            // состояние, в которое код попасть не может: расшифровка по
-            // китайской теореме `λ` и `µ` не вычисляет вовсе. Ключ
-            // `p = 23, q = 47`, у которого `µ` не существует и который
-            // библиотека dfns отвергает, наш расшифровщик принимает и
-            // расшифровывает верно — проверено на 101 значении из 101.
             inner: secret::Decryptor::new(&p_rug, &q_rug).ok_or_else(|| {
                 PyValueError::new_err(
                     "cannot prepare decryption: the two primes are equal \
@@ -569,6 +523,7 @@ fn generate_keypair(
     ))
 }
 
+/// Encrypt a list of values. Runs across all cores.
 #[pyfunction]
 #[pyo3(signature = (pk, values, scale_pow10 = DEFAULT_SCALE_POW10))]
 fn encrypt_many(
@@ -581,38 +536,37 @@ fn encrypt_many(
     let width = pk.exponent_bytes;
     let bound = plaintext_bound(n);
     let scale = checked_scale(scale_pow10).map_err(PyValueError::new_err)?;
-    // `allow_threads` отпускает GIL: без него rayon не даст ничего.
+    // `allow_threads` releases the GIL: without it rayon buys nothing.
     let encrypted: Result<Vec<Vec<u8>>, String> = py.allow_threads(|| {
         values
             .par_iter()
             .map(|v| -> Result<Vec<u8>, String> {
                 let mut rng = rand::thread_rng();
-                // Показатель короткий — половина длины модуля. Это
-                // единственное место, где мы отступаем от исходной
-                // схемы, и его длина не должна тихо уехать.
+                // The exponent is short — half the modulus length. This
+                // is the one place where we depart from the original
+                // scheme, and its length must not drift silently.
                 let mut raw = vec![0u8; width];
                 rng.fill(&mut raw[..]);
-                // Показатель никогда не собирается в `Integer`: цифры
-                // окон читаются прямо из байт генератора. Собирать было
-                // бы не только лишней работой — это ещё и второе место,
-                // где длина показателя могла бы разъехаться.
+                // The exponent is never assembled into an `Integer`: the
+                // window digits are read straight from the generator's
+                // bytes. Assembling would be not only wasted work but a
+                // second place where the exponent length could drift.
                 let digits = windows_of(&raw);
                 let encoded = match encode(*v, scale) {
                     Ok(value) => value,
                     Err(message) => return Err(message),
                 };
                 let x = encoded;
-                // Диапазон открытого текста: `−n/2 ≤ x ≤ n/2`, ужатый в
-                // `SUM_HEADROOM_TERMS` раз под будущую сумму.
+                // Plaintext range: `−n/2 ≤ x ≤ n/2`, shrunk by
+                // `SUM_HEADROOM_TERMS` to reserve room for a sum.
                 //
-                // Проверка на `n/2` есть и у крейта (`in_signed_group`,
-                // `encryption_key.rs:62`), и у heu (`PlaintextBound`,
-                // `encryptor.cc:38`). Переписывая шифрование, я её
-                // потерял, и отказ из громкого стал беззвучным:
-                // `1e300` возвращалось как `−4.8e299`.
+                // Rewriting encryption, I once lost this check and the
+                // refusal went from loud to silent: `1e300` came back as
+                // `−4.8e299`.
                 //
-                // Но её одной мало: она поштучная, а переполняется
-                // СУММА. Запас снимает и это — см. `SUM_HEADROOM_TERMS`.
+                // One such check is not enough on its own: it is
+                // per-value, while what overflows is the SUM. The
+                // headroom covers that — see `SUM_HEADROOM_TERMS`.
                 if x.clone().abs() > bound {
                     return Err(format!(
                         "plaintext {v:e} is outside the signed group of \
@@ -622,31 +576,29 @@ fn encrypt_many(
                          seeing this means the key or the scale changed"
                     ));
                 }
-                // `g^m = 1 + m·n` при `g = n+1` — одно умножение
-                // вместо возведения в степень.
+                // `g^m = 1 + m·n` with `g = n+1` — one multiplication
+                // instead of an exponentiation.
                 //
-                // Остаток ЕВКЛИДОВ, а не усечённый: при отрицательном
-                // `x` обычный `%` в rug даёт отрицательное `a`, и
-                // дальше `to_digits` пишет модуль числа, молча теряя
-                // знак.
+                // A EUCLIDEAN remainder, not a truncated one: with a
+                // negative `x`, rug's plain `%` gives a negative `a`, and
+                // `to_digits` then writes the magnitude, silently losing
+                // the sign.
                 //
-                // Прежде здесь стояла ветка `if x < 0 { x += n }`. Она
-                // делала то же самое, но была НЕОТЛИЧИМА никаким
-                // наблюдением: её выключение оставляет и круг, и
-                // гомоморфность зелёными. Причина в том, что `λ` чётна,
-                // поэтому `(−1)^λ ≡ 1 (mod n²)`, и `−C` расшифровывается
-                // ровно как `C`; сам `−1` — законный `n`-й вычет, так
-                // что `−C` есть полноценный шифротекст того же числа.
-                // Ветка, которую нельзя проверить, выглядит как
-                // гарантия и ею не является; евклидов остаток даёт
-                // канонический вид структурно.
+                // A branch `if x < 0 { x += n }` used to stand here. It
+                // did the same thing but was UNOBSERVABLE: switching it
+                // off leaves both the round trip and homomorphism green,
+                // because `λ` is even, so `(−1)^λ ≡ 1 (mod n²)` and `−C`
+                // decrypts exactly as `C`. A branch that cannot be
+                // checked looks like a guarantee and is not one; the
+                // Euclidean remainder gives the canonical form
+                // structurally.
                 let a = Integer::from(1 + x * n).rem_euc(nn.clone());
-                // `hs^r = (h^r)^n` — законный `n`-й вычет, поэтому
-                // расшифровка остаётся неизменной.
+                // `hs^r = (h^r)^n` is a legitimate `n`-th residue, so
+                // decryption is unchanged.
                 //
-                // По ТАБЛИЦЕ, а не `pow_mod`: основание фиксировано на
-                // весь ключ, и его степени уже посчитаны. `pow_mod`
-                // строил бы свою таблицу заново на каждое сообщение.
+                // BY TABLE rather than `pow_mod`: the base is fixed for
+                // the whole key and its powers are already computed.
+                // `pow_mod` would rebuild its own table per message.
                 let b = pow_by_table(table, &digits, nn);
                 let c = (a * b) % nn;
                 Ok(join_blob(scale_pow10, &c))
@@ -660,21 +612,7 @@ fn encrypt_many(
         .collect())
 }
 
-/// Шифротексты принимаются как `PyBytes`, а НЕ как `Vec<Vec<u8>>`.
-///
-/// Разница не косметическая, она измерена. При `Vec<Vec<u8>>` pyo3
-/// разбирает каждый `bytes` через протокол последовательности —
-/// побайтно, через питоновские целые. На 512-байтных шифротекстах это
-/// пять миллионов операций на десять тысяч слагаемых.
-///
-/// Замерено: копия цикла `add_many` на Rust идёт 7.36 мкс на слагаемое,
-/// а сам `add_many` из Python показывал 85. Все недостающие 78 мкс
-/// уходили сюда, ДО единой операции по модулю. Через `PyBytes` берётся
-/// готовый срез.
-///
-/// Разбор при этом честно искали заменой приёма: сперва я снял `gcd` из
-/// `oadd`, решив, что дело в нём, — не помогло ни на что. Правильный
-/// ответ дал различающий замер: цикл против цикла.
+/// Add ciphertexts. One call into Rust for the whole batch.
 #[pyfunction]
 fn add_many(
     py: Python<'_>,
@@ -689,9 +627,9 @@ fn add_many(
              ciphertext of zero that nobody asked for",
         ));
     }
-    // Планка на ОДИН вызов, не гарантия: результат можно подать во
-    // второй вызов, и счётчик начнётся заново. Что действительно держит
-    // сумму в группе — см. `SUM_HEADROOM_TERMS`.
+    // A cap per CALL, not a guarantee: the result can be fed into a
+    // second call and the counter starts over. What actually keeps a sum
+    // in range — see `SUM_HEADROOM_TERMS`.
     if blobs.len() > SUM_HEADROOM_TERMS as usize {
         return Err(PyValueError::new_err(format!(
             "add_many takes at most {SUM_HEADROOM_TERMS} ciphertexts per \
@@ -702,49 +640,45 @@ fn add_many(
             blobs.len()
         )));
     }
-    // Срезы, а НЕ копии: `as_bytes` заимствует буфер самого `bytes`.
-    // Прежде здесь стояло «копия — обычный memcpy», и это было неверным
-    // обоснованием верного кода.
-    //
-    // Почему снятие GIL всё же безопасно: `blobs` держит `Bound`-ссылки
-    // живыми на всё время вызова, а `bytes` в Python неизменяемы —
-    // значит буфер не сдвинется и не перепишется под нами.
+    // Slices, NOT copies: `as_bytes` borrows the `bytes` object's own
+    // buffer. Releasing the GIL is still safe because `blobs` keeps the
+    // `Bound` references alive for the whole call and Python `bytes` are
+    // immutable — the buffer will not move or be rewritten under us.
     let slices: Vec<&[u8]> = blobs.iter().map(|b| b.as_bytes()).collect();
 
-    // Ошибка, а не паника. `PanicException` наследует `BaseException`,
-    // поэтому `except Exception` её НЕ ловит: соседний вход того же
-    // происхождения — пустая сумма — получал аккуратный `ValueError`, а
-    // неверный шифротекст ронял процесс.
+    // An error, not a panic. `PanicException` inherits `BaseException`,
+    // so `except Exception` does NOT catch it: a neighbouring input of
+    // the same origin — an empty sum — got a tidy `ValueError`, while a
+    // malformed ciphertext killed the process.
     //
-    // Умножение считается ЗДЕСЬ, а не через `oadd` крейта: тот проверяет
-    // на принадлежность группе ОБОИХ операндов, то есть накопитель
-    // проходит `gcd` заново на каждом слагаемом.
+    // The multiplication is done HERE rather than through the crate's
+    // `oadd`, which validates group membership of BOTH operands, i.e.
+    // the accumulator goes through a `gcd` again on every term.
     //
-    // Проверка та же, что у heu (`VALIDATE`, `decryptor.cc:20`):
-    // шифротекст обязан лежать в `[1, n²)`. Сравнение вместо `gcd`.
-    // Ноль отвергается отдельно — он необратим, то есть шифротекстом не
-    // является ни при каком открытом тексте.
+    // The check is range-only: a ciphertext must lie in `[1, n²)`. Zero
+    // is refused separately — it is not invertible, so it is not a
+    // ciphertext of anything.
     //
-    // Чего эта проверка НЕ делает, в отличие от прежнего `oadd`: она не
-    // ловит НЕОБРАТИМЫЙ шифротекст. Значение `n` попадает в `[1, n²)`,
-    // но `gcd(n, n²) ≠ 1`, и сумма с ним испортится. Отказ тогда придёт
-    // позже и без адреса — у владельца при `decrypt`, общим «decryption
-    // error» вместо номера слагаемого. Это осознанный паритет с heu: у
-    // них `VALIDATE` тоже проверяет только диапазон, а `gcd` на каждом
-    // слагаемом стоил бы дороже всей операции.
+    // What this check does NOT do: it does not catch a NON-INVERTIBLE
+    // ciphertext. The value `n` falls inside `[1, n²)` yet
+    // `gcd(n, n²) ≠ 1`, and a sum containing it is spoiled. The refusal
+    // then arrives later, at the key holder, without a term index. This
+    // is deliberate: a `gcd` per term would cost more than the whole
+    // operation.
     let (total, scale_pow10) = py
         .allow_threads(|| {
             let mut total = Integer::from(1);
             let mut scale_pow10: Option<u8> = None;
             for (index, blob) in slices.iter().enumerate() {
-                let (pow10, value) = split_blob(blob)
-                    .map_err(|message| format!("ciphertext #{}: {message}", index + 1))?;
-                // Складывать шифротексты разных масштабов — значит
-                // складывать разные единицы измерения. Схема этого не
-                // видит: коды целые, сумма получится, и вернётся
-                // правдоподобное неверное число. Поэтому ОТКАЗ, а не
-                // приведение к общему масштабу: привести можно только
-                // умножением открытого текста, а он зашифрован.
+                let (pow10, value) = split_blob(blob).map_err(|message| {
+                    format!("ciphertext #{}: {message}", index + 1)
+                })?;
+                // Adding ciphertexts of different scales means adding
+                // different units. The scheme cannot see it: the codes
+                // are integers, the sum goes through, and a plausible
+                // wrong number comes back. Hence a REFUSAL rather than a
+                // rescale: rescaling means multiplying the plaintext,
+                // and the plaintext is encrypted.
                 match scale_pow10 {
                     None => scale_pow10 = Some(pow10),
                     Some(first) if first != pow10 => {
@@ -768,15 +702,20 @@ fn add_many(
                 }
                 total = total * value % nn;
             }
-            Ok((total, scale_pow10.expect("пачка не пуста — проверено выше")))
+            Ok((
+                total,
+                scale_pow10.expect("the batch is non-empty, checked above"),
+            ))
         })
         .map_err(PyValueError::new_err)?;
     Ok(PyBytes::new(py, &join_blob(scale_pow10, &total)).unbind())
 }
 
+/// Decrypt one ciphertext. The scale is taken from the blob.
 #[pyfunction]
 fn decrypt(sk: &SecretKey, blob: &[u8]) -> PyResult<f64> {
-    let (scale_pow10, cipher) = split_blob(blob).map_err(PyValueError::new_err)?;
+    let (scale_pow10, cipher) =
+        split_blob(blob).map_err(PyValueError::new_err)?;
     let scale = scale_of(scale_pow10);
     let plain = sk.inner.decrypt(&cipher).ok_or_else(|| {
         PyValueError::new_err(
@@ -791,11 +730,12 @@ fn decrypt(sk: &SecretKey, blob: &[u8]) -> PyResult<f64> {
 
 #[pymodule]
 fn paillier(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    // Версия берётся из `Cargo.toml` на СБОРКЕ, а не переписывается
-    // руками: две копии числа разъезжаются молча, и разъехавшаяся
-    // версия хуже отсутствующей — она врёт про то, какой код в
-    // `site-packages`. Модуль кладётся туда файлом, без метаданных
-    // пакета, поэтому спросить `importlib.metadata` не у кого.
+    // The version comes from `Cargo.toml` AT BUILD TIME rather than
+    // being retyped: two copies of a number drift apart silently, and a
+    // drifted version is worse than none — it lies about which code is
+    // in `site-packages`. The module is placed there as a file, without
+    // package metadata, so there is nobody to ask via
+    // `importlib.metadata`.
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add_class::<PublicKey>()?;
     m.add_class::<SecretKey>()?;

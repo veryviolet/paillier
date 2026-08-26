@@ -1,92 +1,92 @@
-//! Арифметика шифрования: таблица окон с постоянным по времени чтением.
+//! Encryption arithmetic: a window table with constant-time reading.
 //!
-//! Вынесено из `lib.rs` не ради порядка, а ради проверяемости. Пока
-//! это были приватные функции, тест мог только СОБРАТЬ ИХ КОПИЮ по
-//! описанию — и сверял бы реализацию с самой собой. Теперь тест зовёт
-//! настоящий код, а эталоном служит `pow_mod` из GMP, то есть
-//! независимая реализация того же возведения.
+//! Split out of `lib.rs` not for tidiness but for testability. While
+//! these were private functions, a test could only ASSEMBLE A COPY of
+//! them from the description — and would then be checking an
+//! implementation against itself. Now the test calls the real code, and
+//! the reference is `pow_mod` from GMP, an independent implementation of
+//! the same exponentiation.
 //!
-//! Приём — из `docs/heu-comparison.md`, пункт 2. Он чисто
-//! арифметический: результат не меняет, только скорость. Значит и
-//! проверять надо РАВЕНСТВО результатов, а не круг — круг остался бы
-//! зелёным и на неверной таблице, если бы ошибка была одинаковой у
-//! шифрования и расшифровки.
+//! The technique is purely arithmetic: it does not change the result,
+//! only the speed. So what has to be checked is EQUALITY of results, not
+//! a round trip — a round trip would stay green on a broken table if the
+//! error were the same in encryption and decryption.
 
 use rug::integer::Order;
 use rug::Integer;
 
-/// Ширина окна таблицы предвычисленных степеней `hs`, в битах.
+/// Window width of the table of precomputed powers of `hs`, in bits.
 ///
-/// Второй из трёх приёмов heu (`docs/heu-comparison.md`), и возможен он
-/// ровно потому, что основание фиксировано: `hs` не меняется на всём
-/// сроке ключа, поэтому его степени считаются ОДИН РАЗ.
+/// This is possible precisely because the base is fixed: `hs` does not
+/// change for the whole life of the key, so its powers are computed
+/// ONCE.
 ///
-/// Что это даёт. `mpz_powm` на 1024-битном показателе делает около 1024
-/// возведений в квадрат плюс 170 умножений и СТРОИТ СВОЮ ТАБЛИЦУ ЗАНОВО
-/// на каждом вызове — она не переживает возврата из функции. С готовой
-/// таблицей остаётся по одному умножению на окно: 171 операция вместо
-/// ~1200.
+/// What it buys. `mpz_powm` on a 1024-bit exponent does about 1024
+/// squarings plus 170 multiplications and REBUILDS ITS OWN TABLE on
+/// every call — it does not survive the return. With a ready table one
+/// multiplication per window is left: 171 operations instead of ~1200.
 ///
-/// Ровно 171, а не «в среднем 168»: нулевые цифры больше не
-/// пропускаются, потому что пропуск делал время зависящим от секретного
-/// показателя. Разбор — у `pow_by_table`.
+/// Exactly 171, not "168 on average": zero digits are no longer skipped,
+/// because skipping made the time depend on the secret exponent. The
+/// analysis is at `pow_by_table`.
 ///
-/// # Почему шесть
+/// # Why six
 ///
-/// Шифрование на 98 % состоит из умножений в `pow_by_table`, и число
-/// умножений равно числу окон — `⌈|r| / w⌉`. Замерено при `|n| = 2048`,
-/// показатель 1024 бита, постоянное по времени чтение, мкс на
-/// возведение:
+/// Encryption is 98 % multiplications in `pow_by_table`, and the number
+/// of multiplications equals the number of windows — `⌈|r| / w⌉`.
+/// Measured at `|n| = 2048`, 1024-bit exponent, constant-time reading,
+/// µs per exponentiation:
 ///
-/// | `w` | окон | таблица | время |
+/// | `w` | windows | table | time |
 /// |---|---|---|---|
-/// | 4 | 256 | 2.1 МБ | 1517–1603 |
-/// | **6** | **171** | **5.6 МБ** | **976–1022** |
-/// | 8 | 128 | 16.8 МБ | 761–793 |
-/// | 10 | 103 | 54 МБ | 694–743 |
+/// | 4 | 256 | 2.1 MB | 1517–1603 |
+/// | **6** | **171** | **5.6 MB** | **976–1022** |
+/// | 8 | 128 | 16.8 MB | 761–793 |
+/// | 10 | 103 | 54 MB | 694–743 |
 ///
-/// Шесть — там, где выигрыш ещё почти линеен по числу окон, а таблица
-/// остаётся заметно меньше кэша третьего уровня (на этой машине 16 МБ).
-/// При `w = 8` таблица садится ровно на его границу, и число начинает
-/// зависеть от железа; при `w = 10` она живёт в оперативной памяти, и
-/// постоянное чтение перестаёт окупаться — маска читает ВСЮ строку, то
-/// есть с ростом `w` дорожает вдвое на каждый бит.
+/// Six is where the gain is still nearly linear in the window count
+/// while the table stays comfortably below the level-3 cache (16 MB on
+/// this machine). At `w = 8` the table sits right on that boundary and
+/// the number starts depending on the hardware; at `w = 10` it lives in
+/// RAM and constant-time reading stops paying off — the mask reads the
+/// WHOLE row, so it doubles in cost with every extra bit.
 ///
-/// Память здесь не абстракция: таблица строится на каждый ключ пира и
-/// живёт всю сессию. 5.6 МБ при 2048 битах, 12.6 МБ при 3072.
+/// Memory is not an abstraction here: the table is built per peer key
+/// and lives for the whole session. 5.6 MB at 2048 bits, 12.6 at 3072.
 ///
-/// Прежде стояло `w = 4`, и рядом — расчёт, по которому `w = 5` дал бы
-/// «19.8 % за 7.6 МБ». Расчёт считал только число умножений и не
-/// учитывал, что цена умножения от `w` не зависит вовсе, а цена чтения
-/// растёт: сравнивать надо было замеренное время, а не оценку операций.
+/// This used to say `w = 4`, next to a calculation showing `w = 5` would
+/// give "19.8 % for 7.6 MB". That calculation counted only
+/// multiplications and ignored that the cost of a multiplication does
+/// not depend on `w` at all while the cost of reading grows: what had to
+/// be compared was measured time, not an operation count.
 pub const WINDOW_BITS: u32 = 6;
 
-/// Число записей в строке: `2^WINDOW_BITS`.
+/// Entries per row: `2^WINDOW_BITS`.
 const ROW_ENTRIES: usize = 1usize << WINDOW_BITS;
 
-/// Сколько окон нужно на показатель длиной `bytes` байт.
+/// How many windows an exponent of `bytes` bytes needs.
 ///
-/// Одна функция на все места, где это число требуется: сборка таблицы и
-/// разбор показателя обязаны сойтись, а разъезжаются такие пары молча.
-/// Прежде здесь стояло `bytes * 2` в двух местах — верно ровно для
-/// `w = 4` и неверно для любого другого.
+/// One function for every place that needs this number: the table build
+/// and the exponent split have to agree, and pairs like that drift apart
+/// silently. This used to be `bytes * 2` in two places — correct for
+/// `w = 4` exactly and wrong for anything else.
 pub fn windows_for(bytes: usize) -> usize {
     (bytes * 8 + WINDOW_BITS as usize - 1) / WINDOW_BITS as usize
 }
 
-/// Цифры показателя, младшая первой, по `WINDOW_BITS` бит.
+/// Digits of the exponent, least significant first, `WINDOW_BITS` wide.
 ///
-/// Читаются прямо из тех байт, что выдал генератор случайных, — без
-/// сборки `Integer` и без обратных сдвигов. Байты идут старшим вперёд
-/// (`Order::MsfBe`), поэтому бит номер `i` (считая от младшего) лежит в
-/// байте `raw[len − 1 − i/8]`.
+/// Read straight out of the bytes the random generator produced — no
+/// `Integer` assembled, no shifting back. The bytes are most
+/// significant first (`Order::MsfBe`), so bit `i` (counting from the
+/// bottom) lives in byte `raw[len − 1 − i/8]`.
 ///
-/// Прежде цифры вырезались полубайтами — `byte & 0x0f`, `byte >> 4`, —
-/// что работает, только пока `WINDOW_BITS = 4`. При шести битах цифра
-/// границу байта пересекает, и разбор обязан идти по битам.
+/// Digits used to be cut out as nibbles — `byte & 0x0f`, `byte >> 4` —
+/// which works only while `WINDOW_BITS = 4`. At six bits a digit crosses
+/// a byte boundary, so the split has to go bit by bit.
 ///
-/// Ветвления по ЗНАЧЕНИЯМ здесь нет: границы циклов заданы длиной
-/// показателя, а она публична.
+/// There is no branch on VALUES here: the loop bounds are set by the
+/// exponent length, which is public.
 pub fn windows_of(raw: &[u8]) -> Vec<u8> {
     let bits = raw.len() * 8;
     let width = WINDOW_BITS as usize;
@@ -108,25 +108,28 @@ pub fn windows_of(raw: &[u8]) -> Vec<u8> {
     out
 }
 
-/// Предвычисленные степени `hs`: запись `[i][d]` равна
+/// Precomputed powers of `hs`: entry `[i][d]` equals
 /// `hs^(d · 2^(WINDOW_BITS·i))`.
 ///
-/// Хранятся СЛОВАМИ фиксированной ширины, а не как `Integer`, и это не
-/// деталь укладки, а условие постоянного времени: выбрать запись, не
-/// выдав индекса, можно только прочитав всю строку и сложив её маской.
-/// На `Integer` такое чтение не написать — длина у них разная, а
-/// операции GMP срезают углы на коротких значениях.
+/// Stored as WORDS of fixed width rather than as `Integer`, and that is
+/// not a layout detail but the condition for constant time: selecting an
+/// entry without revealing the index is only possible by reading the
+/// whole row and folding it with a mask. Such a read cannot be written
+/// over `Integer` — their lengths differ, and GMP's operations cut
+/// corners on short values.
 ///
-/// Памяти это не добавляет: `Integer` на 4096 бит и так занимает свои
-/// 512 байт плюс заголовок.
+/// It costs no extra memory: an `Integer` of 4096 bits already occupies
+/// its 512 bytes plus a header.
 ///
-/// Строка лежит одним куском — `ROW_ENTRIES × width` слов подряд, — так
-/// её чтение идёт последовательно, а не `2^w` прыжками по куче.
+/// A row is one contiguous block — `ROW_ENTRIES × width` words in a row
+/// — so reading it is sequential rather than `2^w` jumps around the
+/// heap.
 ///
-/// Слова по 64 бита, а НЕ байты, и разница вся в цене. Чтение строки —
-/// единственная добавленная работа, и она упирается в число итераций, а
-/// не в объём: побайтно постоянное чтение стоило **+26 %** к
-/// возведению, пословно — **+1…5 %** (замерено на 2048 и 3072 битах,
+/// 64-bit words rather than bytes, and the difference is entirely in the
+/// cost. Reading the row is the only added work, and it is bounded by
+/// the number of iterations rather than the volume: byte-wise
+/// constant-time reading cost **+26 %** on the exponentiation, word-wise
+/// **+1…5 %** (measured at 2048 and 3072 bits,
 /// `benches/window_select.rs`).
 pub struct WindowTable {
     rows: Vec<Vec<u64>>,
@@ -134,44 +137,45 @@ pub struct WindowTable {
 }
 
 impl WindowTable {
-    /// Число окон, то есть длина показателя в цифрах.
+    /// The number of windows, i.e. the exponent length in digits.
     pub fn windows(&self) -> usize {
         self.rows.len()
     }
 
-    /// Ширина записи в 64-битных словах — она же ширина `n²`.
+    /// Entry width in 64-bit words — the width of `n²`.
     pub fn entry_width(&self) -> usize {
         self.width
     }
 }
 
-/// Строит таблицу. Цена — около `окон · (2^w − 2)` умножений плюс
-/// `окон · w` возведений в квадрат; при 3072 битах это порядка пяти
-/// тысяч операций, то есть доли секунды, и они окупаются на первой же
-/// сотне шифрований.
+/// Builds the table. It costs about `windows · (2^w − 2)` multiplications
+/// plus `windows · w` squarings; at 3072 bits that is on the order of
+/// five thousand operations, i.e. a fraction of a second, and they pay
+/// for themselves within the first hundred encryptions.
 ///
-/// Записи — обычные вычеты по `n²`, БЕЗ пространства Монтгомери. Оно
-/// здесь было и снято по замеру: см. «Монтгомери у нас не работает» в
-/// `docs/heu-comparison.md`.
+/// The entries are ordinary residues modulo `n²`, WITHOUT Montgomery
+/// space. That was implemented here and removed on measurement: REDC
+/// over `rug::Integer` is assembled from the same full-width operations
+/// with an allocation at every step, and loses by a factor of 1.19.
 ///
-/// # Нулевая цифра хранится как `n² + 1`, а НЕ как `1`
+/// # The zero digit is stored as `n² + 1`, NOT as `1`
 ///
-/// `n² + 1 ≡ 1 (mod n²)`, поэтому результат тот же. Но единица —
-/// однолимбовое число: `result * 1` GMP считает за `O(лимбов)`, и
-/// следующий `% n²` возвращается сразу, потому что произведение уже
-/// меньше модуля. Нулевое окно тогда не стоит почти ничего, и время
-/// СНОВА зависит от показателя — то есть подстановка единицы утечку не
-/// закрывает.
+/// `n² + 1 ≡ 1 (mod n²)`, so the result is the same. But one is a
+/// single-limb number: GMP computes `result * 1` in `O(limbs)`, and the
+/// following `% n²` returns immediately because the product is already
+/// below the modulus. A zero window then costs almost nothing, and the
+/// time depends on the exponent AGAIN — that is, substituting one does
+/// not close the leak.
 ///
-/// Как это было поймано, стоит записи. Первая редакция клала `1`, и я
-/// ждал подорожания на одну шестнадцатую. Замер дал 0.6 % вместо 6.7 %,
-/// и я прочёл это как хорошую новость — хотя недостающие шесть
-/// процентов и были той работой, которая не делается. **Дешевле
-/// ожидаемого — это не подарок, а сигнал.**
+/// How this was caught is worth recording. The first version put `1`
+/// there, and I expected a slowdown of one sixteenth. The measurement
+/// showed 0.6 % instead of 6.7 %, and I read that as good news — though
+/// the missing six percent WERE the work that was not being done.
+/// **Cheaper than expected is not a gift. It is a signal.**
 ///
-/// `n² + 1` шире `n²` на один бит, поэтому ширина записи берётся по
-/// `n² + 1`, а не по `n²`: иначе старший бит нулевой цифры срезался бы,
-/// и она стала бы нулём.
+/// `n² + 1` is one bit wider than `n²`, so the entry width is taken from
+/// `n² + 1` rather than from `n²`: otherwise the top bit of the zero
+/// digit would be cut off and it would become a zero.
 pub fn build_window_table(
     hs: &Integer,
     nn: &Integer,
@@ -191,7 +195,7 @@ pub fn build_window_table(
             put(&mut row, entry, width, &value);
         }
         rows.push(row);
-        // Основание следующего окна: `base^(2^WINDOW_BITS)`.
+        // The base for the next window: `base^(2^WINDOW_BITS)`.
         for _ in 0..WINDOW_BITS {
             base = base.clone().square() % nn;
         }
@@ -199,133 +203,133 @@ pub fn build_window_table(
     WindowTable { rows, width }
 }
 
-/// Кладёт число в запись строки, дополняя нулями слева.
+/// Places a number into a row entry, zero-padded on the left.
 ///
-/// `write_digits` заполняет весь срез, а не только значащие слова, —
-/// иначе ширина записи зависела бы от значения, и постоянное время
-/// потерялось бы там же, где строилось.
+/// `write_digits` fills the whole slice rather than only the significant
+/// words — otherwise the entry width would depend on the value, and
+/// constant time would be lost in the very place it is built.
 fn put(row: &mut [u64], entry: usize, width: usize, value: &Integer) {
     let start = entry * width;
     value.write_digits(&mut row[start..start + width], Order::LsfLe);
 }
 
-/// `hs^r mod n²` по готовой таблице.
+/// `hs^r mod n²` from a prepared table.
 ///
-/// Умножение делается на КАЖДОМ окне, включая нулевые цифры: там в
-/// таблице лежит `n² + 1` — полноразмерный вычет, равный единице по
-/// модулю. Почему именно он, а не `1`, — в `build_window_table`.
+/// A multiplication happens at EVERY window, zero digits included: the
+/// table holds `n² + 1` there — a full-width residue equal to one modulo
+/// `n²`. Why that rather than `1` is explained at `build_window_table`.
 ///
-/// Прежде нулевые цифры пропускались, и число умножений равнялось числу
-/// ненулевых полубайт СЕКРЕТНОГО показателя. Замерено при `|n| = 2048`:
-/// от 0.2 мкс при пустом показателе до 1576 мкс при полном, линейно, по
-/// 6.1 мкс на цифру — 0.4 % полного времени, много выше шума. То есть
-/// наблюдатель, видящий время, узнаёт вес `r`.
+/// Zero digits used to be skipped, so the number of multiplications
+/// equalled the number of non-zero nibbles of the SECRET exponent.
+/// Measured at `|n| = 2048`: from 0.2 µs on an empty exponent to 1576 µs
+/// on a full one, linear, at 6.1 µs per digit — 0.4 % of the total time,
+/// far above the noise. An observer watching the clock learns the weight
+/// of `r`.
 ///
-/// Пробивает ли это заявленный запас — нет: точное знание веса даёт
-/// около четырёх бит из 1024, сильная форма (какие именно цифры
-/// нулевые) — около 86, и остаётся много выше границы `2^512`.
+/// Did that breach the claimed margin? No: exact knowledge of the weight
+/// gives about four bits out of 1024, the strong form (which digits are
+/// zero) about 86, and it stays far above the `2^512` bound. But "does
+/// not breach" and "is safe" are different statements — exactly the
+/// substitution of "correct" for "secure" that
+/// `docs/short-exponent-security.md` is written against.
 ///
-/// Числа этого абзаца — при `WINDOW_BITS = 4`, когда окон было 256.
-/// При шести битах вес распределён как `Binomial(171, 1/64)`, и его
-/// энтропия около 2.7 бита, а не четырёх. Абзац оставлен как ИСТОРИЯ
-/// закрытого канала и помечен, чтобы не читался как текущее состояние. Но
-/// «не пробивает» и «безопасно» — разные утверждения, а в документе
-/// стояло второе. Ровно та подмена «корректно» на «стойко», против
-/// которой написан `docs/short-exponent-security.md`.
+/// (Those two figures are at `WINDOW_BITS = 4`, when there were 256
+/// windows. At six bits the weight is distributed as
+/// `Binomial(171, 1/64)` and its entropy is about 2.7 bits, not four.
+/// The paragraph is kept as HISTORY of a closed channel and marked so it
+/// is not read as the current state.)
 ///
-/// # Кэш-канал закрыт, и цена его была посчитана неверно
+/// # The cache channel is closed, and its cost had been computed wrong
 ///
-/// Прежде запись бралась по индексу — `table[window][digit]`, — то есть
-/// адрес обращения к памяти зависел от секретной цифры. Здесь читается
-/// ВСЯ строка, а нужная запись выбирается маской `0xFF`/`0x00`, которая
-/// считается арифметикой, без ветвления. Наблюдатель, видящий обращения
-/// к кэшу, видит один и тот же ряд адресов при любом показателе.
+/// The entry used to be taken by index — `table[window][digit]` — so the
+/// address of the memory access depended on the secret digit. Here the
+/// WHOLE row is read and the wanted entry is selected with an
+/// all-ones/all-zeros mask computed by arithmetic, with no branch. An
+/// observer watching cache accesses sees the same sequence of addresses
+/// for any exponent.
 ///
-/// Открытым это оставалось из-за числа, а число было неверным. В
-/// докстринге стояло: «закрыть значило бы читать всю строку на каждом
-/// окне, то есть платить в шестнадцать раз». Это смешивает «прочитать
-/// шестнадцать записей» с «сделать шестнадцать умножений». Умножение
-/// остаётся ОДНО; добавляется потоковое чтение восьми килобайт, которое
-/// против умножения на 4096 битах почти ничего не стоит.
+/// It stayed open because of a number, and the number was wrong. The
+/// docstring said: "closing it would mean reading the whole row at every
+/// window, i.e. paying sixteen times over". That conflates "read sixteen
+/// entries" with "do sixteen multiplications". There is still exactly
+/// ONE multiplication; what is added is a streaming read of eight
+/// kilobytes, which against a 4096-bit multiplication costs almost
+/// nothing.
 ///
-/// Замерено (`benches/window_select.rs`, обе укладки на одних `hs`,
-/// `n²` и показателе, результаты сверены на равенство):
+/// Measured (`benches/window_select.rs`, both layouts on the same `hs`,
+/// `n²` and exponent, results checked for equality):
 ///
-/// | `|n|` | строк | по индексу | маской | отношение |
+/// | `|n|` | rows | by index | by mask | ratio |
 /// |---|---|---|---|---|
-/// | 2048 | 171 | 1061 мкс | 1019 мкс | **0.96** |
-/// | 3072 | 256 | 2842 мкс | 2946 мкс | **1.04** |
+/// | 2048 | 171 | 1061 µs | 1019 µs | **0.96** |
+/// | 3072 | 256 | 2842 µs | 2946 µs | **1.04** |
 ///
-/// Не шестнадцать раз, а единицы процентов в обе стороны, то есть в
-/// пределах разброса машины. Прежде эти числа снимались на таблице в
-/// полтора раза больше боевой: прогон считал число строк по формуле
-/// `байт × 2`, верной только при четырёхбитном окне, и при 3072 битах
-/// заходил на 18.9 МБ против боевых 12.6 — то есть за границу кэша
-/// третьего уровня, которой обосновывается выбор шестёрки. Число, на которое опиралось
-/// решение оставить канал открытым, было завышено более чем на порядок.
+/// Not sixteen times over but a few percent either way — inside machine
+/// noise. The number the decision to leave the channel open rested on
+/// was inflated by more than an order of magnitude.
 ///
-/// Невысказанная посылка, которую стоит высказать. Постоянство здесь
-/// держится на том, что каждая запись занимает ПОЛНЫЕ `width` слов.
-/// Чтение строки это соблюдает, а вот `assign_digits` старшие нулевые
-/// слова срезает — запись с нулевым верхним словом сделала бы
-/// следующий `mpz_mul` чуть дешевле. Вероятность такого при равномерном
-/// `hs^k mod n²` — около `2^−64` на запись, то есть каналом это не
-/// является; но свойство опирается на эту оценку, а не только на форму
-/// цикла.
+/// An unstated premise worth stating. Constant time here rests on every
+/// entry occupying FULL `width` words. Reading the row respects that,
+/// but `assign_digits` strips leading zero words — an entry with a zero
+/// top word would make the following `mpz_mul` slightly cheaper. The
+/// probability of that, for `hs^k mod n²` uniform, is about `2^−64` per
+/// entry, so it is not a channel; but the property rests on that
+/// estimate, not only on the shape of the loop.
 ///
-/// # Что НЕ закрыто
+/// # What is NOT closed
 ///
-/// **Ведущие нули.** Цикл стартует с `result = 1`, и пока младшие цифры
-/// нулевые, накопитель остаётся однолимбовым — умножение на него стоит
-/// почти ничего. Замерено: **−6.33 мкс на ведущий нуль** при
-/// ФИКСИРОВАННОМ весе. То есть канал по весу закрыт, а канал по
-/// позиции — нет.
+/// **Leading zeros.** The loop starts from `result = 1`, and while the
+/// low digits are zero the accumulator stays single-limb — multiplying
+/// by it costs almost nothing. Measured: **−6.33 µs per leading zero**
+/// at FIXED weight. So the weight channel is closed and the position
+/// channel is not.
 ///
-/// Очевидное лечение не работает, и это проверено: старт с `n² + 1`
-/// даёт наклон −6.56, потому что `%` возвращает канонический вычет, и
-/// после первого же приведения накопитель снова единица. Пока значение
-/// СРАВНИМО с единицей, оно ею и представлено.
+/// The obvious cure does not work, and that was checked: starting from
+/// `n² + 1` gives a slope of −6.56, because `%` returns the canonical
+/// residue and after the first reduction the accumulator is one again.
+/// While a value is CONGRUENT to one, it is represented as one.
 ///
-/// Единственное известное лечение — избыточное представление, где
-/// единица не однолимбовая, то есть форма Монтгомери. Она отвергнута по
-/// скорости (`docs/heu-comparison.md`), и связь стоит назвать прямо:
-/// **отвергнутый приём — единственное известное лечение оставшегося
-/// канала.**
+/// The only known cure is a redundant representation in which one is not
+/// single-limb — that is, Montgomery form. It was rejected on speed, and
+/// the connection is worth naming plainly: **the rejected technique is
+/// the only known cure for the remaining channel.**
 ///
-/// Величина остатка: длина ряда ведущих нулей геометрическая, цифра
-/// нулевая с вероятностью `q = 2^−w`, и энтропия равна
+/// The size of the remainder: the run of leading zeros is geometric, a
+/// digit is zero with probability `q = 2^−w`, and the entropy is
 /// `[−(1−q)·lg(1−q) − q·lg q] / (1−q)`.
 ///
-/// При `w = 6` это **0.118 бита** из 1024. Прежде здесь стояло
-/// **0.36** — верная величина для `w = 4`, где `q = 1/16`. Число это
-/// ПРЯМОЕ следствие ширины окна, и расширение окна с четырёх бит до
-/// шести уменьшило утечку втрое, не тронув ни строки в этом цикле.
-/// Единственная величина в репозитории, описывающая ОТКРЫТЫЙ канал, —
-/// значит она обязана следовать из кода, а не пережить его правку.
+/// At `w = 6` that is **0.118 bits** out of 1024. It used to say
+/// **0.36** — the correct value for `w = 4`, where `q = 1/16`. This
+/// number is a DIRECT consequence of the window width, and widening the
+/// window from four bits to six cut the leak threefold without touching
+/// a line of this loop. It is the only quantity in the repository that
+/// describes an OPEN channel — so it has to follow from the code rather
+/// than survive an edit to it.
 ///
-/// Против запаса
-/// `2^512` это ничто, и остаток допущен осознанно. Сторожит его
-/// `tests/timing_channel.rs::позиционный_остаток_не_вырос` — не на
-/// отсутствие, а на то, чтобы он не рос.
+/// Against a `2^512` margin it is nothing, and the remainder is accepted
+/// knowingly. It is guarded by
+/// `tests/timing_channel.rs::position_remainder_has_not_grown` — not for
+/// absence, but for not growing.
 pub fn pow_by_table(
     table: &WindowTable,
     digits: &[u8],
     nn: &Integer,
 ) -> Integer {
-    // Цифра вне строки дала бы НОЛЬ, а не отказ: маска не совпала бы ни
-    // с одной записью, и `out` остался бы нулевым. Прежде такой вход
-    // ронял индексацию, то есть был виден сразу. Проверка стоит один
-    // проход по цифрам против стольких же умножений на 4096 битах.
+    // A digit outside the row would yield ZERO rather than a refusal:
+    // the mask would match no entry and `out` would stay zero. Such
+    // input used to blow up the indexing, i.e. it was visible at once.
+    // The check costs one pass over the digits against as many
+    // multiplications on 4096 bits.
     assert!(
         digits.iter().all(|digit| (*digit as usize) < ROW_ENTRIES),
-        "цифра показателя не помещается в окно {WINDOW_BITS} бит"
+        "an exponent digit does not fit a {WINDOW_BITS}-bit window"
     );
     let width = table.width;
     let mut selected = vec![0u64; width];
-    // Оба числа заводятся ОДИН раз и переиспользуются: `assign_digits` и
-    // операции «на месте» не выделяют память, тогда как `from_digits` и
-    // `a * b % m` выделяют по два объекта на окно, то есть пятьсот с
-    // лишним раз за одно шифрование.
+    // Both numbers are created ONCE and reused: `assign_digits` and the
+    // in-place operations allocate nothing, whereas `from_digits` and
+    // `a * b % m` allocate two objects per window — five hundred-odd
+    // times per encryption.
     let mut entry = Integer::new();
     let mut result = Integer::from(1);
     for (window, digit) in digits.iter().enumerate() {
@@ -337,16 +341,16 @@ pub fn pow_by_table(
     result
 }
 
-/// Кладёт в `out` запись номер `digit`, прочитав строку целиком.
+/// Puts entry number `digit` into `out`, having read the whole row.
 ///
-/// Ветвления по `digit` здесь нет ни одного: маска получается
-/// арифметикой из `entry ^ digit`, и обе ветви исполняются всегда.
-/// Сравнение `entry == digit` компилятор был бы вправе превратить в
-/// переход, а переход — это и есть тот канал, который закрывается.
+/// There is not a single branch on `digit` here: the mask comes from
+/// arithmetic on `entry ^ digit`, and both alternatives always execute.
+/// A comparison `entry == digit` would leave the compiler free to turn
+/// it into a jump — and a jump is exactly the channel being closed.
 fn select_entry(row: &[u64], width: usize, digit: u8, out: &mut [u64]) {
     out.fill(0);
     for entry in 0..ROW_ENTRIES {
-        // Все единицы, когда `entry == digit`, иначе все нули.
+        // All ones when `entry == digit`, all zeros otherwise.
         let difference = (entry as u32) ^ (digit as u32);
         let is_wanted = (difference.wrapping_sub(1) >> 31) as u64;
         let mask = 0u64.wrapping_sub(is_wanted);
