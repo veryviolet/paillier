@@ -35,7 +35,11 @@
 Запуск:
     python benches/measure.py ours
     python benches/measure.py heu
-    python benches/measure.py phe
+
+`phe` и `lightphe` здесь НЕТ намеренно. Они были нужны один раз, чтобы
+выбрать, от чего отталкиваться, и выбор сделан. Держать их в прогоне
+значило бы держать числа, которые никто не перемеряет, — а
+неперемеряемое число в таблице рано или поздно начинает врать.
 """
 import random
 import statistics
@@ -161,38 +165,7 @@ class Heu:
         return len(blob.serialize())
 
 
-class Phe:
-    name = "phe"
-
-    def __init__(self):
-        import phe
-
-        self.phe = phe
-        self.pub, self.sec = phe.generate_paillier_keypair(n_length=KEY_BITS)
-
-    def keygen(self):
-        self.phe.generate_paillier_keypair(n_length=KEY_BITS)
-
-    def encrypt_batch(self, values):
-        return self.encrypt_serial(values)
-
-    def encrypt_serial(self, values):
-        return [self.pub.encrypt(float(v)) for v in values]
-
-    def add(self, blobs):
-        total = blobs[0]
-        for blob in blobs[1:]:
-            total = total + blob
-        return total
-
-    def decrypt(self, blob):
-        return self.sec.decrypt(blob)
-
-    def size(self, blob):
-        return (blob.ciphertext(be_secure=False).bit_length() + 7) // 8
-
-
-LIBRARIES = {"ours": Ours, "heu": Heu, "phe": Phe}
+LIBRARIES = {"ours": Ours, "heu": Heu}
 
 
 # ---------------------------------------------------------------------

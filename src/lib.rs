@@ -54,7 +54,7 @@ use fast::{build_window_table, pow_by_table, windows_of};
 /// каждое слагаемое вниз по модулю, и на ЗНАКОПОСТОЯННЫХ данных ошибка
 /// суммы растёт линейно по числу слагаемых, а не как `√k`. Счётчики
 /// бакетов и квадраты градиентов знакопостоянны. Разбор и замер —
-/// `benches/acc_rounding.py`, `benches/acc_nonnegative.py`.
+/// `benches/acc_rounding.py`, `benches/measure.py`.
 ///
 /// # Два края, а не один
 ///
