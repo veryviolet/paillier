@@ -24,6 +24,11 @@ on:
   push:
     tags:
       - "v*"
+  # Ручной запуск нужен не для удобства. Настройка Trusted Publishing на
+  # стороне PyPI — одноразовая и делается человеком; тег, выпущенный до
+  # неё, уже не опубликуется никогда, а выдумывать ради этого лишнюю
+  # версию — врать в истории выпусков.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -45,6 +50,7 @@ jobs:
           python-version: ${{ matrix.python }}
 
       - name: сверить тег с версией в Cargo.toml
+        if: github.event_name == 'push'
         env:
           REF_NAME: ${{ github.ref_name }}
         run: |
@@ -71,14 +77,7 @@ jobs:
           python -m venv /tmp/check
           /tmp/check/bin/pip install --quiet --upgrade pip pytest
           /tmp/check/bin/pip install --quiet dist/*.whl
-          /tmp/check/bin/python - <<'PY'
-          import paillier
-          print("версия:", paillier.__version__)
-          pub, sec = paillier.generate_keypair(2048)
-          blobs = [bytes(b) for b in paillier.encrypt_many(pub, [1.5, -2.25], scale_pow10=12)]
-          total = paillier.decrypt(sec, paillier.add_many(pub, blobs))
-          assert abs(total - (-0.75)) < 1e-9, total
-          PY
+          /tmp/check/bin/python scripts/smoke_wheel.py
           /tmp/check/bin/python -m pytest tests/encryption.py tests/scale.py -q
 
       - uses: actions/upload-artifact@v4
