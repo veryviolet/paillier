@@ -6,14 +6,16 @@
 //! эталоном в тестах (`dev-dependencies`) — своя реализация, сверяемая
 //! сама с собой, ничего не доказывает.
 //!
-//! Записи МИНИМАЛЬНЫЕ, а не фиксированной ширины: замерено `[511, 512]`
-//! байт на двухстах шифрованиях ключом 2048 бит. Нарезать буфер
-//! постоянным шагом нельзя.
+//! Блоб = байт масштаба + шифротекст старшим байтом вперёд. Записи
+//! МИНИМАЛЬНЫЕ, а не фиксированной ширины: замерено `{512: 2, 513: 398}`
+//! на четырёхстах шифрованиях ключом 2048 бит. Нарезать буфер постоянным
+//! шагом нельзя.
 //!
-//! Здесь стояло `[255, 256]`. Это длины при `|n²| = 2048`, то есть при
-//! ключе в 1024 бита — ниже `MIN_MODULUS_BITS`, и породить такой ключ
-//! библиотека уже не может. Свойство верное, число — из конфигурации,
-//! которой больше нет.
+//! Число здесь врало дважды. Сперва стояло `[255, 256]` — длины при
+//! ключе в 1024 бита, который ниже `MIN_MODULUS_BITS` и породиться уже
+//! не может. Потом `[511, 512]` — верно, но ДО введения байта масштаба,
+//! то есть докстринг, описывающий формат, не знал о единственном, что
+//! этот формат изменило.
 //!
 //! Бэкенд `rug` выбран не по вкусу: бэкенд `num-bigint`, включённый в
 //! крейте по умолчанию, тянет `glass_pumpkin`, а тот — `core2`, у
@@ -45,34 +47,102 @@ use rug::integer::Order;
 use rug::ops::RemRounding;
 use rug::Integer;
 
-use fast::{build_window_table, pow_by_table, windows_of};
+use fast::{build_window_table, pow_by_table, windows_for, windows_of};
 
-/// Масштаб кодирования float в целое.
+/// Масштаб по умолчанию: `10^8`.
 ///
-/// Округление — К БЛИЖАЙШЕМУ (`f64::round`, половина от нуля), а не
-/// усечением. Правило выбрано не по вкусу: усечение к нулю смещает
-/// каждое слагаемое вниз по модулю, и на ЗНАКОПОСТОЯННЫХ данных ошибка
-/// суммы растёт линейно по числу слагаемых, а не как `√k`. Счётчики
-/// бакетов и квадраты градиентов знакопостоянны. Разбор и замер —
-/// `benches/acc_rounding.py`, `benches/measure.py`.
+/// Оставлен прежним намеренно. Он даёт САМЫЙ ШИРОКИЙ диапазон входа
+/// (до `|v| ≈ 9e7`), а сужение диапазона ради точности — решение
+/// вызывающего, который знает свои данные, а не умолчание библиотеки.
+const DEFAULT_SCALE_POW10: u8 = 8;
+
+/// Наибольший принимаемый показатель масштаба.
+///
+/// Выше `10^18` кодировать нечего: `2^53/10^18` меньше `1e-2`, то есть
+/// точно кодируются уже только числа мельче сотой, и ошибка становится
+/// относительной на всём осмысленном входе.
+const MAX_SCALE_POW10: u8 = 18;
+
+/// Масштаб кодирования float в целое: СТЕПЕНЬ ДЕСЯТКИ, едет в
+/// шифротексте первым байтом.
+///
+/// # Почему свойство шифротекста, а не настройка
+///
+/// Несовпадение масштабов даёт не отказ, а правдоподобное неверное
+/// число: зашифровали с `1e8`, расшифровали с `1e12` — результат меньше
+/// в десять тысяч раз, конечный, без единого признака. Сложили
+/// шифротексты разных масштабов — сумма бессмысленна, а различить их
+/// нечем: шифротексты неотличимы.
+///
+/// Хуже того, у нас пассивная сторона шифрует ЧУЖИМ ключом, собирая его
+/// из одного `n` (`PublicKey::from_n`). В `n` масштаба нет — значит при
+/// настройке «сбоку» пир взял бы умолчание и молча разошёлся с
+/// владельцем ключа.
+///
+/// Поэтому `decrypt` берёт масштаб ИЗ САМОГО БЛОБА, а `add_many`
+/// отказывает на пачке с разными масштабами. Разойтись физически нечем.
+///
+/// Цена — один байт на шифротекст, 0.2 % длины.
+///
+/// # Округление — к ближайшему
+///
+/// Не усечением. Усечение к нулю смещает каждое слагаемое вниз по
+/// модулю, и на ЗНАКОПОСТОЯННЫХ данных ошибка суммы растёт ЛИНЕЙНО по
+/// числу слагаемых, а не как `√k`. Счётчики бакетов и квадраты
+/// градиентов знакопостоянны. Замер — `benches/acc_rounding.py`.
 ///
 /// # Два края, а не один
 ///
-/// **Снизу.** Всё, что по модулю меньше `1/(2·SCALE)`, округляется в
-/// ноль. Это свойство неподвижной точки, а не потеря: `4e-9` кодируется
-/// нулём и расшифровывается нулём.
+/// **Снизу.** Всё, что по модулю меньше `1/(2·10^e)`, кодируется нулём.
+/// Свойство неподвижной точки, а не потеря.
 ///
-/// **Сверху.** Ошибка кодирования равна `1/(2·SCALE)` — то есть
-/// АБСОЛЮТНА и от величины не зависит — только пока `|v| · SCALE`
-/// представимо в f64 точно, то есть примерно до `|v| ≈ 2^53/SCALE`, у
-/// нас около `9e7`. Выше этого само произведение `value * SCALE`
-/// округляется, и ошибка становится ОТНОСИТЕЛЬНОЙ: при `|v| ~ 1e10` она
-/// около `6e-7`, при `1e14` — около `1e-2`.
+/// **Сверху.** Ошибка равна `1/(2·10^e)` и АБСОЛЮТНА только пока
+/// `|v|·10^e` представимо в f64 точно, то есть примерно до
+/// `|v| ≈ 2^53/10^e`. Выше произведение округляется само, и ошибка
+/// становится ОТНОСИТЕЛЬНОЙ.
 ///
-/// Верхнего края здесь не было вовсе, а модель «ошибка не зависит от
-/// величины» записана в `docs/heu-comparison.md` и проверена замером на
-/// входе `±1000` — то есть ровно там, где она и держится.
-const SCALE: f64 = 1e8;
+/// | `e` | ошибка | верхняя граница `|v|` | сумма 10⁶ знакопостоянных |
+/// |---|---|---|---|
+/// | 8 | 5e-09 | ~9e7 | 4.69e-06 |
+/// | 12 | 5e-13 | ~9e3 | **1.86e-08** |
+/// | 15 | 5e-16 | ~9e0 | 1.86e-08 |
+///
+/// Правый столбец — ОДИН розыгрыш на строку, и читать его надо как
+/// порядок, а не как величину.
+///
+/// Что здесь следует из механизма, а не из выборки: при `e = 12` ошибка
+/// кодирования на миллионе слагаемых около `3e-10`, а расстояние между
+/// соседними `f64` вблизи суммы (порядка `5e8`) — около `1.2e-07`. То
+/// есть кодирование сдвигает значение меньше чем на сотую доли шага, и
+/// результат почти всегда ложится на ТОТ ЖЕ float, что и точная сумма.
+/// Тогда ошибка равна ПОЛУ `f64` — ошибке самого `float()` от точной
+/// суммы, ниже которой не опустится никакая схема, возвращающая `f64`.
+///
+/// Изредка тот же крошечный сдвиг перебрасывает округление на соседний
+/// float, и ошибка становится порядка шага. На трёх розыгрышах по
+/// миллиону `e = 12` дал ровно пол; на четвёртом (замер ревьюера) —
+/// втрое больше пола. Оба исхода нормальны и оба про округление f64, а
+/// не про схему.
+///
+/// Здесь стояло «при `e = 12` упирается в пол» без оговорок — вывод из
+/// одного розыгрыша. Верное утверждение: начиная с `e = 12` ошибка
+/// схемы уходит ПОД разрешение `f64`, и увеличивать масштаб дальше
+/// незачем — только диапазон сужается.
+fn scale_of(pow10: u8) -> f64 {
+    10f64.powi(pow10 as i32)
+}
+
+/// Проверка показателя, приехавшего снаружи или из шифротекста.
+fn checked_scale(pow10: u8) -> Result<f64, String> {
+    if pow10 > MAX_SCALE_POW10 {
+        return Err(format!(
+            "scale exponent {pow10} is above the {MAX_SCALE_POW10} this \
+             encoding allows: past that even a value of one has no exact \
+             f64 representation once scaled"
+        ));
+    }
+    Ok(scale_of(pow10))
+}
 
 /// Сколько слагаемых обязана выдержать сумма без переполнения.
 ///
@@ -206,7 +276,7 @@ impl PublicKey {
             })
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
         let exponent_bytes = exponent_bytes_for(n.significant_bits());
-        let table = py.allow_threads(|| build_window_table(&hs, &nn, exponent_bytes * 2));
+        let table = py.allow_threads(|| build_window_table(&hs, &nn, windows_for(exponent_bytes)));
         Ok(PublicKey {
             n,
             nn,
@@ -287,7 +357,7 @@ struct SecretKey {
 /// `NaN` и `±inf`, а `unwrap_or_default()` превращал их в достоверный
 /// ноль, который уезжал в сумму. Пропуск в столбце признаков — штатный
 /// вход, не экзотика.
-fn encode(value: f64) -> Result<Integer, String> {
+fn encode(value: f64, scale: f64) -> Result<Integer, String> {
     if !value.is_finite() {
         return Err(format!(
             "value {value} is not finite: NaN and infinities have no \
@@ -295,10 +365,10 @@ fn encode(value: f64) -> Result<Integer, String> {
              number into the sum"
         ));
     }
-    let scaled = (value * SCALE).round();
+    let scaled = (value * scale).round();
     if !scaled.is_finite() {
         return Err(format!(
-            "value {value:e} overflows to infinity once scaled by {SCALE:e}"
+            "value {value:e} overflows to infinity once scaled by {scale:e}"
         ));
     }
     Integer::from_f64(scaled)
@@ -310,7 +380,7 @@ fn encode(value: f64) -> Result<Integer, String> {
 /// Отказ, а не `unwrap_or(0.0)`. Парная функция существует ровно ради
 /// того, чтобы нефинитное не становилось достоверным нулём, — а здесь
 /// стоял тихий ноль на любой неразобранной строке.
-fn decode_integer(m: &Integer) -> Result<f64, String> {
+fn decode_integer(m: &Integer, scale: f64) -> Result<f64, String> {
     let text = m.to_string();
     let scaled: f64 = text
         .parse()
@@ -323,7 +393,31 @@ fn decode_integer(m: &Integer) -> Result<f64, String> {
             text.trim_start_matches('-').len()
         ));
     }
-    Ok(scaled / SCALE)
+    Ok(scaled / scale)
+}
+
+/// Разбор блоба: первый байт — показатель масштаба, остальное —
+/// шифротекст старшим байтом вперёд.
+///
+/// Отказ, а не догадка. Пустой блоб и неизвестный показатель — это
+/// вход, который НЕ является шифротекстом под этой схемой, и принимать
+/// его, подставив умолчание, значило бы вернуть правдоподобное число не
+/// того масштаба.
+fn split_blob(blob: &[u8]) -> Result<(u8, Integer), String> {
+    let (head, body) = blob.split_first().ok_or_else(|| {
+        "ciphertext is empty: it must start with a scale exponent byte"
+            .to_string()
+    })?;
+    checked_scale(*head)?;
+    Ok((*head, Integer::from_digits(body, Order::MsfBe)))
+}
+
+/// Сборка блоба: показатель, затем шифротекст.
+fn join_blob(pow10: u8, cipher: &Integer) -> Vec<u8> {
+    let mut out = Vec::with_capacity(1 + (cipher.significant_bits() as usize + 7) / 8);
+    out.push(pow10);
+    out.extend_from_slice(&cipher.to_digits::<u8>(Order::MsfBe));
+    out
 }
 
 /// Наибольший принимаемый открытый текст по модулю: `n/2`, ужатое в
@@ -448,7 +542,7 @@ fn generate_keypair(
     // От ФАКТИЧЕСКОЙ длины модуля, а не от запрошенной: произведение
     // двух простых по `bits/2` бит выходит и на `bits`, и на `bits−1`.
     let exponent_bytes = exponent_bytes_for(n.significant_bits());
-    let table = py.allow_threads(|| build_window_table(&hs, &nn, exponent_bytes * 2));
+    let table = py.allow_threads(|| build_window_table(&hs, &nn, windows_for(exponent_bytes)));
     Ok((
         PublicKey {
             n,
@@ -476,14 +570,17 @@ fn generate_keypair(
 }
 
 #[pyfunction]
+#[pyo3(signature = (pk, values, scale_pow10 = DEFAULT_SCALE_POW10))]
 fn encrypt_many(
     py: Python<'_>,
     pk: &PublicKey,
     values: Vec<f64>,
+    scale_pow10: u8,
 ) -> PyResult<Vec<Py<PyBytes>>> {
     let (n, nn, table) = (&pk.n, &pk.nn, &pk.table);
     let width = pk.exponent_bytes;
     let bound = plaintext_bound(n);
+    let scale = checked_scale(scale_pow10).map_err(PyValueError::new_err)?;
     // `allow_threads` отпускает GIL: без него rayon не даст ничего.
     let encrypted: Result<Vec<Vec<u8>>, String> = py.allow_threads(|| {
         values
@@ -500,7 +597,7 @@ fn encrypt_many(
                 // бы не только лишней работой — это ещё и второе место,
                 // где длина показателя могла бы разъехаться.
                 let digits = windows_of(&raw);
-                let encoded = match encode(*v) {
+                let encoded = match encode(*v, scale) {
                     Ok(value) => value,
                     Err(message) => return Err(message),
                 };
@@ -552,7 +649,7 @@ fn encrypt_many(
                 // строил бы свою таблицу заново на каждое сообщение.
                 let b = pow_by_table(table, &digits, nn);
                 let c = (a * b) % nn;
-                Ok(c.to_digits::<u8>(Order::MsfBe))
+                Ok(join_blob(scale_pow10, &c))
             })
             .collect()
     });
@@ -635,11 +732,32 @@ fn add_many(
     // error» вместо номера слагаемого. Это осознанный паритет с heu: у
     // них `VALIDATE` тоже проверяет только диапазон, а `gcd` на каждом
     // слагаемом стоил бы дороже всей операции.
-    let total = py
+    let (total, scale_pow10) = py
         .allow_threads(|| {
             let mut total = Integer::from(1);
+            let mut scale_pow10: Option<u8> = None;
             for (index, blob) in slices.iter().enumerate() {
-                let value = Integer::from_digits(blob, Order::MsfBe);
+                let (pow10, value) = split_blob(blob)
+                    .map_err(|message| format!("ciphertext #{}: {message}", index + 1))?;
+                // Складывать шифротексты разных масштабов — значит
+                // складывать разные единицы измерения. Схема этого не
+                // видит: коды целые, сумма получится, и вернётся
+                // правдоподобное неверное число. Поэтому ОТКАЗ, а не
+                // приведение к общему масштабу: привести можно только
+                // умножением открытого текста, а он зашифрован.
+                match scale_pow10 {
+                    None => scale_pow10 = Some(pow10),
+                    Some(first) if first != pow10 => {
+                        return Err(format!(
+                            "ciphertext #{} was encoded with scale 1e{pow10} \
+                             while the sum started at 1e{first}: adding them \
+                             would produce a plausible wrong number, and \
+                             rescaling is impossible on encrypted values",
+                            index + 1
+                        ))
+                    }
+                    Some(_) => {}
+                }
                 if value < 1 || value >= *nn {
                     return Err(format!(
                         "ciphertext #{} is not in [1, n^2) of this key: a \
@@ -650,15 +768,16 @@ fn add_many(
                 }
                 total = total * value % nn;
             }
-            Ok(total)
+            Ok((total, scale_pow10.expect("пачка не пуста — проверено выше")))
         })
         .map_err(PyValueError::new_err)?;
-    Ok(PyBytes::new(py, &total.to_digits::<u8>(Order::MsfBe)).unbind())
+    Ok(PyBytes::new(py, &join_blob(scale_pow10, &total)).unbind())
 }
 
 #[pyfunction]
 fn decrypt(sk: &SecretKey, blob: &[u8]) -> PyResult<f64> {
-    let cipher = Integer::from_digits(blob, Order::MsfBe);
+    let (scale_pow10, cipher) = split_blob(blob).map_err(PyValueError::new_err)?;
+    let scale = scale_of(scale_pow10);
     let plain = sk.inner.decrypt(&cipher).ok_or_else(|| {
         PyValueError::new_err(
             "not a ciphertext under this key: a valid one lies in \
@@ -667,7 +786,7 @@ fn decrypt(sk: &SecretKey, blob: &[u8]) -> PyResult<f64> {
              no pairing check, and there cannot be one from n alone",
         )
     })?;
-    decode_integer(&plain).map_err(PyValueError::new_err)
+    decode_integer(&plain, scale).map_err(PyValueError::new_err)
 }
 
 #[pymodule]

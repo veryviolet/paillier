@@ -15,7 +15,7 @@
 //!
 //! Запуск: `cargo bench --bench exponent_length`.
 
-use paillier::fast::{build_window_table, pow_by_table, windows_of};
+use paillier::fast::{build_window_table, pow_by_table, windows_for, windows_of};
 use rug::Integer;
 use std::time::Instant;
 
@@ -49,7 +49,11 @@ fn main() {
     let mut measured = Vec::new();
     for exponent_bits in [1024usize, 512, 256] {
         let exponent_bytes = exponent_bits / 8;
-        let windows = exponent_bytes * 2;
+        // Через ту же функцию, что и боевой путь. Здесь стояло
+        // `exponent_bytes * 2` — формула, верная только при
+        // `WINDOW_BITS = 4`; при шести она печатала вдвое больше окон,
+        // чем считалось на деле.
+        let windows = windows_for(exponent_bytes);
         let table = build_window_table(&hs, &nn, windows);
         let raw: Vec<u8> = (0..exponent_bytes).map(|i| (i * 37 + 11) as u8).collect();
         let digits = windows_of(&raw);

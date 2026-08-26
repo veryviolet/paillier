@@ -40,6 +40,19 @@ def one(pub, value):
     return list(p.encrypt_many(pub, [value]))[0]
 
 
+def cipher_int(blob):
+    """Шифротекст как число, БЕЗ заголовка масштаба.
+
+    Первый байт блоба — показатель степени десятки. Разбор всего блоба
+    целиком даёт число примерно в 2^4096 раз больше настоящего
+    шифротекста, и признаки, которые считаются по модулю `n²`,
+    превращаются в шум. Три теста ниже после введения заголовка
+    ПРОДОЛЖИЛИ проходить, проверяя мусор: утверждения там вида «не
+    равно» и «не единица», а мусор им удовлетворяет.
+    """
+    return int.from_bytes(bytes(blob)[1:], "big")
+
+
 # ---------------------------------------------------------------------
 # Круг и гомоморфность
 # ---------------------------------------------------------------------
@@ -156,8 +169,8 @@ def test_рандомизатор_не_повторяется_между_выз�
     n = int.from_bytes(pub.modulus_bytes(), "big")
     nn = n * n
 
-    left = int.from_bytes(bytes(one(pub, 11.0)), "big")
-    right = int.from_bytes(bytes(one(pub, 22.0)), "big")
+    left = cipher_int(one(pub, 11.0))
+    right = cipher_int(one(pub, 22.0))
 
     ratio = left * pow(right, -1, nn) % nn
     assert ratio % n != 1, "рандомизатор совпал у двух шифрований"
@@ -189,8 +202,8 @@ def test_рандомизатор_пира_не_повторяется_межд�
     n = int.from_bytes(peer.modulus_bytes(), "big")
     nn = n * n
 
-    left = int.from_bytes(bytes(one(peer, 11.0)), "big")
-    right = int.from_bytes(bytes(one(peer, 22.0)), "big")
+    left = cipher_int(one(peer, 11.0))
+    right = cipher_int(one(peer, 22.0))
 
     ratio = left * pow(right, -1, nn) % nn
     assert ratio % n != 1, "рандомизатор совпал у двух шифрований"
@@ -204,7 +217,7 @@ def test_шифротекст_пира_не_равен_кодированию_о
     """
     n = int.from_bytes(peer.modulus_bytes(), "big")
 
-    blob = int.from_bytes(bytes(one(peer, 3.5)), "big")
+    blob = cipher_int(one(peer, 3.5))
 
     assert blob != 1 + round(3.5 * 10**8) * n
 

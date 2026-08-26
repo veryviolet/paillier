@@ -20,7 +20,7 @@
 //!
 //! Запуск: `cargo bench --bench window_select`.
 
-use paillier::fast::{build_window_table, pow_by_table, windows_of, WINDOW_BITS};
+use paillier::fast::{build_window_table, pow_by_table, windows_for, windows_of, WINDOW_BITS};
 use rug::Integer;
 use std::time::Instant;
 
@@ -81,7 +81,15 @@ fn main() {
     for modulus_bits in [2048u32, 3072] {
         let (hs, nn) = parameters(modulus_bits);
         let exponent_bytes = (modulus_bits / 2 / 8) as usize;
-        let windows = exponent_bytes * 2;
+        // Через ту же функцию, что и боевой путь. Здесь стояло
+        // `exponent_bytes * 2` — формула для четырёхбитного окна, и
+        // прогон строил таблицу в полтора раза больше боевой: 8.4 МБ
+        // вместо 5.6 при 2048 битах, 18.9 вместо 12.6 при 3072. Второе
+        // хуже: 18.9 МБ переходит границу L3 в 16 МБ — ровно ту,
+        // которой обосновывается выбор шестёрки. То есть цена
+        // постоянного чтения публиковалась снятой со структуры, которой
+        // в библиотеке не бывает.
+        let windows = windows_for(exponent_bytes);
 
         let indexed = build_indexed(&hs, &nn, windows);
         let masked = build_window_table(&hs, &nn, windows);
