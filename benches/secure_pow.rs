@@ -1,25 +1,27 @@
-//! Сколько стоит безопасное к показателю возведение — на наших числах.
+//! What exponent-secure powering costs, on our numbers.
 //!
-//! Расшифровка у нас медленнее, чем у `heu`, и это надо объяснять
-//! измерением, а не памятью. Отличие по существу одно: два возведения
-//! в `secret::decrypt` идут через `mpz_powm_sec`, а не `mpz_powm`.
-//! `mpz_powm` — оконное возведение с обращением к таблице ПО БИТАМ
-//! показателя, то есть по битам `λ`, долговременного секрета ключа;
-//! `mpz_powm_sec` читает всю таблицу на каждом шаге.
+//! Decryption is slower than it could be, and that has to be explained
+//! by measurement rather than from memory. There is exactly one
+//! substantive difference: the two exponentiations in `secret::decrypt`
+//! go through `mpz_powm_sec` rather than `mpz_powm`. `mpz_powm` is a
+//! windowed exponentiation that indexes a table BY THE BITS of the
+//! exponent — i.e. by the bits of `λ`, the long-lived secret of the key;
+//! `mpz_powm_sec` reads the whole table at every step.
 //!
-//! Меряется ровно эта разница и ничего больше: те же основание,
-//! показатель и модуль, что в компонентах китайской теоремы, —
-//! показатель `p−1` длиной `|n|/2`, модуль `p²` длиной `|n|`. Остальные
-//! шаги расшифровки у обоих вариантов одинаковы и в замер не входят.
+//! Exactly that difference is measured and nothing else: the same base,
+//! exponent and modulus as in the CRT components — an exponent `p−1` of
+//! `|n|/2` bits, a modulus `p²` of `|n|` bits. The remaining steps of
+//! decryption are identical in both variants and are not in the
+//! measurement.
 //!
-//! Запуск: `cargo bench --bench secure_pow`.
+//! Run: `cargo bench --bench secure_pow`.
 
 use rug::Integer;
 use std::time::Instant;
 
-/// Повторов на точку. Одно возведение при 2048 битах — около
-/// миллисекунды, так что сотни хватает, а разброс между прогонами
-/// виден по трём независимым сериям.
+/// Repeats per point. One exponentiation at 2048 bits is about a
+/// millisecond, so a hundred is enough, and the spread between runs
+/// shows up across three independent series.
 const ROUNDS: usize = 100;
 const SERIES: usize = 3;
 
@@ -28,9 +30,9 @@ fn median(mut values: Vec<f64>) -> f64 {
     values[values.len() / 2]
 }
 
-/// Числа нужной ДЛИНЫ, а не настоящий ключ: цена возведения зависит от
-/// длин, а не от простоты. Порождение безопасных простых заняло бы
-/// секунды и ничего к замеру не добавило бы.
+/// Numbers of the right LENGTH rather than a real key: the cost of an
+/// exponentiation depends on lengths, not on primality. Generating safe
+/// primes would take seconds and add nothing to the measurement.
 fn parameters(modulus_bits: u32) -> (Integer, Integer, Integer) {
     let half = modulus_bits / 2;
     let mut p = Integer::from(1u32) << (half - 1);
@@ -45,7 +47,7 @@ fn parameters(modulus_bits: u32) -> (Integer, Integer, Integer) {
 fn main() {
     println!(
         "{:>7} {:>12} {:>12} {:>10}",
-        "бит n", "powm, мкс", "powm_sec", "отношение"
+        "n bits", "powm, us", "powm_sec", "ratio"
     );
     for modulus_bits in [2048u32, 3072] {
         let (base, exponent, modulus) = parameters(modulus_bits);

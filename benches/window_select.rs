@@ -1,24 +1,24 @@
-//! Сколько стоит постоянное по времени чтение строки таблицы.
+//! What constant-time reading of a table row costs.
 //!
-//! Кэш-канал оставался открытым не потому, что закрыть его дорого, а
-//! потому, что цена была посчитана неверно. В докстринге стояло:
-//! «читать всю строку на каждом окне — значит платить в шестнадцать
-//! раз». Это смешивает две разные вещи. Умножение на 4096 битах
-//! остаётся ОДНО; добавляется потоковое чтение `16 × 512` байт и сборка
-//! числа из байтов.
+//! The cache channel stayed open not because closing it was expensive
+//! but because the price had been computed wrong. The docstring said:
+//! "reading the whole row at every window means paying sixteen times
+//! over". That conflates two different things. There is still exactly
+//! ONE multiplication on 4096 bits; what is added is a streaming read
+//! of the row and assembling a number from words.
 //!
-//! Здесь обе укладки живут рядом и меряются на одних и тех же `hs`,
-//! `n²` и показателе:
+//! Here both layouts live side by side and are measured on the same
+//! `hs`, `n²` and exponent:
 //!
-//! * **по индексу** — как было: `Vec<Vec<Integer>>`, запись берётся
-//!   `row[digit]`, адрес обращения зависит от секретной цифры;
-//! * **маской** — как стало: строка байтов читается целиком, нужная
-//!   запись выбирается арифметической маской (`fast::pow_by_table`).
+//! * **by index** — as it was: `Vec<Vec<Integer>>`, the entry taken as
+//!   `row[digit]`, so the address depends on the secret digit;
+//! * **by mask** — as it is: the row of words is read in full and the
+//!   wanted entry selected by an arithmetic mask (`fast::pow_by_table`).
 //!
-//! Результаты сверяются на равенство: замер, у которого две ветви
-//! считают разное, ничего не сравнивает.
+//! The results are checked for equality: a benchmark whose two branches
+//! compute different things compares nothing.
 //!
-//! Запуск: `cargo bench --bench window_select`.
+//! Run: `cargo bench --bench window_select`.
 
 use paillier::fast::{build_window_table, pow_by_table, windows_for, windows_of, WINDOW_BITS};
 use rug::Integer;
@@ -32,7 +32,7 @@ fn median(mut values: Vec<f64>) -> f64 {
     values[values.len() / 2]
 }
 
-/// Прежняя укладка: записи как `Integer`, выбор по индексу.
+/// The old layout: entries as `Integer`, selection by index.
 fn build_indexed(hs: &Integer, nn: &Integer, windows: usize) -> Vec<Vec<Integer>> {
     let width = 1usize << WINDOW_BITS;
     let mut table = Vec::with_capacity(windows);
@@ -62,8 +62,8 @@ fn pow_indexed(table: &[Vec<Integer>], digits: &[u8], nn: &Integer) -> Integer {
     result
 }
 
-/// Числа нужной ДЛИНЫ: цена чтения и умножения зависит от длин, а не от
-/// того, настоящий ли это ключ.
+/// Numbers of the right LENGTH: the cost of reading and multiplying
+/// depends on lengths, not on whether this is a real key.
 fn parameters(modulus_bits: u32) -> (Integer, Integer) {
     let mut n = Integer::from(1u32) << (modulus_bits - 1);
     n += 54321u32;
@@ -76,19 +76,19 @@ fn parameters(modulus_bits: u32) -> (Integer, Integer) {
 fn main() {
     println!(
         "{:>7} {:>8} {:>14} {:>14} {:>10}",
-        "бит n", "окон", "по индексу, мкс", "маской, мкс", "отношение"
+        "n bits", "rows", "by index, us", "by mask, us", "ratio"
     );
     for modulus_bits in [2048u32, 3072] {
         let (hs, nn) = parameters(modulus_bits);
         let exponent_bytes = (modulus_bits / 2 / 8) as usize;
-        // Через ту же функцию, что и боевой путь. Здесь стояло
-        // `exponent_bytes * 2` — формула для четырёхбитного окна, и
-        // прогон строил таблицу в полтора раза больше боевой: 8.4 МБ
-        // вместо 5.6 при 2048 битах, 18.9 вместо 12.6 при 3072. Второе
-        // хуже: 18.9 МБ переходит границу L3 в 16 МБ — ровно ту,
-        // которой обосновывается выбор шестёрки. То есть цена
-        // постоянного чтения публиковалась снятой со структуры, которой
-        // в библиотеке не бывает.
+        // Through the same function the production path uses. This
+        // used to be `exponent_bytes * 2` — the formula for a four-bit
+        // window — and the benchmark built a table one and a half times
+        // larger than production: 8.4 MB instead of 5.6 at 2048 bits,
+        // 18.9 instead of 12.6 at 3072. The second is worse: 18.9 MB
+        // crosses the 16 MB L3 boundary, precisely the one the choice of
+        // six is justified by. So the cost of constant-time reading was
+        // published as measured on a structure the library never builds.
         let windows = windows_for(exponent_bytes);
 
         let indexed = build_indexed(&hs, &nn, windows);
@@ -100,7 +100,7 @@ fn main() {
         assert_eq!(
             pow_indexed(&indexed, &digits, &nn),
             pow_by_table(&masked, &digits, &nn),
-            "две укладки считают разное — сравнивать нечего"
+            "the two layouts compute different things — nothing to compare"
         );
 
         let mut by_index = Vec::new();

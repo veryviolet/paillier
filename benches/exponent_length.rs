@@ -1,19 +1,21 @@
-//! Что даёт сокращение показателя — замером, а не арифметикой в уме.
+//! What shortening the exponent would buy — by measurement, not by
+//! mental arithmetic.
 //!
-//! В `docs/short-exponent-security.md` стояло: показатель `|n|/2`
-//! избыточен вчетверо, и сокращение до 256 бит подняло бы однопоточное
-//! шифрование «примерно с 683 до 2600 эл/с». Число не выведено ни из
-//! чего: линейность по числу окон замерена, но постоянные накладные —
-//! кодирование, `1 + m·n`, умножение, сериализация — из расчёта выпали,
-//! а они и решают, во что упирается результат после сокращения.
+//! `docs/short-exponent-security.md` used to say that the `|n|/2`
+//! exponent is four times longer than needed and that shortening it to
+//! 256 bits would lift single-threaded encryption "from about 683 to
+//! 2600 ops/s". That number followed from nothing: linearity in the
+//! window count had been measured, but the constant overhead — encoding,
+//! `1 + m·n`, the multiplication, serialisation — was left out of the
+//! calculation, and it is what the result runs into once the exponent
+//! shrinks.
 //!
-//! Здесь меряется ровно то, что от длины показателя зависит: время
-//! `pow_by_table` при 256 окнах (показатель 1024 бита, как сейчас) и при
-//! 64 (256 бит). Всё остальное в шифровании от длины показателя не
-//! зависит, поэтому полное время получается сложением с постоянной
-//! частью, которую меряет `benches/bench_rust.py`.
+//! What is measured here is exactly what depends on exponent length:
+//! the time of `pow_by_table` at 1024, 512 and 256 bits. Everything
+//! else in encryption is independent of it, so the total follows by
+//! adding the constant part, which `benches/measure.py` measures.
 //!
-//! Запуск: `cargo bench --bench exponent_length`.
+//! Run: `cargo bench --bench exponent_length`.
 
 use paillier::fast::{build_window_table, pow_by_table, windows_for, windows_of};
 use rug::Integer;
@@ -40,19 +42,19 @@ fn main() {
     let modulus_bits = 2048u32;
     let (hs, nn) = parameters(modulus_bits);
 
-    println!("модуль {modulus_bits} бит");
+    println!("modulus {modulus_bits} bits");
     println!(
         "{:>16} {:>7} {:>14}",
-        "показатель, бит", "окон", "pow_by_table"
+        "exponent bits", "windows", "pow_by_table"
     );
 
     let mut measured = Vec::new();
     for exponent_bits in [1024usize, 512, 256] {
         let exponent_bytes = exponent_bits / 8;
-        // Через ту же функцию, что и боевой путь. Здесь стояло
-        // `exponent_bytes * 2` — формула, верная только при
-        // `WINDOW_BITS = 4`; при шести она печатала вдвое больше окон,
-        // чем считалось на деле.
+        // Through the same function the production path uses. This
+        // used to be `exponent_bytes * 2` — a formula correct only at
+        // `WINDOW_BITS = 4`; at six it printed twice as many windows as
+        // were actually walked.
         let windows = windows_for(exponent_bytes);
         let table = build_window_table(&hs, &nn, windows);
         let raw: Vec<u8> = (0..exponent_bytes).map(|i| (i * 37 + 11) as u8).collect();
@@ -67,23 +69,23 @@ fn main() {
             taken.push(started.elapsed().as_secs_f64() / ROUNDS as f64 * 1e6);
         }
         let taken = median(taken);
-        println!("{exponent_bits:>16} {windows:>7} {taken:>11.1} мкс");
+        println!("{exponent_bits:>16} {windows:>7} {taken:>11.1} us");
         measured.push((exponent_bits, taken));
     }
 
-    // Постоянная часть шифрования не зависит от длины показателя, но
-    // именно она задаёт потолок после сокращения. Её значение меряет
-    // `benches/bench_rust.py` (полное последовательное шифрование минус
-    // `pow_by_table` при 1024-битном показателе) и передаёт сюда числом,
-    // а не догадкой.
+    // The constant part of encryption does not depend on exponent
+    // length, but it is what sets the ceiling once the exponent shrinks.
+    // `benches/measure.py` measures it (full sequential encryption minus
+    // `pow_by_table` at a 1024-bit exponent) and supplies it as a
+    // number rather than a guess.
     println!(
-        "\nполное время = pow_by_table + постоянная часть;\n\
-         постоянную часть мерить здесь нечем — она в `bench_rust.py`."
+        "\ntotal time = pow_by_table + the constant part;\n\
+         the constant part cannot be measured here — see `measure.py`."
     );
     let full = measured[0].1;
     for (bits, taken) in &measured {
         println!(
-            "{bits:>5} бит: доля возведения от нынешнего полного возведения — {:.2}",
+            "{bits:>5} bits: share of the current full exponentiation — {:.2}",
             taken / full
         );
     }

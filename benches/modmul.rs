@@ -1,18 +1,20 @@
-//! Сколько стоит умножение по модулю `n²` — и стоит ли Монтгомери.
+//! What a multiplication modulo `n²` costs — and whether Montgomery
+//! is worth it.
 //!
-//! Прогон отдельный, потому что решение по Монтгомери принималось
-//! замером ТОЛЬКО на шифровании, и это была ошибка: там всё съедала
-//! таблица окон. Сложение — другая операция с другим профилем, и
-//! переносить вывод с одной на другую нельзя.
+//! A separate benchmark, because the Montgomery decision was once taken
+//! on a measurement of ENCRYPTION ONLY, and that was a mistake: there
+//! the window table ate everything. Addition is a different operation
+//! with a different profile, and a conclusion cannot be carried from
+//! one to the other.
 //!
-//! Запуск: `cargo test --release --bench modmul -- --nocapture`.
+//! Run: `cargo bench --bench modmul`.
 
 use rug::Integer;
 use std::time::Instant;
 
 const ROUNDS: usize = 20_000;
 
-/// REDC поверх `rug::Integer` — ровно тот, что был снят.
+/// REDC over `rug::Integer` — exactly the one that was removed.
 struct Montgomery {
     modulus: Integer,
     bits: u32,
@@ -24,7 +26,7 @@ impl Montgomery {
     fn new(modulus: &Integer) -> Self {
         let bits = (modulus.significant_bits() + 63) / 64 * 64;
         let r = Integer::from(1) << bits;
-        let inverse = Integer::from(&r) - modulus.clone().invert(&r).expect("нечётный модуль");
+        let inverse = Integer::from(&r) - modulus.clone().invert(&r).expect("odd modulus");
         let r_squared = (Integer::from(1) << (2 * bits)) % modulus;
         Self { modulus: modulus.clone(), bits, inverse, r_squared }
     }
@@ -57,7 +59,7 @@ fn main() {
     for key_bits in [2048u32, 3072] {
         let n = modulus_of(key_bits);
         let nn = Integer::from(&n * &n);
-        println!("\n=== модуль ключа {key_bits} бит, n² = {} бит ===", nn.significant_bits());
+        println!("\n=== key modulus {key_bits} bits, n² = {} bits ===", nn.significant_bits());
 
         let a = Integer::from(&nn / 3u32) + 7u32;
         let b = Integer::from(&nn / 5u32) + 11u32;
@@ -69,7 +71,7 @@ fn main() {
         }
         let plain = started.elapsed();
         println!(
-            "обычное  a·b mod n²   {:8.3?}  {:6.2} мкс/оп",
+            "plain    a·b mod n²   {:8.3?}  {:6.2} us/op",
             plain,
             plain.as_secs_f64() * 1e6 / ROUNDS as f64,
         );
@@ -83,14 +85,14 @@ fn main() {
         }
         let mont = started.elapsed();
         println!(
-            "Монтгомери            {:8.3?}  {:6.2} мкс/оп   отношение {:.2}",
+            "Montgomery            {:8.3?}  {:6.2} us/op   ratio {:.2}",
             mont,
             mont.as_secs_f64() * 1e6 / ROUNDS as f64,
             plain.as_secs_f64() / mont.as_secs_f64(),
         );
-        // Разбор байт — третий подозреваемый, и его надо мерить, а не
-        // называть. `add_many` получает шифротексты списком `bytes`, и
-        // каждый разбирается в `Integer` заново.
+        // Parsing bytes is the third suspect, and it has to be
+        // measured rather than named. `add_many` receives ciphertexts as
+        // a list of `bytes`, each parsed into an `Integer` afresh.
         let raw = a.to_digits::<u8>(rug::integer::Order::MsfBe);
         let started = Instant::now();
         let mut guard = Integer::from(0);
@@ -100,28 +102,28 @@ fn main() {
         }
         let parse = started.elapsed();
         println!(
-            "разбор {} байт в Integer  {:8.3?}  {:6.2} мкс/оп",
+            "parse {} bytes into Integer  {:8.3?}  {:6.2} us/op",
             raw.len(),
             parse,
             parse.as_secs_f64() * 1e6 / ROUNDS as f64,
         );
         println!(
-            "  итого разбор + умножение   {:6.2} мкс/оп",
+            "  parse + multiply together   {:6.2} us/op",
             (parse.as_secs_f64() + plain.as_secs_f64()) * 1e6 / ROUNDS as f64,
         );
 
-        // Точная копия цикла `add_many`: свои байты у каждого
-        // слагаемого, разбор и умножение — как в бою.
+        // An exact copy of the `add_many` loop: its own bytes per
+        // term, parsed and multiplied as in production.
         //
-        // Здесь печаталось «(в add_many замерено 85)» — литерал из
-        // замера, которого давно нет: 85 мкс было до перехода на
-        // короткий показатель, а `benches/measure.py` даёт 6.9. То есть
-        // прогон, написанный ради объяснения разрыва, продолжал
-        // печатать разрыв, которого уже нет, — и печатал бы вечно,
-        // потому что литерал не пересчитывается ни от чего.
+        // This used to print "(measured 85 in add_many)" — a literal
+        // from a measurement long gone: 85 µs was before the move to a
+        // short exponent, while `benches/measure.py` now gives 6.9. A
+        // benchmark written to explain a gap kept printing a gap that no
+        // longer exists — and would have printed it forever, because a
+        // literal is recomputed from nothing.
         //
-        // Сравнивать надо со строкой этого же вывода, а не с числом из
-        // памяти.
+        // Compare against a line of this same output, not against a
+        // number from memory.
         let blobs: Vec<Vec<u8>> = (0..10_000u32)
             .map(|i| {
                 (Integer::from(&nn / 7u32) + i)
@@ -136,12 +138,12 @@ fn main() {
         }
         let replica = started.elapsed();
         println!(
-            "копия цикла add_many      {:8.3?}  {:6.2} мкс/слагаемое",
+            "copy of the add_many loop {:8.3?}  {:6.2} us/term",
             replica,
             replica.as_secs_f64() * 1e6 / blobs.len() as f64,
         );
 
-        // Чтобы оптимизатор не выбросил циклы.
+        // So the optimiser does not throw the loops away.
         assert!(acc > 0 && acc_m > 0 && guard > 0 && total > 0);
     }
 }
