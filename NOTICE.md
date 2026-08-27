@@ -24,6 +24,29 @@ Texts are included: [`LICENSE-LGPL`](LICENSE-LGPL) and
 [`LICENSE-GPL`](LICENSE-GPL) — the LGPL incorporates the GPL terms by
 reference, so both are needed.
 
+`gmp-mpfr-sys` is a **direct** dependency, not only one inherited
+through `rug`. `src/mont.rs` calls four of its `mpn_*` functions to keep
+the encryption arithmetic on fixed-width limb buffers, which is what
+closes the leading-zeros timing channel. Cargo resolves it to the same
+version `rug` requires, so the wheel contains one GMP and not two.
+
+### `unsafe`, and whose responsibility it is
+
+This crate carries `#![deny(unsafe_code)]`, lifted in exactly one file,
+`src/mont.rs`, which states in its own header what each `unsafe` block
+does and what contract it upholds.
+
+Worth being plain about what that means. Before, all of the unsafe
+arithmetic was `rug`'s and `gmp-mpfr-sys`'s — roughly a thousand blocks
+across the two, over a GMP built from 1500-odd C files. That has not gone
+anywhere. What changed is that about 150 lines of REDC and buffer
+handling moved from their responsibility to ours.
+
+So the defensible statement is "there is no `unsafe` outside one audited
+module of this crate", which the compiler checks. The statement "a
+library without unsafe code" was never true of the built wheel and is not
+claimed anywhere.
+
 ### How the LGPL §4 conditions are met
 
 The wheel is a "Combined Work" in the sense of §4: our code is linked

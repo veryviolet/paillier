@@ -64,7 +64,7 @@ fn main() {
         for _ in 0..SERIES {
             let started = Instant::now();
             for _ in 0..ROUNDS {
-                let _ = pow_by_table(&table, &digits, &nn);
+                let _ = pow_by_table(&table, &digits);
             }
             taken.push(started.elapsed().as_secs_f64() / ROUNDS as f64 * 1e6);
         }

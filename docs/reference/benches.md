@@ -93,5 +93,5 @@ measures.
 
     The exponent length is not configurable from outside — it follows
     rigidly from the modulus length. And the constant part is the
-    difference of two independently measured quantities of about 1030 µs
+    difference of two independently measured quantities of about 830 µs
     each, so its own uncertainty is comparable to itself.

@@ -1,5 +1,103 @@
 # Changelog
 
+## 0.4.0 — 2026-08-27
+
+Ciphertexts are unchanged and interoperate with 0.3.0 in both
+directions: the arithmetic below is a different way to compute the same
+residue, not a different scheme.
+
+### The leading-zeros timing channel is closed
+
+This was the last channel the documentation named as open. While the low
+windows of the secret exponent were zero, the accumulator stayed an
+`Integer` equal to one — a single limb, cheap to multiply by. Measured:
+**−6.33 µs per leading zero** at fixed weight.
+
+It is closed by a change of container rather than of value. The
+accumulator and the window table now live in fixed-width limb buffers
+(`mpn_*` instead of `mpz_*`), where a product of two `k`-limb operands
+costs the same whatever they hold, because nothing looks at how many
+leading zeros there are. Reduction modulo `n²` would otherwise need a
+division, which *is* value-dependent, so the arithmetic is in
+**Montgomery form**: one multiplication and one branch-free conditional
+subtraction.
+
+Measured after the change: **−0.2 µs per leading zero**, thirty-one
+times smaller and indistinguishable from the residual slope of the
+already-closed weight channel.
+
+The guard was tightened at the same time, from 15.0 to 2.5 µs per zero.
+At 15.0 it stayed green under a mutation that reintroduced a branch on
+the secret digit and drove the slope to −4.58 — a threshold written for
+an open channel does not guard a closed one. The weight channel keeps
+its own threshold of 1.0: merging the two onto a single number would
+have tightened one test and quietly loosened the other.
+
+### The cache-address channel is guarded at last
+
+It was described in the documentation as closed and measured, alongside
+the other two. Closed it is; measured it cannot be. Reading one table
+entry and reading all sixty-four produce identical output, and the
+difference in cost is inside the noise of the slope tests — reverting
+`select_entry` to the address-dependent form left every test in the
+repository green.
+
+`tests/constant_time_shape.py` now checks the shape of that function:
+that no address is derived from the secret digit, and that the loop
+covers the whole row. A source-level tripwire rather than a proof, and
+the documentation now says which of the three channels is guarded how.
+
+### `unsafe`, in one module and nowhere else
+
+`mpn_*` is a C API, so this crate is no longer free of `unsafe`. It
+carries `#![deny(unsafe_code)]`, lifted only in `src/mont.rs`: four GMP
+calls over buffers whose lengths are asserted in safe Rust immediately
+before each call, with no raw pointers stored anywhere and no allocation
+inside the blocks.
+
+What changed is whose responsibility that arithmetic is. It was `rug`'s
+and GMP's, and about 150 lines of it are now ours. The built wheel was
+never free of unsafe code — it statically contains GMP — and nothing in
+the documentation claimed otherwise. See `NOTICE.md`.
+
+### Faster, secondarily
+
+Single-threaded encryption **1010 → 1066 ops/s**, batched 6334 → 6855,
+measured as an A/B of the two builds on one machine with one script. At
+the level of the exponentiation itself the gain is larger — 958 → 832 µs
+at 2048 bits — and end to end it is diluted by encoding, serialisation
+and the GIL.
+
+Montgomery form had been implemented once before, over `rug::Integer`,
+and removed on measurement: assembled from `mpz` operations it allocates
+at every step and loses by a factor of 1.19. That measurement was right
+about what it measured and wrong as a conclusion — what lost was the
+`mpz` layer, not the algorithm.
+
+### The fixture that could not see the subtraction
+
+Worth recording, because it took two attempts and an adversarial review
+to get right. REDC ends in a conditional subtraction, and whether a test
+can SEE it depends not on how often it fires but on how far `n²` sits
+below the limb boundary. Two bits of slack are enough to make the
+recurrence without the subtraction a fixed point: every value the test
+observes is canonical anyway. Both earlier fixtures sat there, and
+deleting the subtraction entirely left the suite green — while the
+docstring blamed frequency, which was the wrong cause.
+
+Real keys are flush against that boundary about one time in seven, and
+there the missing subtraction overflows the buffer and corrupts
+ciphertexts. The fixture set now runs every test over three shapes,
+including the production one, and asserts the invariant the subtraction
+exists to establish — that `mul` returns a value below the modulus.
+
+### The repository is in English
+
+Sources, tests, documentation and package metadata. The short
+description shown on the PyPI page was still Russian in 0.3.0; it is a
+property of the published metadata and could only be corrected by a
+release.
+
 ## 0.3.0 — 2026-08-26
 
 **BREAKING.** The blob now starts with a byte holding the power-of-ten

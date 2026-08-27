@@ -1,22 +1,22 @@
 [package]
 name = "paillier"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
-# Лицензия ИСХОДНИКОВ крейта. Собранное колесо шире: в него статически
-# входит GMP под LGPL-3.0+, и `pyproject.toml` объявляет это отдельно.
-# Разбор — `NOTICE.md`.
+# The licence of the crate's SOURCES. The built wheel is wider: GMP
+# under LGPL-3.0+ goes into it statically, and `pyproject.toml` declares
+# that separately. The breakdown is in `NOTICE.md`.
 license = "MIT OR Apache-2.0"
-description = "Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP с привязкой к Python"
+description = "Additively homomorphic Paillier encryption: a Rust implementation on top of GMP, bound to Python"
 readme = "README.md"
 repository = "https://github.com/veryviolet/paillier"
 homepage = "https://veryviolet.github.io/paillier/"
 keywords = ["paillier", "homomorphic", "encryption", "cryptography", "gmp"]
 categories = ["cryptography"]
 authors = ["Kirill Groshenkov <kir.groshenkov@gmail.com>"]
-# Версия здесь ЕДИНСТВЕННАЯ. `pyproject.toml` объявляет её `dynamic`, и
-# maturin берёт её отсюда: две копии номера разъезжаются молча, а
-# разъехавшаяся версия хуже отсутствующей — она врёт про то, какой код
-# установлен.
+# The version lives HERE and only here. `pyproject.toml` declares it
+# `dynamic` and maturin reads it from this file: two copies of a number
+# drift apart silently, and a drifted version is worse than a missing one
+# — it lies about which code is installed.
 exclude = ["/benches", "/docs", "/.github", "/mkdocs.yml", "/site"]
 
 [lib]
@@ -25,13 +25,20 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 pyo3 = { version = "0.23", features = ["extension-module"] }
-# Бэкенд `rug` выбран не по вкусу. Бэкенд `num-bigint`, включённый в
-# крейте по умолчанию, тянет `glass_pumpkin`, а тот — `core2`, у
-# которого ВСЕ версии отозваны в апреле 2026: крейт был полифилом для
-# `core::error::Error`, стабилизированного в Rust 1.81, и надобность
-# отпала. С `backend-rug` этой цепочки нет вовсе, и он же считает на
-# GMP.
+# The `rug` backend was not chosen by taste. The `num-bigint` backend,
+# which the crate enables by default, pulls in `glass_pumpkin`, which
+# pulls in `core2` — ALL versions of which were yanked in April 2026: the
+# crate was a polyfill for `core::error::Error`, stabilised in Rust 1.81,
+# and the need went away. With `backend-rug` that chain does not exist at
+# all, and it computes on GMP.
 rug = "1.24"
+# The same GMP that `rug` already links, reached one level lower.
+# `mpn_*` works on limb buffers: no allocation, no `mpz` header, and no
+# normalisation of leading zeros — that last one is what closes the
+# remaining timing channel. Declared directly because `rug` re-exports
+# nothing; Cargo unifies it with `rug`'s own requirement, so the wheel
+# contains ONE GMP, not two. Used in `src/mont.rs` and nowhere else.
+gmp-mpfr-sys = "1.7"
 rand = "0.8"
 rayon = "1.10"
 
@@ -56,6 +63,6 @@ name = "exponent_length"
 harness = false
 
 [dev-dependencies]
-# ТОЛЬКО эталон для тестов: своя реализация, сверяемая сама с собой,
-# ничего не доказывает. В сборку библиотеки НЕ входит.
+# A reference for the tests ONLY: an implementation checked against
+# itself proves nothing. It does NOT go into the library build.
 fast-paillier = { version = "=0.3.2", default-features = false, features = ["backend-rug"] }

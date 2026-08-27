@@ -28,11 +28,22 @@
 
 // The one door through which the `keys::Validated` witness could still
 // be forged is `unsafe`: `mem::zeroed` builds a zero-sized type out of
-// nothing. We close it here rather than hoping nobody writes it.
-// `unsafe` is not needed anywhere in this crate.
-#![forbid(unsafe_code)]
+// nothing. It stays shut everywhere except one module.
+//
+// This was `forbid` until Montgomery arithmetic moved down onto limbs.
+// `forbid` cannot be lifted per module — that is precisely its purpose
+// — so it is now `deny`, which the compiler enforces just as strictly
+// but which `src/mont.rs` opts out of for itself, in the open. The
+// difference between the two is one `#[allow]` that has to be written
+// down and reviewed; it is not a difference in how much is checked.
+//
+// The exemption cannot reach the witness: `mont` deals in limb buffers
+// and does not import `keys`. Everything `unsafe` in this crate is the
+// four GMP calls listed at the top of that file.
+#![deny(unsafe_code)]
 
 pub mod fast;
+pub mod mont;
 pub mod primes;
 pub mod secret;
 pub mod keys;
@@ -599,7 +610,7 @@ fn encrypt_many(
                 // BY TABLE rather than `pow_mod`: the base is fixed for
                 // the whole key and its powers are already computed.
                 // `pow_mod` would rebuild its own table per message.
-                let b = pow_by_table(table, &digits, nn);
+                let b = pow_by_table(table, &digits);
                 let c = (a * b) % nn;
                 Ok(join_blob(scale_pow10, &c))
             })

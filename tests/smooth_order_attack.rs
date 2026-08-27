@@ -1,33 +1,33 @@
-//! Почему безопасные простые — ГЛАВНАЯ проверка НАШЕГО ключа.
+//! Why safe primes are the PRINCIPAL check on OUR key.
 //!
-//! Здесь не утверждается, что `validate_private` возвращает нужный
-//! вариант ошибки. Здесь показывается, ЧТО происходит с ключом, который
-//! эта проверка отвергает: модуль раскладывается, и открытый текст
-//! снимается целиком — при том что ключ блюмов, `gcd(p−1, q−1) = 2`, а
-//! простые далеки друг от друга.
+//! What is shown here is not that `validate_private` returns the right
+//! error variant. It is WHAT HAPPENS to a key that this check refuses:
+//! the modulus factors and the plaintext comes out whole — even though
+//! the key is Blum, `gcd(p−1, q−1) = 2`, and the primes are far apart.
 //!
-//! Первая редакция файла доказывала не своё утверждение, и это стоит
-//! записать. Она снимала показатель `r` методом Полига–Хеллмана, называя
-//! это атакой на короткий показатель, — но за черту «дальше только `n` и
-//! шифротекст» проносила две величины, которых у наблюдателя нет: сам
-//! `hs` (он выводится шифрующим из случайного `x` и наружу не отдаётся)
-//! и порядок `hs` (он вычислялся из `λ`, то есть из `p` и `q`).
+//! The first version of this file proved a different claim than the one
+//! it stated, and that is worth recording. It recovered the exponent `r`
+//! by Pohlig–Hellman and called that an attack on the short exponent —
+//! but it carried two quantities across the line "from here on, only `n`
+//! and the ciphertext" that an observer does not have: `hs` itself (the
+//! encrypting side derives it from a random `x` and never publishes it)
+//! and the order of `hs` (computed from `λ`, i.e. from `p` and `q`).
 //!
-//! Хуже, что такой ключ ломается вообще без всякой связи с коротким
-//! показателем: при гладком `p−1` работает Поллард `p−1`, и это метод
-//! против МОДУЛЯ, а не против рандомизатора. То есть контрпример
-//! показывал «гладкое `p−1` губит любой Paillier» — верное и важное
-//! утверждение, но другое.
+//! Worse, such a key breaks with no connection to the short exponent at
+//! all: with smooth `p−1`, Pollard's `p−1` works, and that is a method
+//! against the MODULUS, not against the randomiser. So the counterexample
+//! showed "smooth `p−1` ruins any Paillier" — a true and important claim,
+//! but a different one.
 //!
-//! Поэтому здесь ровно оно и доказывается, честно: в атаке участвует
-//! ТОЛЬКО `n`. А требование неглаткости порядка `hs`, специфичное для
-//! короткого показателя, стережёт `DegenerateHs` — см.
+//! So that is exactly what is proved here, honestly: the attack uses
+//! ONLY `n`. The requirement that the order of `hs` be non-smooth, which
+//! is specific to the short exponent, is guarded by `DegenerateHs` — see
 //! `tests/degenerate_x.rs`.
 //!
-//! Чего здесь БОЛЬШЕ НЕТ: тестов на пробы чужого модуля. Проб не
-//! осталось — `validate_public` проверяет длину, и только, как и
-//! положено *partial public key validation*. Разбор, почему проб быть не
-//! должно, — в её докстринге.
+//! What is NO LONGER here: tests for probing a peer's modulus. There are
+//! no probes left — `validate_public` checks the length and nothing else,
+//! as *partial public key validation* should. Why there should be no
+//! probes is set out in its docstring.
 
 use paillier::keys::{
     derive_h, derive_hs, validate_private, validate_public, KeyError,
@@ -39,18 +39,18 @@ use rug::integer::{IsPrime, Order};
 use rug::ops::RemRounding;
 use rug::Integer;
 
-/// Простые для сборки гладкого `p−1`. Разные наборы у `p` и `q`, чтобы
-/// `gcd(p−1, q−1) = 2` — иначе отказ пришёл бы по другой ветке и тест
-/// доказывал бы не то.
+/// Primes for assembling a smooth `p−1`. Different pools for `p` and `q`
+/// so that `gcd(p−1, q−1) = 2` — otherwise the refusal would come down a
+/// different branch and the test would prove the wrong thing.
 fn small_primes(from: u32, to: u32) -> Vec<u32> {
     (from..to)
         .filter(|c| Integer::from(*c).is_probably_prime(30) != IsPrime::No)
         .collect()
 }
 
-/// Блюмово простое `p = 2·s + 1`, где `s` — произведение различных
-/// малых простых из `pool`. Все делители `p−1` меньше верхней границы
-/// набора, поэтому `p−1` гладкое.
+/// A Blum prime `p = 2·s + 1`, where `s` is a product of distinct small
+/// primes from `pool`. Every divisor of `p−1` is below the top of the
+/// pool, so `p−1` is smooth.
 fn smooth_blum_prime(pool: &[u32], target_bits: u32) -> (Integer, Vec<u32>) {
     let mut rng = rand::thread_rng();
     loop {
@@ -67,8 +67,8 @@ fn smooth_blum_prime(pool: &[u32], target_bits: u32) -> (Integer, Vec<u32>) {
         }
         let candidate = Integer::from(&s * 2u32) + 1u32;
         if candidate.is_probably_prime(40) != IsPrime::No {
-            // `s` — произведение нечётных простых, значит нечётно,
-            // значит `p = 2s+1 ≡ 3 (mod 4)`. Блюмовость выполнена.
+            // `s` is a product of odd primes, hence odd, hence
+            // `p = 2s+1 ≡ 3 (mod 4)`. Blum-ness holds.
             assert_eq!(candidate.clone() % 4u32, 3);
             chosen.sort_unstable();
             return (candidate, chosen);
@@ -76,9 +76,9 @@ fn smooth_blum_prime(pool: &[u32], target_bits: u32) -> (Integer, Vec<u32>) {
     }
 }
 
-/// Поллард `p−1`: `a^M mod n` при `M = lcm(1..bound)`.
+/// Pollard's `p−1`: `a^M mod n` with `M = lcm(1..bound)`.
 ///
-/// Единственный вход — `n`. Ни `p`, ни `q`, ни `λ`, ни `hs`.
+/// The only input is `n`. Not `p`, not `q`, not `λ`, not `hs`.
 fn pollard_p_minus_1(n: &Integer, bound: u32) -> Option<Integer> {
     let mut base = Integer::from(2);
     for k in 2..=bound {
@@ -100,11 +100,11 @@ fn pollard_p_minus_1(n: &Integer, bound: u32) -> Option<Integer> {
 
 #[test]
 fn the_length_floor_applies_to_the_owner_too() {
-    // `validate_private` публична и заявлена как проверка ключа, а её
-    // граница длины держалась только тем, что `generate_keypair`
-    // проверяет раньше. 23 и 59 — настоящие безопасные простые
-    // (11 и 29 просты), блюмовы, `gcd(22, 58) = 2`: всё остальное здесь
-    // в порядке, отвергает ровно длина.
+    // `validate_private` is public and is advertised as a key check, yet
+    // its length floor held only because `generate_keypair` checks
+    // earlier. 23 and 59 are genuine safe primes (11 and 29 are prime),
+    // Blum, `gcd(22, 58) = 2`: everything else here is in order, and it
+    // is the length that refuses.
     let p = Integer::from(23);
     let q = Integer::from(59);
 
@@ -127,8 +127,8 @@ fn an_over_long_modulus_is_refused() {
 
 #[test]
 fn a_modulus_of_normal_length_is_accepted() {
-    // Обратная сторона границ: без этого «починить» их можно было бы
-    // полным запретом, и оба теста выше остались бы зелёными.
+    // The other side of the bounds: without this, "fixing" them by
+    // refusing everything would leave both tests above green.
     let n = (Integer::from(1) << 3071u32) + 1u32;
 
     assert_eq!(validate_public(&n), Ok(()));
@@ -136,13 +136,13 @@ fn a_modulus_of_normal_length_is_accepted() {
 
 #[test]
 fn a_key_with_smooth_lambda_gives_up_the_plaintext() {
-    // Наборы не пересекаются — тогда gcd(p−1, q−1) = 2 и отказ придёт
-    // именно по безопасности простых, а не по gcd.
+    // The pools do not overlap — then gcd(p−1, q−1) = 2 and the refusal
+    // comes from the safety of the primes rather than from the gcd.
     let (p, factors_p) = smooth_blum_prime(&small_primes(3, 30_000), 1030);
     let (q, factors_q) = smooth_blum_prime(&small_primes(30_000, 65_000), 1050);
     assert!(
         factors_p.iter().all(|f| !factors_q.contains(f)),
-        "наборы делителей обязаны не пересекаться",
+        "the factor pools must not overlap",
     );
 
     let n = Integer::from(&p * &q);
@@ -154,11 +154,12 @@ fn a_key_with_smooth_lambda_gives_up_the_plaintext() {
         n.significant_bits(),
     );
 
-    // 1. Ключ длиннее нижней границы, блюмов, gcd верный, простые
-    //    далеки — и всё же отвергается, потому что не безопасные.
+    // 1. The key is longer than the floor, Blum, the gcd is right, the
+    //    primes are far apart — and it is still refused, because they are
+    //    not safe.
     assert!(
         n.significant_bits() >= MIN_MODULUS_BITS,
-        "длина не должна быть причиной",
+        "the length must not be the reason",
     );
     assert_eq!(p.clone() % 4u32, 3);
     assert_eq!(q.clone() % 4u32, 3);
@@ -167,16 +168,17 @@ fn a_key_with_smooth_lambda_gives_up_the_plaintext() {
     assert!(
         difference.significant_bits() + 100
             >= p.significant_bits().max(q.significant_bits()),
-        "простые не должны быть близки — иначе отказ пришёл бы по Ферма",
+        "the primes must not be close — otherwise the refusal would come \
+         from the Fermat check",
     );
     assert_eq!(
         validate_private(&p, &q),
         Err(KeyError::NotSafePrimes),
-        "ключ с гладкой λ обязан отвергаться",
+        "a key with smooth λ must be refused",
     );
 
-    // 2. Теперь — что было бы, если бы не отвергался. Шифротекст
-    //    строится НАШИМ кодом.
+    // 2. Now — what would happen if it were not refused. The ciphertext
+    //    is built by OUR code.
     let x = Integer::from(&n / 3u32) + 12345u32;
     let h = derive_h(&x, &n).expect("h");
     let hs = derive_hs(&h, &n).expect("hs");
@@ -189,27 +191,27 @@ fn a_key_with_smooth_lambda_gives_up_the_plaintext() {
         * hs.clone().pow_mod(&r, &nn).unwrap())
         % nn.clone();
 
-    // --- дальше в ход идёт ТОЛЬКО `n` и шифротекст ---
+    // --- from here on, ONLY `n` and the ciphertext are used ---
     let started = std::time::Instant::now();
-    let factor = pollard_p_minus_1(&n, 70_000).expect("Поллард обязан справиться");
+    let factor = pollard_p_minus_1(&n, 70_000).expect("Pollard must succeed");
     let other = Integer::from(&n / &factor);
     println!(
-        "Поллард p−1 разложил n за {:?}: делитель {} бит",
+        "Pollard p−1 factored n in {:?}: divisor of {} bits",
         started.elapsed(),
         factor.significant_bits(),
     );
-    assert_eq!(Integer::from(&factor * &other), n, "делитель настоящий");
+    assert_eq!(Integer::from(&factor * &other), n, "the divisor is genuine");
 
-    // Имея `p` и `q`, наблюдатель расшифровывает как владелец ключа.
+    // Holding `p` and `q`, the observer decrypts as the key owner would.
     let lambda = Integer::from(&factor - 1u32).lcm(&Integer::from(&other - 1u32));
     let numerator = cipher.clone().pow_mod(&lambda, &nn).unwrap();
     let l_value = Integer::from(&numerator - 1u32) / &n;
     let mu = Integer::from(&lambda % &n).invert(&n).expect("gcd(λ, n) = 1");
     let plain = (l_value * mu).rem_euc(n.clone());
-    println!("открытый текст снят за {:?}", started.elapsed());
+    println!("plaintext recovered in {:?}", started.elapsed());
 
     assert_eq!(
         plain, secret,
-        "открытый текст обязан сниматься — в этом и смысл отказа выше",
+        "the plaintext must come out — that is the point of the refusal above",
     );
 }

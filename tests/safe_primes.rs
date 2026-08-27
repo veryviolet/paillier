@@ -1,24 +1,24 @@
-//! Наш генератор обязан выдавать именно БЕЗОПАСНЫЕ простые.
+//! Our generator must produce SAFE primes specifically.
 //!
-//! Проверяется не «похоже на простое», а ровно те свойства, на которых
-//! стоит стойкость короткого показателя и которые требует
-//! `keys::validate_private`:
+//! What is checked is not "looks prime" but exactly the properties that
+//! short-exponent security rests on and that `keys::validate_private`
+//! requires:
 //!
-//! - `p` просто;
-//! - `(p−1)/2` просто — отсюда `λ = 2p′q′` с большим простым делителем;
-//! - длина РОВНО заданная, а не «около».
+//! - `p` is prime;
+//! - `(p−1)/2` is prime — hence `λ = 2p′q′` with a large prime factor;
+//! - the length is EXACTLY the one asked for, not "about".
 //!
-//! Последнее не придирка: из-за «около» произведение двух простых
-//! выходило короче заявленного модуля, и длина показателя разъезжалась
-//! между владельцем и пиром.
+//! The last is not pedantry: because of "about", the product of two
+//! primes came out shorter than the declared modulus, and the exponent
+//! length drifted apart between the owner and the peer.
 
 use paillier::keys::validate_private;
 use paillier::primes::safe_prime;
 use rug::integer::IsPrime;
 use rug::Integer;
 
-/// Размер для прогона. Малый — свойства от размера не зависят, а
-/// поиск 1024-битного безопасного простого занимает секунды.
+/// The size to run at. Small — the properties do not depend on the size,
+/// and finding a 1024-bit safe prime takes seconds.
 const BITS: u32 = 128;
 
 #[test]
@@ -26,25 +26,26 @@ fn yields_safe_primes_of_the_requested_length() {
     for _ in 0..8 {
         let p = safe_prime(BITS);
 
-        assert_eq!(p.significant_bits(), BITS, "длина ровно заданная");
+        assert_eq!(p.significant_bits(), BITS, "the length is exactly as asked");
         assert_ne!(
             p.is_probably_prime(40),
             IsPrime::No,
-            "само p обязано быть простым",
+            "p itself must be prime",
         );
         let half = Integer::from(&p - 1u32) / 2u32;
         assert_ne!(
             half.is_probably_prime(40),
             IsPrime::No,
-            "(p−1)/2 обязано быть простым — иначе простое не безопасное",
+            "(p-1)/2 must be prime — otherwise the prime is not safe",
         );
-        assert_eq!(p.clone() % 4u32, 3, "блюмовость выходит даром");
+        assert_eq!(p.clone() % 4u32, 3, "Blum-ness comes for free");
     }
 }
 
 #[test]
 fn two_in_a_row_differ() {
-    // Ловит генератор, который вернул константу или не перемешал зерно.
+    // Catches a generator that returned a constant or failed to stir its
+    // seed.
     let first = safe_prime(BITS);
     let second = safe_prime(BITS);
 
@@ -53,31 +54,33 @@ fn two_in_a_row_differ() {
 
 #[test]
 fn a_key_from_our_primes_passes_validation() {
-    // Сквозная связка: то, что генератор выдаёт, обязано проходить
-    // `validate_private` — иначе одна половина кода спорит с другой.
+    // End to end: what the generator produces must pass
+    // `validate_private` — otherwise one half of the code argues with the
+    // other.
     let p = safe_prime(1024);
     let q = safe_prime(1024);
 
     assert!(
         validate_private(&p, &q).is_ok(),
-        "наш генератор обязан выдавать то, что принимает наша же проверка",
+        "our generator must produce what our own check accepts",
     );
 }
 
 #[test]
 fn returns_at_small_sizes() {
-    // Решето шло по простым до 4096 и отвергало КАЖДОГО годного, пока
-    // `half` само меньше границы: простое `half` совпадало с одним из
-    // просеивающих. Цикл не заканчивался никогда — под снятым GIL это
-    // непрерываемое зависание, тот же класс, ради которого в ключе
-    // стоят границы длины.
+    // The sieve ran over primes up to 4096 and refused EVERY valid
+    // candidate while `half` was itself below that bound: a prime `half`
+    // coincided with one of the sieving primes. The loop never ended —
+    // and with the GIL released that is an uninterruptible hang, the same
+    // class of failure the length bounds on the key exist for.
     //
-    // Боевой путь не задет (`half >= 2^1023`), но контракт функции
-    // объявлен ассертом `bits >= 8`, и он обязан выполняться.
+    // The production path is untouched (`half >= 2^1023`), but the
+    // function's contract is declared by the assertion `bits >= 8`, and it
+    // has to hold.
     for bits in [8u32, 9, 10, 12, 13, 14, 16] {
         let p = safe_prime(bits);
-        assert_eq!(p.significant_bits(), bits, "размер {bits}");
+        assert_eq!(p.significant_bits(), bits, "size {bits}");
         let half = Integer::from(&p - 1u32) / 2u32;
-        assert_ne!(half.is_probably_prime(40), IsPrime::No, "размер {bits}");
+        assert_ne!(half.is_probably_prime(40), IsPrime::No, "size {bits}");
     }
 }

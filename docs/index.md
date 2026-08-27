@@ -39,11 +39,22 @@ key sees only the sum. That is the whole point of the scheme.
     Details: [The scheme](concepts/scheme.md),
     [Short-exponent security](short-exponent-security.md).
 
-!!! warning "There is NO constant time"
+!!! warning "Constant time is not claimed for the library as a whole"
 
-    Two timing side channels are closed, one stays open — about
-    **0.118 bits** out of 1024. It is named, measured, and guarded by a
-    test that watches it does not grow. Details:
+    Three timing side channels in encryption — exponent weight, cache
+    address, leading zeros — are **closed**. Two of them are guarded by
+    tests that fit the slope of time against the secret, which is the
+    only quantity that does not depend on the machine.
+
+    The cache-address channel is guarded differently, and the difference
+    is worth knowing: it changes neither the answer nor the time by
+    enough to fit, so no measurement can watch it. What guards it is a
+    check on the SHAPE of the code — that the address of a read is never
+    derived from the secret digit.
+
+    That is not the same as constant time. Key generation is a prime
+    search and is not constant time at all; and only the channels that
+    were looked for have been measured. Details:
     [Timing side channels](concepts/timing.md).
 
 ## Numbers
@@ -52,11 +63,11 @@ key sees only the sum. That is the whole point of the scheme.
 
 | operation | cost |
 |---|---|
-| encryption, all cores | **6500+ ops/s** |
-| encryption, one core | 980 ops/s |
-| addition | 7.3 µs per term |
-| decryption | 3.75 ms |
-| key generation | 1.4–2.8 s (spread 1.0–10.3) |
+| encryption, all cores | **6800+ ops/s** |
+| encryption, one core | 1066 ops/s |
+| addition | 7.1 µs per term |
+| decryption | 3.9 ms |
+| key generation | 2.2–3.3 s (spread 0.4–10.3) |
 | ciphertext | 512–513 B |
 
 Encryption is 98 % modular multiplications inside the window table;

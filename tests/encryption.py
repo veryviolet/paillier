@@ -1,11 +1,11 @@
-"""Шифрование коротким показателем.
+"""Encryption with a short exponent.
 
-Прежде проверок на него не было ни одной, и сьют оставался зелёным на
-коде, у которого приватности нет: мутация «показатель 8 бит» проходила,
-и «`hs = 1`» тоже.
+There used to be no checks on it at all, and the suite stayed green on
+code with no privacy: the mutation "an 8-bit exponent" passed, and so did
+"`hs = 1`".
 
-Запускается собранным модулем:
-    PYTHONPATH=<где лежит paillier.so> python -m pytest tests/encryption.py
+Run against the built module:
+    PYTHONPATH=<where paillier.so lives> python -m pytest tests/encryption.py
 """
 
 import math
@@ -15,13 +15,14 @@ import pytest
 
 import paillier as p
 
-# Нижняя граница длины модуля. Меньше нельзя — `generate_keypair`
-# откажет, и правильно сделает.
+# The modulus length floor. Anything shorter and `generate_keypair`
+# refuses, rightly.
 BITS = 2048
 
-# 2050 просится отдельно: произведение двух простых по 1025 бит выходит
-# на 2049 бит, и всё, что считает длину показателя от ЗАПРОШЕННОЙ
-# величины, здесь расходится с тем, что считает от фактической.
+# 2050 deserves its own case: the product of two 1025-bit primes comes out
+# at 2049 bits, and everything computing the exponent length from the
+# REQUESTED size disagrees here with everything computing it from the
+# actual one.
 ODD_BITS = 2050
 
 
@@ -31,7 +32,7 @@ def key():
 
 
 def exponent_bits_of(pub):
-    """Ожидаемая длина показателя — половина ФАКТИЧЕСКОГО модуля."""
+    """The expected exponent length — half of the ACTUAL modulus."""
     modulus_bits = int.from_bytes(pub.modulus_bytes(), "big").bit_length()
     return ((modulus_bits // 2 + 7) // 8) * 8
 
@@ -41,32 +42,32 @@ def one(pub, value):
 
 
 def cipher_int(blob):
-    """Шифротекст как число, БЕЗ заголовка масштаба.
+    """The ciphertext as a number, WITHOUT the scale header.
 
-    Первый байт блоба — показатель степени десятки. Разбор всего блоба
-    целиком даёт число примерно в 2^4096 раз больше настоящего
-    шифротекста, и признаки, которые считаются по модулю `n²`,
-    превращаются в шум. Три теста ниже после введения заголовка
-    ПРОДОЛЖИЛИ проходить, проверяя мусор: утверждения там вида «не
-    равно» и «не единица», а мусор им удовлетворяет.
+    The first byte of the blob is the power-of-ten exponent. Parsing the
+    whole blob as one integer gives a number about 2^4096 times larger
+    than the actual ciphertext, and any quantity computed modulo `n²`
+    turns into noise. Three tests below KEPT PASSING after the header was
+    introduced, while checking garbage: their assertions are of the form
+    "not equal" and "not one", and garbage satisfies those.
     """
     return int.from_bytes(bytes(blob)[1:], "big")
 
 
 # ---------------------------------------------------------------------
-# Круг и гомоморфность
+# Round trip and homomorphism
 # ---------------------------------------------------------------------
 
 @pytest.mark.parametrize("value", [
     0.0, 1.0, -1.0, 0.5, -0.5, 1e-8, -1e-8, 12345.678, -98765.4321,
 ])
-def test_круг(key, value):
+def test_round_trip(key, value):
     pub, sec = key
 
     assert p.decrypt(sec, one(pub, value)) == pytest.approx(value, abs=1e-7)
 
 
-def test_гомоморфность_включая_переход_через_ноль(key):
+def test_homomorphism_including_a_crossing_of_zero(key):
     pub, sec = key
     blobs = list(p.encrypt_many(pub, [10.0, -3.5, -20.0, 1.25]))
 
@@ -76,11 +77,11 @@ def test_гомоморфность_включая_переход_через_н�
 
 
 # ---------------------------------------------------------------------
-# Рандомизация — то, что теряется молча
+# Randomisation — what gets lost silently
 # ---------------------------------------------------------------------
 
-def test_одно_значение_даёт_разные_шифротексты(key):
-    """Ловит `hs` вырожденного порядка и потерянный вызов ГСЧ."""
+def test_one_value_gives_different_ciphertexts(key):
+    """Catches an `hs` of degenerate order and a lost call to the RNG."""
     pub, _ = key
 
     blobs = p.encrypt_many(pub, [7.0] * 200)
@@ -88,26 +89,26 @@ def test_одно_значение_даёт_разные_шифротексты(
     assert len({bytes(b) for b in blobs}) == 200
 
 
-def test_длина_показателя_закреплена_ЧИСЛОМ(key):
-    """Половина длины модуля, и это проверяется прямо.
+def test_the_exponent_length_is_pinned_BY_NUMBER(key):
+    """Half the modulus length, and that is checked directly.
 
-    Судить по столкновениям среди шифрований нельзя: замерено, что при
-    показателе в 64, 128 и 192 бита совпадений среди шестисот шифрований
-    не бывает вовсе, а стойкость при 64 битах уже `2^32` — минуты
-    работы. Такая проверка ловит только обвал до границы дней рождения,
-    то есть примерно до восьми бит.
+    Judging by collisions among encryptions will not do: it was measured
+    that with an exponent of 64, 128 or 192 bits there are no collisions
+    at all among six hundred encryptions, while the strength at 64 bits is
+    already `2^32` — minutes of work. Such a check catches only a collapse
+    to the birthday bound, i.e. down to about eight bits.
 
-    Так выглядит опечатка в единицах — `bits/2` байт вместо бит — или
-    правка `/2` на `/4`.
+    This is what a units typo looks like — `bits/2` bytes instead of bits
+    — or an edit of `/2` into `/4`.
     """
     pub, _ = key
 
     assert pub.exponent_bits == exponent_bits_of(pub)
 
 
-def test_ключ_пира_берёт_ту_же_длину_показателя(key):
-    """Две формулы в двух местах разъезжаются молча: `generate_keypair`
-    считала от запрошенных бит, `from_n` — от фактических."""
+def test_a_peer_key_takes_the_same_exponent_length(key):
+    """Two formulas in two places drift apart silently: `generate_keypair`
+    computed from the requested bits, `from_n` from the actual ones."""
     pub, _ = key
 
     peer = p.PublicKey.from_n(pub.modulus_bytes())
@@ -115,23 +116,24 @@ def test_ключ_пира_берёт_ту_же_длину_показателя(
     assert peer.exponent_bits == pub.exponent_bits
 
 
-def test_длина_показателя_совпадает_когда_модуль_короче_запроса():
-    """Тест выше был зелен на 1024 битах по совпадению.
+def test_the_exponent_length_agrees_when_the_modulus_is_short_of_the_request():
+    """The test above was green at 1024 bits by coincidence.
 
-    При запросе 1026 модуль выходил на 1025 бит: владелец брал 520 байт
-    от ЗАПРОШЕННОЙ величины, пир — 512 от фактической, и шифротексты
-    двух сторон под одним ключом получали показатели разной длины.
+    At a request of 1026 the modulus came out at 1025 bits: the owner took
+    520 bytes from the REQUESTED size and the peer 512 from the actual
+    one, so ciphertexts from the two sides under one key got exponents of
+    different lengths.
 
-    Расхождение возникает не всегда: произведение двух простых по
-    `bits/2` бит выходит и на `bits`, и на `bits−1` — как лягут старшие
-    биты. Поэтому ключ ИЩЕТСЯ, а не берётся первый попавшийся: тест,
-    полагающийся здесь на удачу, краснеет через раз, и я это уже
-    получил.
+    The discrepancy does not always arise: the product of two primes of
+    `bits/2` bits comes out at both `bits` and `bits−1`, depending on how
+    the top bits fall. So the key is SEARCHED FOR rather than taken as it
+    comes: a test relying on luck here goes red every other run, and I
+    have already had that.
     """
     attempts = 0
     while True:
         attempts += 1
-        assert attempts <= 20, "за 20 попыток не нашёлся модуль короче запроса"
+        assert attempts <= 20, "no modulus short of the request in 20 attempts"
         pub, _ = p.generate_keypair(ODD_BITS)
         modulus_bits = int.from_bytes(pub.modulus_bytes(), "big").bit_length()
         if modulus_bits < ODD_BITS:
@@ -140,16 +142,17 @@ def test_длина_показателя_совпадает_когда_моду�
     peer = p.PublicKey.from_n(pub.modulus_bytes())
 
     assert exponent_bits_of(pub) != ((ODD_BITS // 2 + 7) // 8) * 8, (
-        "размер выбран так, чтобы формулы от фактической и от запрошенной "
-        "величины давали РАЗНОЕ — иначе мутация не поймается"
+        "the size is chosen so that the formulas from the actual and from "
+        "the requested value give DIFFERENT answers — otherwise the mutation "
+        "is not caught"
     )
     assert pub.exponent_bits == exponent_bits_of(pub)
     assert peer.exponent_bits == pub.exponent_bits
 
 
-def test_шифрования_одного_значения_не_повторяются(key):
-    """Отдельно от длины: ловит обвал рандомизатора до горстки
-    значений."""
+def test_encryptions_of_one_value_do_not_repeat(key):
+    """Separate from the length: catches a collapse of the randomiser down
+    to a handful of values."""
     pub, _ = key
 
     blobs = p.encrypt_many(pub, [1.0] * 600)
@@ -157,13 +160,13 @@ def test_шифрования_одного_значения_не_повторя�
     assert len({bytes(b) for b in blobs}) == 600
 
 
-def test_рандомизатор_не_повторяется_между_вызовами(key):
-    """Проверка выше слепа к повторному использованию `r` при РАЗНЫХ
-    открытых текстах — а именно так выглядит ветвление процесса с общим
-    зерном.
+def test_the_randomiser_does_not_repeat_across_calls(key):
+    """The check above is blind to `r` being reused across DIFFERENT
+    plaintexts — and that is exactly what a process fork with a shared
+    seed looks like.
 
-    Признак считается только по публичному ключу: если `r` совпал, то
-    `c₁·c₂⁻¹ ≡ 1 + (m₁−m₂)·n`, то есть по модулю `n` даёт единицу.
+    The quantity is computed from the public key alone: if `r` coincided
+    then `c₁·c₂⁻¹ ≡ 1 + (m₁−m₂)·n`, i.e. it is one modulo `n`.
     """
     pub, _ = key
     n = int.from_bytes(pub.modulus_bytes(), "big")
@@ -173,32 +176,33 @@ def test_рандомизатор_не_повторяется_между_выз�
     right = cipher_int(one(pub, 22.0))
 
     ratio = left * pow(right, -1, nn) % nn
-    assert ratio % n != 1, "рандомизатор совпал у двух шифрований"
+    assert ratio % n != 1, "the randomiser coincided across two encryptions"
 
 
 @pytest.fixture(scope="module")
 def peer(key):
-    """Ключ пира: собран из ОДНОГО модуля, `hs` выведен на месте."""
+    """A peer key: built from the modulus ALONE, with `hs` derived in
+    place."""
     pub, _ = key
     return p.PublicKey.from_n(pub.modulus_bytes())
 
 
-def test_ключ_пира_рандомизирует_шифрование(peer):
-    """Все проверки рандомизации стояли на ключе владельца, а путь пира
-    проверялся только на круг и сложение.
+def test_a_peer_key_randomises_encryption(peer):
+    """Every randomisation check used to stand on the owner's key, and the
+    peer path was checked only for the round trip and addition.
 
-    Мутация «`hs = 1` в `from_n`» проходила сьют целиком: `c = 1 + m·n`
-    ровно, то есть приватности нет у той самой стороны, ради которой
-    вывод `hs` на месте и существует.
+    The mutation "`hs = 1` in `from_n`" passed the whole suite: `c` is
+    exactly `1 + m·n`, i.e. there is no privacy for precisely the side
+    that deriving `hs` in place exists for.
     """
     blobs = p.encrypt_many(peer, [7.0] * 200)
 
     assert len({bytes(b) for b in blobs}) == 200
 
 
-def test_рандомизатор_пира_не_повторяется_между_вызовами(peer):
-    """То же, что и для владельца: признак считается по одному
-    публичному ключу, без знания `r`."""
+def test_the_peers_randomiser_does_not_repeat_across_calls(peer):
+    """The same as for the owner: the quantity is computed from one public
+    key, without knowing `r`."""
     n = int.from_bytes(peer.modulus_bytes(), "big")
     nn = n * n
 
@@ -206,14 +210,14 @@ def test_рандомизатор_пира_не_повторяется_межд�
     right = cipher_int(one(peer, 22.0))
 
     ratio = left * pow(right, -1, nn) % nn
-    assert ratio % n != 1, "рандомизатор совпал у двух шифрований"
+    assert ratio % n != 1, "the randomiser coincided across two encryptions"
 
 
-def test_шифротекст_пира_не_равен_кодированию_открытого_текста(peer):
-    """Прямой признак `hs = 1`: тогда `c` в точности `1 + m·n`.
+def test_a_peer_ciphertext_is_not_the_encoding_of_the_plaintext(peer):
+    """A direct sign of `hs = 1`: then `c` is exactly `1 + m·n`.
 
-    Проверка выше ловит это через различие шифротекстов, но ловит
-    косвенно; здесь предъявляется само значение.
+    The check above catches this through ciphertexts differing, but
+    catches it indirectly; here the value itself is produced.
     """
     n = int.from_bytes(peer.modulus_bytes(), "big")
 
@@ -223,14 +227,14 @@ def test_шифротекст_пира_не_равен_кодированию_о
 
 
 # ---------------------------------------------------------------------
-# Отказы вместо правдоподобного числа
+# Refusals instead of a plausible number
 # ---------------------------------------------------------------------
 
 @pytest.mark.parametrize("value", [
     float("nan"), float("inf"), float("-inf"),
 ])
-def test_нефинитные_отвергаются(key, value):
-    """Прежде превращались в достоверный ноль и уезжали в сумму."""
+def test_non_finite_values_are_refused(key, value):
+    """These used to turn into a confident zero and travel into the sum."""
     pub, _ = key
 
     with pytest.raises(ValueError):
@@ -238,11 +242,11 @@ def test_нефинитные_отвергаются(key, value):
 
 
 @pytest.mark.parametrize("value", [1.7976931348623157e308, -1.7976931348623157e308])
-def test_переполнение_при_масштабировании_отвергается(key, value):
-    """`v · SCALE` уходит в бесконечность, и кодирования не существует.
+def test_overflow_during_scaling_is_refused(key, value):
+    """`v · SCALE` goes to infinity, and no encoding exists.
 
-    Прежде такое значение возвращалось как `−4.8e299` — конечное число
-    не того знака.
+    Such a value used to come back as `−4.8e299` — a finite number of the
+    wrong sign.
     """
     pub, _ = key
 
@@ -250,29 +254,28 @@ def test_переполнение_при_масштабировании_отве
         p.encrypt_many(pub, [value])
 
 
-def test_запас_под_сумму_перекрывает_весь_диапазон_f64(key):
-    """Проверка диапазона на 2048-битном ключе сработать НЕ МОЖЕТ, и это
-    надо утверждать числом, а не подбирать значение, которое она
-    отвергнет.
+def test_the_sum_headroom_covers_the_whole_f64_range(key):
+    """The range check CANNOT fire on a 2048-bit key, and that has to be
+    asserted with a number rather than by hunting for a value it refuses.
 
-    Прежний тест подавал `1e300` и требовал отказа. Он был зелен только
-    потому, что стоял на 1024-битном ключе, где `n/2 ≈ 1e308`. С нижней
-    границей в 2048 бит `1e300` — совершенно законное значение, и отказа
-    на нём быть не должно.
+    The old test fed `1e300` and demanded a refusal. It was green only
+    because it stood on a 1024-bit key, where `n/2 ≈ 1e308`. With a floor
+    of 2048 bits, `1e300` is a perfectly lawful value and must not be
+    refused.
 
-    Утверждается то, что действительно держит приватность от
-    беззвучного переполнения: запас под сумму с большим отрывом
-    перекрывает всё, что вообще кодируется из `f64`.
+    What is asserted is what actually keeps privacy safe from a silent
+    overflow: the sum headroom covers, by a wide margin, everything that
+    can be encoded from an `f64` at all.
     """
     pub, sec = key
     modulus_bits = int.from_bytes(pub.modulus_bytes(), "big").bit_length()
     largest_encodable = 1.79e300
 
-    # РАВЕНСТВО, а не «больше чем». Прежде стояло
-    # `1024 < plaintext_bound_bits` при зазоре в тысячу бит — такому
-    # неравенству удовлетворяет и совершенно неверное значение, и
-    # мутация геттера на `n.significant_bits()` (ошибка в 21 бит)
-    # проходила сьют целиком.
+    # EQUALITY, not "greater than". It used to be
+    # `1024 < plaintext_bound_bits` with a thousand bits of slack — an
+    # inequality satisfied by a completely wrong value too, and a mutation
+    # of the getter into `n.significant_bits()` (an error of 21 bits)
+    # passed the whole suite.
     assert pub.plaintext_bound_bits == modulus_bits - 21
 
     assert int(largest_encodable * 10**8).bit_length() < pub.plaintext_bound_bits
@@ -281,12 +284,12 @@ def test_запас_под_сумму_перекрывает_весь_диапа
     assert p.decrypt(sec, blob) == pytest.approx(largest_encodable, rel=1e-12)
 
 
-def test_модуль_пира_не_может_быть_сколь_угодно_длинным():
-    """Отказ в обслуживании, а не стойкость.
+def test_a_peer_modulus_cannot_be_arbitrarily_long():
+    """Denial of service, not cryptographic strength.
 
-    Сборка чужого ключа идёт под снятым GIL, поэтому `SIGINT` не доходит
-    до процесса, пока она не вернётся. Модуль приезжает от пира по
-    проводу.
+    Assembling a peer key runs with the GIL released, so `SIGINT` does not
+    reach the process until it returns. The modulus arrives from the peer
+    over the wire.
     """
     huge = (2 ** 16384 + 1).to_bytes(2049, "big")
 
@@ -294,20 +297,22 @@ def test_модуль_пира_не_может_быть_сколь_угодно_
         p.PublicKey.from_n(huge)
 
 
-def test_отказ_по_длине_не_зависит_от_длины_входа():
-    """Граница длины обязана стоять ДО всякой арифметики.
+def test_the_length_refusal_does_not_depend_on_the_input_length():
+    """The length bound must stand BEFORE any arithmetic.
 
-    Одного `pytest.raises` мало: отказ был и раньше, но `n²` считалось
-    ДО проверки длины, и цена отказа росла по входу, который целиком
-    задаёт нападающий. Замерено на прежнем коде: 0.009 с на 256 КБ,
-    0.404 на 8 МБ, 1.92 на 32 МБ, **4.07 на 64 МБ** — и всё это с
-    удержанным GIL, то есть интерпретатор не исполняет ничего, включая
-    обработчики сигналов. Плюс двукратное усиление по памяти.
+    One `pytest.raises` is not enough: the refusal happened before too,
+    but `n²` was computed BEFORE the length check, so the cost of the
+    refusal grew with input the attacker fully controls. Measured on the
+    old code: 0.009 s at 256 KB, 0.404 at 8 MB, 1.92 at 32 MB, **4.07 at
+    64 MB** — all of it with the GIL held, i.e. the interpreter executes
+    nothing at all, signal handlers included. Plus a twofold amplification
+    in memory.
 
-    Признак — ОТНОШЕНИЕ времён, а не абсолютное время: абсолютное
-    зависит от машины, отношение нет. На прежнем коде оно было около
-    450; сейчас отказ не смотрит на содержимое вовсе. Порог 10 оставляет
-    сорокакратный запас и не ловит дрожание планировщика.
+    The quantity is the RATIO of times, not the absolute time: the
+    absolute depends on the machine, the ratio does not. On the old code
+    it was about 450; now the refusal does not look at the contents at
+    all. A threshold of 10 leaves fortyfold headroom and does not trip on
+    scheduler jitter.
     """
     small = b"\xff" * (256 * 1024)
     large = b"\xff" * (64 * 1024 * 1024)
@@ -326,34 +331,34 @@ def test_отказ_по_длине_не_зависит_от_длины_вход
     on_large = refusal_seconds(large)
 
     assert on_large / max(on_small, 1e-9) < 10, (
-        f"отказ на 64 МБ занял {on_large:.4f} с против {on_small:.4f} с на "
-        f"256 КБ — значит длина проверяется после работы над содержимым"
+        f"the refusal at 64 MB took {on_large:.4f} s against {on_small:.4f} s "
+        f"at 256 KB — so the length is checked after work on the contents"
     )
 
 
-def test_пустая_сумма_отвергается(key):
+def test_an_empty_sum_is_refused(key):
     pub, _ = key
 
     with pytest.raises(ValueError):
         p.add_many(pub, [])
 
 
-def test_слишком_длинный_ключ_отвергается():
-    """Соседнее с границей значение — ловит сдвиг на единицу."""
+def test_an_over_long_key_is_refused():
+    """The value next to the bound — catches an off-by-one."""
     with pytest.raises(ValueError):
         p.generate_keypair(8193)
 
 
-def test_очень_длинный_ключ_отвергается_БЫСТРО():
-    """Граница сверху была введена только для ЧУЖОГО модуля.
+def test_a_very_long_key_is_refused_QUICKLY():
+    """The upper bound was introduced only for a PEER's modulus.
 
-    Свой оставался неограниченным: `generate_keypair(200000)` жил через
-    одиннадцать секунд и `SIGINT` его не брал — тот же непрерываемый
-    класс, что и снизу, закрытый с одной стороны.
+    Our own stayed unbounded: `generate_keypair(200000)` was still alive
+    eleven seconds later and `SIGINT` did not take it — the same
+    uninterruptible class as at the lower end, closed on one side only.
 
-    Отдельным процессом, как и нижняя граница: проверка на месте здесь
-    не работает, потому что при отказе проверки вызов не возвращается —
-    прогон мутаций это уже показал, повиснув на полчаса.
+    In a separate process, like the lower bound: an in-place check does
+    not work here, because when the check fails the call does not return —
+    a mutation run already demonstrated that by hanging for half an hour.
     """
     import subprocess
     import sys
@@ -365,37 +370,39 @@ def test_очень_длинный_ключ_отвергается_БЫСТРО(
         timeout=60,
     )
 
-    assert done.returncode != 0, "200000-битный ключ обязан отвергаться"
+    assert done.returncode != 0, "a 200000-bit key must be refused"
     assert "8192" in done.stderr, done.stderr[-400:]
 
 
 @pytest.mark.parametrize("bits", [32, 256, 1024, 2047])
-def test_короткий_ключ_отвергается(bits):
-    """Границы не было вовсе.
+def test_a_short_key_is_refused(bits):
+    """There was no bound at all.
 
-    `generate_keypair(32)` возвращал 32-битный модуль, и сьют оставался
-    зелёным целиком: круг верен, гомоморфность верна, проверки ключа
-    довольны, а `n` раскладывается за микросекунды. Проверять надо
-    отказ, потому что всё остальное тут в порядке.
+    `generate_keypair(32)` returned a 32-bit modulus and the suite stayed
+    entirely green: the round trip is right, the homomorphism is right,
+    the key checks are content, and `n` factors in microseconds. What has
+    to be checked is the refusal, because everything else here is in
+    order.
 
-    2047 стоит отдельно: соседнее с границей значение ловит сдвиг на
-    единицу.
+    2047 stands separately: the value next to the bound catches an
+    off-by-one.
     """
     with pytest.raises(ValueError):
         p.generate_keypair(bits)
 
 
-def test_короткий_ключ_отвергается_БЫСТРО():
-    """Отказ обязан наступить ДО поиска простых.
+def test_a_short_key_is_refused_QUICKLY():
+    """The refusal must come BEFORE the prime search.
 
-    `generate_safe_prime` на восьми битах крутится вечно, а идёт он под
-    снятым GIL, поэтому обработчик сигналов Python не исполняется:
-    `generate_keypair(16)` не завершался ни по Ctrl-C, ни по внешнему
-    `SIGINT`. Проверка на месте вызова этого не поймает — процесс просто
-    не вернётся, — поэтому запуск отдельный, со сроком.
+    `generate_safe_prime` at eight bits spins forever, and it runs with
+    the GIL released, so Python's signal handler never executes:
+    `generate_keypair(16)` ended neither on Ctrl-C nor on an external
+    `SIGINT`. An in-place check will not catch this — the process simply
+    does not return — hence a separate run, with a timeout.
 
-    Тест зелен и на коде, где проверка длины стоит ПОСЛЕ поиска простых:
-    при 32 битах простые находятся мгновенно. Красным его делает 16.
+    The test is also green on code where the length check stands AFTER the
+    prime search: at 32 bits primes are found instantly. What makes it red
+    is 16.
     """
     import subprocess
     import sys
@@ -407,17 +414,17 @@ def test_короткий_ключ_отвергается_БЫСТРО():
         timeout=30,
     )
 
-    assert done.returncode != 0, "16-битный ключ обязан отвергаться"
+    assert done.returncode != 0, "a 16-bit key must be refused"
     assert "2048" in done.stderr, done.stderr[-400:]
 
 
-def test_неверный_шифротекст_даёт_ошибку_а_не_панику(key):
-    """`PanicException` наследует `BaseException`, а не `Exception`,
-    поэтому паника проходит сквозь `except Exception` вызывающего и
-    роняет процесс.
+def test_a_bad_ciphertext_raises_rather_than_panics(key):
+    """`PanicException` inherits from `BaseException`, not `Exception`, so
+    a panic passes straight through the caller's `except Exception` and
+    kills the process.
 
-    Пустая сумма получала аккуратный отказ, а соседний вход того же
-    происхождения паниковал на `.expect("oadd")`.
+    An empty sum got a tidy refusal, while a neighbouring input of the
+    same origin panicked at `.expect("oadd")`.
     """
     pub, _ = key
     good = one(pub, 1.0)
@@ -426,14 +433,15 @@ def test_неверный_шифротекст_даёт_ошибку_а_не_п�
         p.add_many(pub, [bytes(good), b"\x00"])
 
 
-def test_сумма_больше_запаса_отвергается(key):
-    """Поштучной проверки диапазона мало: переполняется СУММА.
+def test_a_sum_beyond_the_headroom_is_refused(key):
+    """Per-value range checking is not enough: it is the SUM that
+    overflows.
 
-    На 1024-битном ключе три законных значения по `2.29e299`
-    складывались в `−4.57e299` — конечное правдоподобное число не того
-    знака. Запас резервируется при шифровании, но держится он ровно до
-    объявленного числа слагаемых, и это число обязано быть границей, а
-    не пожеланием.
+    On a 1024-bit key three lawful values of `2.29e299` added up to
+    `−4.57e299` — a finite, plausible number of the wrong sign. The
+    headroom is reserved at encryption time, but it holds exactly up to
+    the declared number of terms, and that number has to be a bound rather
+    than a wish.
     """
     pub, _ = key
     terms = 2**20 + 1
@@ -442,8 +450,8 @@ def test_сумма_больше_запаса_отвергается(key):
         p.add_many(pub, [b"\x01"] * terms)
 
 
-def test_сумма_в_пределах_запаса_складывается_верно(key):
-    """Обратная сторона: граница не должна мешать нормальной работе."""
+def test_a_sum_within_the_headroom_adds_correctly(key):
+    """The other side: the bound must not get in the way of normal work."""
     pub, sec = key
 
     blobs = list(p.encrypt_many(pub, [1e30, 1e30, -2e30]))
@@ -452,11 +460,11 @@ def test_сумма_в_пределах_запаса_складывается_в
 
 
 # ---------------------------------------------------------------------
-# Ключ пира: то, ради чего вывод `hs` на месте и существует
+# The peer key: what deriving `hs` in place exists for
 # ---------------------------------------------------------------------
 
-def test_ключ_собирается_из_одного_модуля(key):
-    """Шифрующий получает только `n` и выводит `hs` сам."""
+def test_a_key_is_built_from_the_modulus_alone(key):
+    """The encrypting side receives only `n` and derives `hs` itself."""
     pub, sec = key
 
     peer = p.PublicKey.from_n(pub.modulus_bytes())
@@ -465,10 +473,10 @@ def test_ключ_собирается_из_одного_модуля(key):
     assert p.decrypt(sec, blob) == pytest.approx(42.5, abs=1e-7)
 
 
-def test_разные_hs_под_одним_модулем_складываются(key):
-    """Без этого вывод на месте не имеет права на существование:
-    шифротексты двух сторон, выведших РАЗНЫЕ `hs`, обязаны складываться
-    и расшифровываться верно."""
+def test_different_hs_under_one_modulus_still_add(key):
+    """Without this, deriving in place has no right to exist: ciphertexts
+    from two sides that derived DIFFERENT `hs` must add and decrypt
+    correctly."""
     pub, sec = key
     modulus = pub.modulus_bytes()
 
@@ -481,13 +489,14 @@ def test_разные_hs_под_одним_модулем_складываютс
     assert total == pytest.approx(5555.0, abs=1e-6)
 
 
-def test_чётный_модуль_отвергается():
-    """Вход обязан быть ЗАКОННОЙ ДЛИНЫ, иначе тест доказывает не то.
+def test_an_even_modulus_is_refused():
+    """The input must be of a LAWFUL LENGTH, or the test proves something
+    else.
 
-    Прежде подавалось `2**64` — 65 бит. Такой модуль отвергается по
-    длине, и тест оставался зелёным на коде, где проверки нечётности нет
-    вовсе: он утверждал лишь «какой-нибудь ValueError». Различающий вход
-    — чётный модуль, который по длине проходит.
+    It used to feed `2**64` — 65 bits. Such a modulus is refused on
+    length, and the test stayed green on code with no oddness check at
+    all: it asserted only "some ValueError". The discriminating input is
+    an even modulus that passes the length check.
     """
     even = (2 ** 2048).to_bytes(257, "big")
 
@@ -495,12 +504,13 @@ def test_чётный_модуль_отвергается():
         p.PublicKey.from_n(even)
 
 
-def test_короткий_модуль_пира_отвергается():
-    """`from_n` не проверял ЧУЖОЙ модуль ничем.
+def test_a_short_peer_modulus_is_refused():
+    """`from_n` did not check a PEER's modulus in any way.
 
-    Проверяем то же, что все: нечётность и длину — *partial public key
-    validation*. Здесь судится, что проверка вообще ЗОВЁТСЯ из `from_n`;
-    что именно она отвергает — в `tests/smooth_order_attack.rs`.
+    What is checked is what everyone checks: oddness and length —
+    *partial public key validation*. What is judged here is that the check
+    is CALLED from `from_n` at all; what exactly it refuses is in
+    `tests/smooth_order_attack.rs`.
     """
     short = (2 ** 2000 + 1).to_bytes(251, "big")
 
@@ -508,10 +518,11 @@ def test_короткий_модуль_пира_отвергается():
         p.PublicKey.from_n(short)
 
 
-def test_сквозной_путь_ключа(key):
-    """Сериализация → передача → шифрование → расшифровка.
+def test_the_key_path_end_to_end(key):
+    """Serialisation → transfer → encryption → decryption.
 
-    Ловит потерю модуля по дороге, которую послойные проверки не видят.
+    Catches a modulus lost along the way, which per-layer checks do not
+    see.
     """
     pub, sec = key
 

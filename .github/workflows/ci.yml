@@ -19,6 +19,17 @@ jobs:
       # zeros), and in a debug build those measurements mean nothing.
       # Safe-prime generation in debug would also take minutes.
       - run: cargo test --release
+      # And the unit tests once more in DEBUG, where `debug_assert!` is
+      # compiled in. `[profile.release]` sets `opt-level` and `lto`, not
+      # `debug-assertions`, so a release-only CI never executes a single
+      # one of them: the range precondition on `Montgomery::mul` and the
+      # oddness check in `inverse_mod_word` were dead weight, and a real
+      # bug planted in `below_modulus` — comparing limbs from the least
+      # significant end — survived the whole suite.
+      #
+      # `--lib` only: this is about the assertions, not about the timing
+      # tests, and it takes a fraction of a second.
+      - run: cargo test --lib
 
   python:
     name: pytest on ${{ matrix.python }}

@@ -29,7 +29,7 @@ paillier.decrypt(sec, total)   # 3.0
 ```
 
 `encrypt_many` encrypts **in a batch and across all cores**: on this
-machine 6500 items per second against 980 on one. Encrypting one at a
+machine 6855 items per second against 1066 on one. Encrypting one at a
 time in a Python loop throws that factor away.
 
 `add_many` also takes a batch: one call into Rust for the whole thousand

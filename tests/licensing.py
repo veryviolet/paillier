@@ -149,20 +149,69 @@ def test_the_built_extension_contains_no_oracle_code():
     )
 
 
-def test_the_rug_version_is_not_pinned_exactly():
+@pytest.mark.parametrize("crate", sorted(COPYLEFT))
+def test_the_copyleft_dependencies_are_not_pinned_exactly(crate):
     """LGPL §4(d)(0): a user must be able to relink against a DIFFERENT
     version of the library.
 
     An exact pin (`=1.30.0`) gets in the way: rebuilding against your own
     GMP would require editing our manifest.
+
+    Over BOTH copyleft crates, not just `rug`. This checked `rug` alone
+    while `gmp-mpfr-sys` was merely transitive; it is now a DIRECT
+    dependency — and it is the crate that actually carries GMP — so
+    pinning it exactly would obstruct relinking just as much, with
+    nothing to notice.
+
+    A crate in `COPYLEFT` with no direct dependency line at all is
+    skipped rather than failed: being transitive is not a defect, and
+    demanding a line here would push us to declare dependencies we do not
+    use.
+
+    But a line that EXISTS and cannot be parsed is a failure, not a skip.
+    Matching only `name = "…"` let the table form through:
+    `gmp-mpfr-sys = { version = "=1.7.1" }` stopped matching, the row
+    skipped, and the summary read `18 passed, 1 skipped` — the exact
+    vacuity the test below is named after, one level down.
     """
     manifest = (ROOT / "Cargo.toml").read_text(encoding="utf-8")
-    rug = re.search(r'^rug = "([^"]+)"', manifest, re.MULTILINE)
+    line = re.search(rf"^{re.escape(crate)} = (.+)$", manifest, re.MULTILINE)
+    if not line:
+        pytest.skip(f"{crate} is not a direct dependency")
 
-    assert rug, "the rug dependency line was not found"
-    assert not rug.group(1).startswith("="), (
-        f"rug is pinned as {rug.group(1)}: an exact pin obstructs the "
+    # Both forms: `name = "1.7"` and `name = { version = "1.7", … }`.
+    declared = line.group(1)
+    version = re.search(r'version\s*=\s*"([^"]+)"', declared) or re.match(
+        r'"([^"]+)"', declared
+    )
+
+    assert version, (
+        f"{crate} has a dependency line that no version could be read from: "
+        f"{declared}. Skipping here would hide an exact pin behind a syntax "
+        f"the parser does not know"
+    )
+    assert not version.group(1).startswith("="), (
+        f"{crate} is pinned as {version.group(1)}: an exact pin obstructs the "
         f"relinking LGPL §4(d) requires"
+    )
+
+
+def test_at_least_one_copyleft_crate_is_direct():
+    """Otherwise the parametrised test above skips everything and passes.
+
+    An assertion of absence goes green on emptiness, and a row of skips
+    reads exactly like a row of passes in the summary line.
+    """
+    manifest = (ROOT / "Cargo.toml").read_text(encoding="utf-8")
+    direct = [
+        crate
+        for crate in COPYLEFT
+        if re.search(rf"^{re.escape(crate)} = ", manifest, re.MULTILINE)
+    ]
+
+    assert direct, (
+        f"none of {sorted(COPYLEFT)} is a direct dependency, so the pin "
+        f"check above tested nothing"
     )
 
 

@@ -1,19 +1,29 @@
-//! What constant-time reading of a table row costs.
+//! What the constant-time table costs — the WHOLE of it.
 //!
-//! The cache channel stayed open not because closing it was expensive
-//! but because the price had been computed wrong. The docstring said:
-//! "reading the whole row at every window means paying sixteen times
-//! over". That conflates two different things. There is still exactly
-//! ONE multiplication on 4096 bits; what is added is a streaming read
-//! of the row and assembling a number from words.
+//! Two exponentiations side by side on the same `hs`, `n²` and exponent:
 //!
-//! Here both layouts live side by side and are measured on the same
-//! `hs`, `n²` and exponent:
+//! * **old** — `Vec<Vec<Integer>>` with the entry taken as `row[digit]`,
+//!   so the memory address depends on the secret digit, and ordinary
+//!   `mpz` arithmetic, so the cost depends on the value;
+//! * **new** — `fast::pow_by_table`: a row of limbs read in full with the
+//!   wanted entry folded out by an arithmetic mask, over fixed-width
+//!   Montgomery arithmetic.
 //!
-//! * **by index** — as it was: `Vec<Vec<Integer>>`, the entry taken as
-//!   `row[digit]`, so the address depends on the secret digit;
-//! * **by mask** — as it is: the row of words is read in full and the
-//!   wanted entry selected by an arithmetic mask (`fast::pow_by_table`).
+//! Read what this measures precisely. It is **not** the isolated price
+//! of the masked read: the new arm also changed the arithmetic. The
+//! isolated figure — **1–5 %** for the mask — was measured when both arms
+//! were `mpz`, and it stands as a historical measurement; the middle
+//! variant does not exist in the code any more, and rebuilding it here
+//! would mean benchmarking a copy written from a description.
+//!
+//! What this measures now is the two states of the library, which is the
+//! number that belongs in the changelog.
+//!
+//! The reason the cache channel stayed open for so long is worth keeping.
+//! The docstring said: "reading the whole row at every window means
+//! paying sixteen times over". That conflates two things. There is still
+//! exactly ONE multiplication on 4096 bits; what is added is a streaming
+//! read of the row.
 //!
 //! The results are checked for equality: a benchmark whose two branches
 //! compute different things compares nothing.
@@ -32,7 +42,8 @@ fn median(mut values: Vec<f64>) -> f64 {
     values[values.len() / 2]
 }
 
-/// The old layout: entries as `Integer`, selection by index.
+/// The old layout: entries as `Integer`, selection by index, `mpz`
+/// arithmetic throughout.
 fn build_indexed(hs: &Integer, nn: &Integer, windows: usize) -> Vec<Vec<Integer>> {
     let width = 1usize << WINDOW_BITS;
     let mut table = Vec::with_capacity(windows);
@@ -76,7 +87,7 @@ fn parameters(modulus_bits: u32) -> (Integer, Integer) {
 fn main() {
     println!(
         "{:>7} {:>8} {:>14} {:>14} {:>10}",
-        "n bits", "rows", "by index, us", "by mask, us", "ratio"
+        "n bits", "rows", "old, us", "new, us", "ratio"
     );
     for modulus_bits in [2048u32, 3072] {
         let (hs, nn) = parameters(modulus_bits);
@@ -99,7 +110,7 @@ fn main() {
 
         assert_eq!(
             pow_indexed(&indexed, &digits, &nn),
-            pow_by_table(&masked, &digits, &nn),
+            pow_by_table(&masked, &digits),
             "the two layouts compute different things — nothing to compare"
         );
 
@@ -114,7 +125,7 @@ fn main() {
 
             let started = Instant::now();
             for _ in 0..ROUNDS {
-                let _ = pow_by_table(&masked, &digits, &nn);
+                let _ = pow_by_table(&masked, &digits);
             }
             by_mask.push(started.elapsed().as_secs_f64() / ROUNDS as f64 * 1e6);
         }

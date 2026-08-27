@@ -1,41 +1,42 @@
-//! Какие порядки может иметь `hs` при безопасных простых.
+//! What orders `hs` can have when the primes are safe.
 //!
-//! На этом держится стойкость короткого показателя: гладкий порядок
-//! делает Полига–Хеллмана дешёвым, и запас `2^(|r|/2)` перестаёт что-либо
-//! значить (`docs/short-exponent-security.md`).
+//! Short-exponent security rests on this: a smooth order makes
+//! Pohlig–Hellman cheap, and the `2^(|r|/2)` margin stops meaning
+//! anything (`docs/short-exponent-security.md`).
 //!
-//! # Почему множество порядков ровно `{2, 2p′, 2q′, 2p′q′}`
+//! # Why the set of orders is exactly `{2, 2p′, 2q′, 2p′q′}`
 //!
-//! Это следствие, а не наблюдение. При безопасных `p = 2p′+1` и
-//! `q = 2q′+1` группа `Z*_n ≅ Z_{2p′} × Z_{2q′}`, а `hs = h^n`. В
-//! `Z*_{n²} ≅ Z*_{p²} × Z*_{q²}` возведение в степень `n = pq`
-//! оставляет в компонентах порядки, делящие `2p′` и `2q′`, откуда
-//! `ord(hs) | lcm(2p′, 2q′) = 2p′q′`. Делители `2p′q′` — это
-//! `1, 2, p′, q′, 2p′, 2q′, p′q′, 2p′q′`; нечётные отпадают, потому что
-//! `h = −x²` имеет чётный порядок, а `1` и `2` отсеивает
+//! This is a consequence, not an observation. With safe `p = 2p′+1` and
+//! `q = 2q′+1` the group is `Z*_n ≅ Z_{2p′} × Z_{2q′}`, and `hs = h^n`.
+//! In `Z*_{n²} ≅ Z*_{p²} × Z*_{q²}` raising to the power `n = pq` leaves
+//! component orders dividing `2p′` and `2q′`, so
+//! `ord(hs) | lcm(2p′, 2q′) = 2p′q′`. The divisors of `2p′q′` are
+//! `1, 2, p′, q′, 2p′, 2q′, p′q′, 2p′q′`; the odd ones drop out because
+//! `h = −x²` has even order, and `1` and `2` are filtered by
 //! `DegenerateHs`.
 //!
-//! Довод не зависит от длины ключа. Поэтому здесь два теста, а не один:
-//! исчерпывающий на ИГРУШЕЧНОМ ключе, где перебор всех `x` возможен, и
-//! выборочный на настоящем, где он невозможен ни при какой машине.
+//! The argument does not depend on the key length. Hence two tests
+//! rather than one: exhaustive on a TOY key, where enumerating every `x`
+//! is possible, and sampled on a real one, where no machine could.
 //!
-//! # Что здесь исправляется
+//! # What is being corrected here
 //!
-//! В документе стояло: «полный перебор всех `x` на пяти НАСТОЯЩИХ
-//! ключах дал порядки ровно из `{2, 2p′, 2q′, 2p′q′}`». Полный перебор
-//! `Z*_n` при `|n| ≥ 2048` невозможен, и никакого артефакта за этой
-//! фразой в репозитории не было — как и за «200 из 200» и «400 из 400»
-//! в соседних абзацах. Утверждение было верным, а свидетельство —
-//! выдуманным.
+//! The document used to say: "an exhaustive sweep of all `x` on five
+//! REAL keys gave orders exactly from `{2, 2p′, 2q′, 2p′q′}`". An
+//! exhaustive sweep of `Z*_n` at `|n| ≥ 2048` is impossible, and there
+//! was no artefact behind that sentence in the repository — nor behind
+//! the "200 of 200" and "400 of 400" in the neighbouring paragraphs. The
+//! claim was true; the evidence was invented.
 
 use paillier::keys::{derive_h, derive_hs, KeyError};
 use paillier::primes::safe_prime;
 use rug::Integer;
 
-/// Порядок `value` в `Z*_{n²}`, если известно разложение `λ = 2·p′·q′`.
+/// The order of `value` in `Z*_{n²}`, given the factorisation
+/// `λ = 2·p′·q′`.
 ///
-/// Спуск по делителям: начинаем с `λ` и делим на каждый простой,
-/// пока степень остаётся нейтральной.
+/// Descent through the divisors: start at `λ` and divide by each prime
+/// while the power stays neutral.
 fn order_of(value: &Integer, nn: &Integer, p_half: &Integer, q_half: &Integer) -> Integer {
     let mut order = Integer::from(2u32) * p_half * q_half;
     for divisor in [Integer::from(2u32), p_half.clone(), q_half.clone()] {
@@ -52,21 +53,21 @@ fn order_of(value: &Integer, nn: &Integer, p_half: &Integer, q_half: &Integer) -
     order
 }
 
-/// `p = 2·11+1 = 23`, `q = 2·29+1 = 59`: `n = 1357`, в `Z*_n` ровно
-/// `φ(n) = 1276` элементов, и перебор ЧЕСТНО полный.
+/// `p = 2·11+1 = 23`, `q = 2·29+1 = 59`: `n = 1357`, `Z*_n` has exactly
+/// `φ(n) = 1276` elements, and the sweep is HONESTLY exhaustive.
 ///
-/// Пара взята та же, что в `tests/degenerate_x.rs`, и это существенно.
-/// Здесь стояло `q = 47` — и на нём `q − 1 = 2·23`, то есть `p` делит
-/// `λ`, `gcd(λ, n) = 23`, `µ = λ⁻¹ mod n` не существует и схема не
-/// работает вовсе. Хуже: отображение `h ↦ h^n mod n²` перестаёт быть
-/// инъективным, а это ЦЕНТРАЛЬНЫЙ шаг довода выше. Утверждение
-/// `ord(hs) | 2p′q′` держалось и там, но отказы, которые тест считает,
-/// были на девять десятых артефактом сломанной фикстуры, а не
-/// поведением схемы.
+/// The pair is the same as in `tests/degenerate_x.rs`, and that matters.
+/// It used to be `q = 47` — and there `q − 1 = 2·23`, so `p` divides
+/// `λ`, `gcd(λ, n) = 23`, `µ = λ⁻¹ mod n` does not exist and the scheme
+/// does not work at all. Worse: the map `h ↦ h^n mod n²` stops being
+/// injective, and that is the CENTRAL step of the argument above. The
+/// claim `ord(hs) | 2p′q′` held there too, but nine tenths of the
+/// refusals this test counts were an artefact of a broken fixture rather
+/// than behaviour of the scheme.
 ///
-/// Соседний файл от этой пары уже уходил и записал почему. Я вернул её
-/// обратно, не прочитав, — а свидетельство, снятое на негодной
-/// фикстуре, свидетельствует о фикстуре.
+/// The neighbouring file had already abandoned this pair and written
+/// down why. I brought it back without reading that — and evidence taken
+/// on an unfit fixture is evidence about the fixture.
 #[test]
 fn exhaustively_on_a_toy_key() {
     let (p, q) = (Integer::from(23u32), Integer::from(59u32));
@@ -91,45 +92,49 @@ fn exhaustively_on_a_toy_key() {
                 let order = order_of(&hs, &nn, &p_half, &q_half);
                 assert!(
                     allowed.contains(&order),
-                    "x = {x} дал порядок {order}, которого в множестве нет"
+                    "x = {x} gave order {order}, which is not in the set"
                 );
                 checked += 1;
             }
-            // `BadX` — не взаимно просто; `DegenerateHs` — порядок ≤ 2,
-            // ровно то вырождение, которое проверка и обязана ловить.
+            // `BadX` — not coprime; `DegenerateHs` — order ≤ 2, exactly
+            // the degeneracy the check exists to catch.
             Err(KeyError::BadX) | Err(KeyError::DegenerateHs) => rejected += 1,
-            Err(other) => panic!("неожиданная ошибка на x = {x}: {other:?}"),
+            Err(other) => panic!("unexpected error at x = {x}: {other:?}"),
         }
         x += 1u32;
     }
 
-    // Утверждение об отсутствии зеленеет на пустоте: если бы `derive_h`
-    // отвергала всё подряд, цикл не проверил бы ни одного порядка и тест
-    // всё равно прошёл бы. Поэтому два счётчика и обе стороны.
+    // An assertion of absence passes on emptiness: if `derive_h` refused
+    // everything, the loop would check no order at all and the test would
+    // still be green. Hence two counters and both sides.
     //
-    // Порог не выдуман: перебор идёт по `x ∈ [2, n−2]`, отвергаются
-    // кратные `p` или `q` (это `p + q − 2` значений) плюс те, где
-    // `h = −1`. На годной фикстуре вырожденных ровно два, поэтому
-    // отвергается около шести процентов. Восемьдесят — запас под
-    // изменение `derive_h`, который всё ещё падает, если она начнёт
-    // отвергать всё подряд.
+    // The threshold is not invented: the sweep runs over `x ∈ [2, n−2]`,
+    // and what is refused are the multiples of `p` or `q` (that is
+    // `p + q − 2` values) plus those where `h = −1`. On a sound fixture
+    // there are exactly two degenerate ones, so about six percent are
+    // refused. Eighty is headroom for a change in `derive_h` that still
+    // fails if it starts refusing everything.
     let total = checked + rejected;
-    let expected: usize = (Integer::from(&n - 3u32)).to_usize().expect("влезает");
-    assert_eq!(total, expected, "перебор пропустил часть диапазона");
+    let expected: usize = (Integer::from(&n - 3u32)).to_usize().expect("it fits");
+    assert_eq!(total, expected, "the sweep skipped part of the range");
     assert!(
         checked * 100 >= total * 80,
-        "принято {checked} из {total} — проверка порядков почти ничего не увидела"
+        "accepted {checked} of {total} — the order check saw almost nothing"
     );
-    assert!(rejected > 0, "ни одно значение не отвергнуто — это подозрительно");
+    assert!(
+        rejected > 0,
+        "not a single value was refused, which is suspicious"
+    );
 }
 
-/// На настоящих длинах перебор невозможен, поэтому здесь выборка — и
-/// сказано, какая именно.
+/// At real lengths a sweep is impossible, so this is a sample — and it
+/// says which one.
 #[test]
 fn sampled_on_keys_of_the_real_construction() {
-    // 256-битные простые: конструкция та же, что при 1024, а прогон
-    // укладывается в секунды. Довод выше от длины не зависит, и это
-    // проверяется отдельным ключом боевой длины ниже.
+    // 256-bit primes: the construction is the one used at 1024, and the
+    // run fits in seconds. The argument above does not depend on the
+    // length, and that is checked separately by one production-length key
+    // below.
     const KEYS: usize = 12;
     let mut full = 0usize;
     for _ in 0..KEYS {
@@ -156,11 +161,11 @@ fn sampled_on_keys_of_the_real_construction() {
             full += 1;
         }
     }
-    assert_eq!(full, KEYS, "полную λ дали {full} ключей из {KEYS}");
+    assert_eq!(full, KEYS, "{full} keys of {KEYS} gave the full λ");
 }
 
-/// Один ключ боевой длины — чтобы «довод не зависит от длины» не
-/// осталось словами.
+/// One key of production length, so that "the argument does not depend
+/// on the length" is not left as words.
 #[test]
 fn one_key_of_production_length() {
     let p = safe_prime(1024);

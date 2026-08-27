@@ -7,19 +7,19 @@ build-backend = "maturin"
 # below as `module-name` — PyPI refused `paillier` as a project name,
 # and there is no reason to drag that into the API.
 name = "pypaillier"
-description = "Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP, привязка к Python через pyo3"
+description = "Additively homomorphic Paillier encryption: a Rust implementation on top of GMP, bound to Python through pyo3"
 readme = "README.md"
 requires-python = ">=3.10"
-# Выражение описывает КОЛЕСО, а не только наши исходники.
+# The expression describes the WHEEL, not only our own sources.
 #
-# Наш код — MIT OR Apache-2.0. Но `rug` и `gmp-mpfr-sys` под LGPL-3.0+,
-# и GMP вкомпилирована в расширение СТАТИЧЕСКИ: проверено строками
-# `GNU MP assertion failed` внутри `.so` и тем, что `ldd` не показывает
-# ни одной внешней libgmp. То есть колесо — комбинированное произведение
-# по §4 LGPL, и объявлять его просто "MIT OR Apache-2.0" значит врать в
-# метаданных пакета.
+# Our code is MIT OR Apache-2.0. But `rug` and `gmp-mpfr-sys` are
+# LGPL-3.0+, and GMP is compiled into the extension STATICALLY: verified
+# by the `GNU MP assertion failed` strings inside the `.so` and by `ldd`
+# showing no external libgmp at all. So the wheel is a combined work
+# under LGPL §4, and declaring it plainly "MIT OR Apache-2.0" would be a
+# lie in the package metadata.
 #
-# Разбор и выполнение условий §4 — в `NOTICE.md`.
+# The breakdown, and how the §4 conditions are met: `NOTICE.md`.
 license = "(MIT OR Apache-2.0) AND LGPL-3.0-or-later"
 license-files = ["LICENSE-MIT", "LICENSE-APACHE", "LICENSE-LGPL", "LICENSE-GPL", "NOTICE.md"]
 authors = [{ name = "Kirill Groshenkov", email = "kir.groshenkov@gmail.com" }]
@@ -44,8 +44,9 @@ classifiers = [
     "Topic :: Security :: Cryptography",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-# Версия берётся из `Cargo.toml`. Единственный источник номера — там же,
-# откуда его читает `__version__` при сборке (`CARGO_PKG_VERSION`).
+# The version comes from `Cargo.toml`. That is the single source of the
+# number, and the same place `__version__` reads it from at build time
+# (`CARGO_PKG_VERSION`).
 dynamic = ["version"]
 
 [project.urls]
@@ -60,7 +61,7 @@ Changelog = "https://github.com/veryviolet/paillier/blob/main/CHANGELOG.md"
 # `pip install pypaillier` then `import paillier`. Without this line
 # maturin would name the module after the distribution.
 module-name = "paillier"
-# Колёса собираются ПОД КАЖДУЮ версию Python отдельно, без `abi3`.
+# Wheels are built PER PYTHON VERSION, without `abi3`.
 #
 # The temptation of `abi3` is real — one wheel instead of four — but a
 # compatibility tag that does not match the contents is worse than no

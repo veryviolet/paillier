@@ -1,4 +1,5 @@
-//! Encryption arithmetic: a window table with constant-time reading.
+//! Encryption arithmetic: a window table in Montgomery form, read in
+//! constant time.
 //!
 //! Split out of `lib.rs` not for tidiness but for testability. While
 //! these were private functions, a test could only ASSEMBLE A COPY of
@@ -12,8 +13,9 @@
 //! a round trip — a round trip would stay green on a broken table if the
 //! error were the same in encryption and decryption.
 
-use rug::integer::Order;
 use rug::Integer;
+
+use crate::mont::{Limb, Montgomery, Work};
 
 /// Window width of the table of precomputed powers of `hs`, in bits.
 ///
@@ -35,7 +37,12 @@ use rug::Integer;
 /// Encryption is 98 % multiplications in `pow_by_table`, and the number
 /// of multiplications equals the number of windows — `⌈|r| / w⌉`.
 /// Measured at `|n| = 2048`, 1024-bit exponent, constant-time reading,
-/// µs per exponentiation:
+/// µs per exponentiation. These are HISTORICAL — taken on `mpz`
+/// arithmetic, before Montgomery form, which is why the `w = 6` row does
+/// not match what `benches/exponent_length.rs` prints today (830 µs).
+/// They are kept because what they justify is the CHOICE of `w`, and
+/// that comparison only means anything between rows measured the same
+/// way:
 ///
 /// | `w` | windows | table | time |
 /// |---|---|---|---|
@@ -48,7 +55,7 @@ use rug::Integer;
 /// while the table stays comfortably below the level-3 cache (16 MB on
 /// this machine). At `w = 8` the table sits right on that boundary and
 /// the number starts depending on the hardware; at `w = 10` it lives in
-/// RAM and constant-time reading stops paying off — the mask reads the
+/// RAM and constant-time reading stops paying off — the read touches the
 /// WHOLE row, so it doubles in cost with every extra bit.
 ///
 /// Memory is not an abstraction here: the table is built per peer key
@@ -109,31 +116,40 @@ pub fn windows_of(raw: &[u8]) -> Vec<u8> {
 }
 
 /// Precomputed powers of `hs`: entry `[i][d]` equals
-/// `hs^(d · 2^(WINDOW_BITS·i))`.
+/// `hs^(d · 2^(WINDOW_BITS·i))`, held in MONTGOMERY FORM.
 ///
-/// Stored as WORDS of fixed width rather than as `Integer`, and that is
-/// not a layout detail but the condition for constant time: selecting an
-/// entry without revealing the index is only possible by reading the
-/// whole row and folding it with a mask. Such a read cannot be written
-/// over `Integer` — their lengths differ, and GMP's operations cut
-/// corners on short values.
+/// Stored as limbs of fixed width rather than as `Integer`, and that is
+/// not a layout detail but the condition for constant time. Two separate
+/// properties rest on it:
+///
+/// * selecting an entry without revealing the index means touching the
+///   whole row, which needs every entry at the same offset and width;
+/// * the COST of a multiplication must not depend on the value, and an
+///   `Integer` shortens itself to its significant limbs while a limb
+///   buffer of fixed length does not.
+///
+/// The second property is why the entries are in Montgomery form: it is
+/// what lets the arithmetic stay on fixed-width limbs, without a
+/// value-dependent division. See `crate::mont`.
 ///
 /// It costs no extra memory: an `Integer` of 4096 bits already occupies
 /// its 512 bytes plus a header.
 ///
-/// A row is one contiguous block — `ROW_ENTRIES × width` words in a row
+/// A row is one contiguous block — `ROW_ENTRIES × width` limbs in a row
 /// — so reading it is sequential rather than `2^w` jumps around the
 /// heap.
 ///
-/// 64-bit words rather than bytes, and the difference is entirely in the
+/// 64-bit limbs rather than bytes, and the difference is entirely in the
 /// cost. Reading the row is the only added work, and it is bounded by
 /// the number of iterations rather than the volume: byte-wise
-/// constant-time reading cost **+26 %** on the exponentiation, word-wise
-/// **+1…5 %** (measured at 2048 and 3072 bits,
-/// `benches/window_select.rs`).
+/// constant-time reading cost **+26 %** on the exponentiation, limb-wise
+/// **+1…5 %**. That figure is historical, from when both arms of
+/// `benches/window_select.rs` were `mpz` and only the selection
+/// differed; its second arm now also uses Montgomery form, so it no
+/// longer isolates the read.
 pub struct WindowTable {
-    rows: Vec<Vec<u64>>,
-    width: usize,
+    rows: Vec<Vec<Limb>>,
+    form: Montgomery,
 }
 
 impl WindowTable {
@@ -142,9 +158,9 @@ impl WindowTable {
         self.rows.len()
     }
 
-    /// Entry width in 64-bit words — the width of `n²`.
+    /// Entry width in limbs — the width of `n²`.
     pub fn entry_width(&self) -> usize {
-        self.width
+        self.form.limbs()
     }
 }
 
@@ -153,71 +169,78 @@ impl WindowTable {
 /// five thousand operations, i.e. a fraction of a second, and they pay
 /// for themselves within the first hundred encryptions.
 ///
-/// The entries are ordinary residues modulo `n²`, WITHOUT Montgomery
-/// space. That was implemented here and removed on measurement: REDC
-/// over `rug::Integer` is assembled from the same full-width operations
-/// with an allocation at every step, and loses by a factor of 1.19.
+/// # Montgomery form, on the second attempt
 ///
-/// # The zero digit is stored as `n² + 1`, NOT as `1`
+/// The entries used to be ordinary residues modulo `n²`. Montgomery form
+/// was implemented once and REMOVED on measurement: assembled from
+/// `rug::Integer` operations, REDC allocates at every step and loses by a
+/// factor of 1.19. That measurement was right about what it measured and
+/// wrong as a conclusion — what lost was the `mpz` layer, not the
+/// algorithm. On limbs (`crate::mont`) the same algorithm wins, and it
+/// also closes the last timing channel. The connection was already
+/// written down in this file, as a note that the rejected technique was
+/// the only known cure for the remaining leak; it took a second attempt
+/// to act on it.
 ///
-/// `n² + 1 ≡ 1 (mod n²)`, so the result is the same. But one is a
-/// single-limb number: GMP computes `result * 1` in `O(limbs)`, and the
-/// following `% n²` returns immediately because the product is already
-/// below the modulus. A zero window then costs almost nothing, and the
-/// time depends on the exponent AGAIN — that is, substituting one does
-/// not close the leak.
+/// # The zero digit
 ///
-/// How this was caught is worth recording. The first version put `1`
+/// Entry zero holds `R mod n²` — one, in Montgomery form.
+///
+/// It used to hold `n² + 1` rather than `1`, and the reason is worth
+/// keeping because it is the same reason this file now works on limbs.
+/// `n² + 1 ≡ 1 (mod n²)`, so the result is unchanged; but one is a
+/// single-limb number, `mpz` multiplies by it in `O(limbs)`, and the
+/// following `% n²` returns immediately. A zero window then cost almost
+/// nothing and the time depended on the exponent again.
+///
+/// How that was caught is worth recording. The first version put `1`
 /// there, and I expected a slowdown of one sixteenth. The measurement
 /// showed 0.6 % instead of 6.7 %, and I read that as good news — though
 /// the missing six percent WERE the work that was not being done.
 /// **Cheaper than expected is not a gift. It is a signal.**
 ///
-/// `n² + 1` is one bit wider than `n²`, so the entry width is taken from
-/// `n² + 1` rather than from `n²`: otherwise the top bit of the zero
-/// digit would be cut off and it would become a zero.
-pub fn build_window_table(
-    hs: &Integer,
-    nn: &Integer,
-    windows: usize,
-) -> WindowTable {
-    let one_mod_nn = Integer::from(nn + 1u32);
-    let width = ((one_mod_nn.significant_bits() as usize) + 63) / 64;
+/// The padding is no longer needed, and not because the problem went
+/// away: the buffer is fixed-width now, so no value in it is cheaper to
+/// multiply by than another. `n² + 1` also forced the entry width to be
+/// taken from `n² + 1` rather than `n²`, one bit wider; that goes with
+/// it.
+pub fn build_window_table(hs: &Integer, nn: &Integer, windows: usize) -> WindowTable {
+    let form = Montgomery::new(nn).expect("n^2 is odd: n is a product of odd primes");
+    let width = form.limbs();
+    let mut work = Work::new(width);
+
     let mut rows = Vec::with_capacity(windows);
-    let mut base = hs.clone();
+    let mut base = Integer::from(hs % nn);
     for _ in 0..windows {
-        let mut row = vec![0u64; ROW_ENTRIES * width];
-        put(&mut row, 0, width, &one_mod_nn);
+        let mut row = vec![0 as Limb; ROW_ENTRIES * width];
+        row[0..width].copy_from_slice(form.one());
+
         let mut value = base.clone();
-        put(&mut row, 1, width, &value);
+        put(&mut row, 1, width, &form.enter(&value, &mut work));
         for entry in 2..ROW_ENTRIES {
             value = value * &base % nn;
-            put(&mut row, entry, width, &value);
+            let in_form = form.enter(&value, &mut work);
+            put(&mut row, entry, width, &in_form);
         }
         rows.push(row);
+
         // The base for the next window: `base^(2^WINDOW_BITS)`.
         for _ in 0..WINDOW_BITS {
             base = base.clone().square() % nn;
         }
     }
-    WindowTable { rows, width }
+    WindowTable { rows, form }
 }
 
-/// Places a number into a row entry, zero-padded on the left.
-///
-/// `write_digits` fills the whole slice rather than only the significant
-/// words — otherwise the entry width would depend on the value, and
-/// constant time would be lost in the very place it is built.
-fn put(row: &mut [u64], entry: usize, width: usize, value: &Integer) {
+/// Places one entry into a row.
+fn put(row: &mut [Limb], entry: usize, width: usize, value: &[Limb]) {
     let start = entry * width;
-    value.write_digits(&mut row[start..start + width], Order::LsfLe);
+    row[start..start + width].copy_from_slice(value);
 }
 
 /// `hs^r mod n²` from a prepared table.
 ///
-/// A multiplication happens at EVERY window, zero digits included: the
-/// table holds `n² + 1` there — a full-width residue equal to one modulo
-/// `n²`. Why that rather than `1` is explained at `build_window_table`.
+/// A multiplication happens at EVERY window, zero digits included.
 ///
 /// Zero digits used to be skipped, so the number of multiplications
 /// equalled the number of non-zero nibbles of the SECRET exponent.
@@ -239,11 +262,11 @@ fn put(row: &mut [u64], entry: usize, width: usize, value: &Integer) {
 /// The paragraph is kept as HISTORY of a closed channel and marked so it
 /// is not read as the current state.)
 ///
-/// # The cache channel is closed, and its cost had been computed wrong
+/// # The cache channel
 ///
 /// The entry used to be taken by index — `table[window][digit]` — so the
 /// address of the memory access depended on the secret digit. Here the
-/// WHOLE row is read and the wanted entry is selected with an
+/// WHOLE row is read and the wanted entry folded out with an
 /// all-ones/all-zeros mask computed by arithmetic, with no branch. An
 /// observer watching cache accesses sees the same sequence of addresses
 /// for any exponent.
@@ -256,8 +279,12 @@ fn put(row: &mut [u64], entry: usize, width: usize, value: &Integer) {
 /// kilobytes, which against a 4096-bit multiplication costs almost
 /// nothing.
 ///
-/// Measured (`benches/window_select.rs`, both layouts on the same `hs`,
-/// `n²` and exponent, results checked for equality):
+/// Measured when BOTH arms were `mpz` and only the selection differed —
+/// a historical figure, and the only one that isolates the price of the
+/// mask. `benches/window_select.rs` no longer reproduces it: its new arm
+/// also changed the arithmetic, so it now prints the whole difference
+/// between the two states of the library: 0.85–0.95 at 2048 over eight
+/// runs, 0.93–0.96 at 3072.
 ///
 /// | `|n|` | rows | by index | by mask | ratio |
 /// |---|---|---|---|---|
@@ -268,55 +295,37 @@ fn put(row: &mut [u64], entry: usize, width: usize, value: &Integer) {
 /// noise. The number the decision to leave the channel open rested on
 /// was inflated by more than an order of magnitude.
 ///
-/// An unstated premise worth stating. Constant time here rests on every
-/// entry occupying FULL `width` words. Reading the row respects that,
-/// but `assign_digits` strips leading zero words — an entry with a zero
-/// top word would make the following `mpz_mul` slightly cheaper. The
-/// probability of that, for `hs^k mod n²` uniform, is about `2^−64` per
-/// entry, so it is not a channel; but the property rests on that
-/// estimate, not only on the shape of the loop.
+/// # The leading-zeros channel
 ///
-/// # What is NOT closed
+/// It was open until this loop moved into Montgomery form, and this is
+/// the record of it.
 ///
-/// **Leading zeros.** The loop starts from `result = 1`, and while the
-/// low digits are zero the accumulator stays single-limb — multiplying
-/// by it costs almost nothing. Measured: **−6.33 µs per leading zero**
-/// at FIXED weight. So the weight channel is closed and the position
-/// channel is not.
+/// The loop starts from one. While the low digits of the exponent are
+/// zero the accumulator stays equal to one, and an `Integer` holding one
+/// occupies a single limb — so multiplying by it costs almost nothing.
+/// Measured: **−6.33 µs per leading zero** at FIXED weight. The weight
+/// channel was closed and the position channel was not.
 ///
 /// The obvious cure does not work, and that was checked: starting from
-/// `n² + 1` gives a slope of −6.56, because `%` returns the canonical
+/// `n² + 1` gave a slope of −6.56, because `%` returns the canonical
 /// residue and after the first reduction the accumulator is one again.
 /// While a value is CONGRUENT to one, it is represented as one.
 ///
-/// The only known cure is a redundant representation in which one is not
-/// single-limb — that is, Montgomery form. It was rejected on speed, and
-/// the connection is worth naming plainly: **the rejected technique is
-/// the only known cure for the remaining channel.**
+/// What closes it is holding the accumulator in a FIXED-WIDTH limb
+/// buffer, where no value is cheaper to multiply by than another. That
+/// needs reduction without division, which is what Montgomery form is —
+/// see `crate::mont`.
 ///
-/// The size of the remainder: the run of leading zeros is geometric, a
+/// The size of what was leaking: the run of leading zeros is geometric, a
 /// digit is zero with probability `q = 2^−w`, and the entropy is
-/// `[−(1−q)·lg(1−q) − q·lg q] / (1−q)`.
+/// `[−(1−q)·lg(1−q) − q·lg q] / (1−q)` — **0.118 bits** out of 1024 at
+/// `w = 6`. It used to say **0.36**, the correct value for `w = 4`.
 ///
-/// At `w = 6` that is **0.118 bits** out of 1024. It used to say
-/// **0.36** — the correct value for `w = 4`, where `q = 1/16`. This
-/// number is a DIRECT consequence of the window width, and widening the
-/// window from four bits to six cut the leak threefold without touching
-/// a line of this loop. It is the only quantity in the repository that
-/// describes an OPEN channel — so it has to follow from the code rather
-/// than survive an edit to it.
-///
-/// Against a `2^512` margin it is nothing, and the remainder is accepted
-/// knowingly. It is guarded by
-/// `tests/timing_channel.rs::position_remainder_has_not_grown` — not for
-/// absence, but for not growing.
-pub fn pow_by_table(
-    table: &WindowTable,
-    digits: &[u8],
-    nn: &Integer,
-) -> Integer {
+/// Guarded by `tests/timing_channel.rs`, which measures the slope rather
+/// than trusting this paragraph.
+pub fn pow_by_table(table: &WindowTable, digits: &[u8]) -> Integer {
     // A digit outside the row would yield ZERO rather than a refusal:
-    // the mask would match no entry and `out` would stay zero. Such
+    // the mask would match no entry and the buffer would stay zero. Such
     // input used to blow up the indexing, i.e. it was visible at once.
     // The check costs one pass over the digits against as many
     // multiplications on 4096 bits.
@@ -324,21 +333,31 @@ pub fn pow_by_table(
         digits.iter().all(|digit| (*digit as usize) < ROW_ENTRIES),
         "an exponent digit does not fit a {WINDOW_BITS}-bit window"
     );
-    let width = table.width;
-    let mut selected = vec![0u64; width];
-    // Both numbers are created ONCE and reused: `assign_digits` and the
-    // in-place operations allocate nothing, whereas `from_digits` and
-    // `a * b % m` allocate two objects per window — five hundred-odd
-    // times per encryption.
-    let mut entry = Integer::new();
-    let mut result = Integer::from(1);
+    assert!(
+        digits.len() <= table.rows.len(),
+        "the exponent has {} digits and the table has {} windows",
+        digits.len(),
+        table.rows.len()
+    );
+
+    let form = &table.form;
+    let width = form.limbs();
+    // Allocated per call rather than shared: encryption runs across rayon
+    // threads and these buffers are mutable state. Four allocations
+    // against 171 multiplications on 4096 bits.
+    let mut work = Work::new(width);
+    let mut selected = vec![0 as Limb; width];
+    let mut product = vec![0 as Limb; width];
+    let mut result = form.one().to_vec();
+
     for (window, digit) in digits.iter().enumerate() {
         select_entry(&table.rows[window], width, *digit, &mut selected);
-        entry.assign_digits(&selected, Order::LsfLe);
-        result *= &entry;
-        result %= nn;
+        form.mul(&result, &selected, &mut product, &mut work);
+        // Swap rather than copy: `mpn_mul_n` needs a destination that
+        // does not overlap its operands, so the two buffers take turns.
+        std::mem::swap(&mut result, &mut product);
     }
-    result
+    form.leave(&result, &mut work)
 }
 
 /// Puts entry number `digit` into `out`, having read the whole row.
@@ -347,13 +366,20 @@ pub fn pow_by_table(
 /// arithmetic on `entry ^ digit`, and both alternatives always execute.
 /// A comparison `entry == digit` would leave the compiler free to turn
 /// it into a jump — and a jump is exactly the channel being closed.
-fn select_entry(row: &[u64], width: usize, digit: u8, out: &mut [u64]) {
+///
+/// GMP has `mpn_sec_tabselect`, which does precisely this. It is NOT
+/// used, and deliberately: it would add a fifth `unsafe` call for an
+/// operation that needs none. Selection is a masked read over a slice,
+/// which safe Rust expresses exactly; the `unsafe` in this crate is
+/// confined to the arithmetic that genuinely cannot be written without
+/// it.
+fn select_entry(row: &[Limb], width: usize, digit: u8, out: &mut [Limb]) {
     out.fill(0);
     for entry in 0..ROW_ENTRIES {
         // All ones when `entry == digit`, all zeros otherwise.
         let difference = (entry as u32) ^ (digit as u32);
-        let is_wanted = (difference.wrapping_sub(1) >> 31) as u64;
-        let mask = 0u64.wrapping_sub(is_wanted);
+        let is_wanted = (difference.wrapping_sub(1) >> 31) as Limb;
+        let mask = 0_u64.wrapping_sub(is_wanted);
         let start = entry * width;
         for (target, source) in out.iter_mut().zip(&row[start..start + width]) {
             *target |= *source & mask;
