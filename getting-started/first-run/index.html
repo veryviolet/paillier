@@ -1136,7 +1136,7 @@ cryptography.</p>
 <span class="n">paillier</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">sec</span><span class="p">,</span> <span class="n">total</span><span class="p">)</span>   <span class="c1"># 3.0</span>
 </code></pre></div>
 <p><code>encrypt_many</code> encrypts <strong>in a batch and across all cores</strong>: on this
-machine 6500 items per second against 980 on one. Encrypting one at a
+machine 6855 items per second against 1066 on one. Encrypting one at a
 time in a Python loop throws that factor away.</p>
 <p><code>add_many</code> also takes a batch: one call into Rust for the whole thousand
 terms instead of a thousand calls.</p>

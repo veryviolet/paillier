@@ -1143,10 +1143,19 @@ not a sentence you can say here unconditionally.</p>
 <a href="short-exponent-security/">Short-exponent security</a>.</p>
 </div>
 <div class="admonition warning">
-<p class="admonition-title">There is NO constant time</p>
-<p>Two timing side channels are closed, one stays open — about
-<strong>0.118 bits</strong> out of 1024. It is named, measured, and guarded by a
-test that watches it does not grow. Details:
+<p class="admonition-title">Constant time is not claimed for the library as a whole</p>
+<p>Three timing side channels in encryption — exponent weight, cache
+address, leading zeros — are <strong>closed</strong>. Two of them are guarded by
+tests that fit the slope of time against the secret, which is the
+only quantity that does not depend on the machine.</p>
+<p>The cache-address channel is guarded differently, and the difference
+is worth knowing: it changes neither the answer nor the time by
+enough to fit, so no measurement can watch it. What guards it is a
+check on the SHAPE of the code — that the address of a read is never
+derived from the secret digit.</p>
+<p>That is not the same as constant time. Key generation is a prime
+search and is not constant time at all; and only the channels that
+were looked for have been measured. Details:
 <a href="concepts/timing/">Timing side channels</a>.</p>
 </div>
 <h2 id="numbers">Numbers<a class="headerlink" href="#numbers" title="Permanent link">&para;</a></h2>
@@ -1161,23 +1170,23 @@ test that watches it does not grow. Details:
 <tbody>
 <tr>
 <td>encryption, all cores</td>
-<td><strong>6500+ ops/s</strong></td>
+<td><strong>6800+ ops/s</strong></td>
 </tr>
 <tr>
 <td>encryption, one core</td>
-<td>980 ops/s</td>
+<td>1066 ops/s</td>
 </tr>
 <tr>
 <td>addition</td>
-<td>7.3 µs per term</td>
+<td>7.1 µs per term</td>
 </tr>
 <tr>
 <td>decryption</td>
-<td>3.75 ms</td>
+<td>3.9 ms</td>
 </tr>
 <tr>
 <td>key generation</td>
-<td>1.4–2.8 s (spread 1.0–10.3)</td>
+<td>2.2–3.3 s (spread 0.4–10.3)</td>
 </tr>
 <tr>
 <td>ciphertext</td>

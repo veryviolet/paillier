@@ -691,10 +691,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#leading-zeros-channel-open" class="md-nav__link">
+  <a href="#leading-zeros-channel-closed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Leading-zeros channel — OPEN
+        Leading-zeros channel — CLOSED
       
     </span>
   </a>
@@ -706,6 +706,17 @@
     <span class="md-ellipsis">
       
         Decryption
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-still-not-claimed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is still NOT claimed
       
     </span>
   </a>
@@ -1084,10 +1095,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#leading-zeros-channel-open" class="md-nav__link">
+  <a href="#leading-zeros-channel-closed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Leading-zeros channel — OPEN
+        Leading-zeros channel — CLOSED
       
     </span>
   </a>
@@ -1099,6 +1110,17 @@
     <span class="md-ellipsis">
       
         Decryption
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-still-not-claimed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is still NOT claimed
       
     </span>
   </a>
@@ -1137,18 +1159,18 @@
 
 
 <h1 id="timing-side-channels">Timing side channels<a class="headerlink" href="#timing-side-channels" title="Permanent link">&para;</a></h1>
-<p><strong>This library does NOT provide constant time and does not claim to.</strong>
-Two channels are closed, one is open, named and measured. All three are
-below, because the difference between "named" and "closed" is decisive
-here.</p>
+<p><strong>Three channels in encryption are closed, named and measured. Constant
+time is still not claimed as a property of the whole library</strong> — the
+difference between "the channels we found are closed" and "there are no
+channels" is exactly the difference this page is written about.</p>
 <h2 id="what-constant-time-even-means">What "constant time" even means<a class="headerlink" href="#what-constant-time-even-means" title="Permanent link">&para;</a></h2>
-<p>Not "the same number of microseconds" — timing wanders with machine
-load regardless. The requirement is different: <strong>changing the secret
-must not change observable behaviour</strong>.</p>
-<p>The secret here is the exponent <code>r</code>, fresh for every message. An
-observer who learns <code>r</code> recovers the plaintext outright: compute <code>hs^r</code>
-(base and modulus are public), divide the ciphertext by it, get
-<code>1 + m·n</code>, subtract one, divide by <code>n</code>.</p>
+<p>Not "the same number of microseconds" — timing wanders with machine load
+regardless. The requirement is different: <strong>changing the secret must not
+change observable behaviour</strong>.</p>
+<p>The secret here is the exponent <code>r</code>, fresh for every message. An observer
+who learns <code>r</code> recovers the plaintext outright: compute <code>hs^r</code> (base and
+modulus are public), divide the ciphertext by it, get <code>1 + m·n</code>, subtract
+one, divide by <code>n</code>.</p>
 <p>The observer is not a person with a stopwatch on the network — it is a
 <strong>process on the same machine</strong>, sharing the CPU cache with us.</p>
 <h2 id="exponent-weight-channel-closed">Exponent-weight channel — CLOSED<a class="headerlink" href="#exponent-weight-channel-closed" title="Permanent link">&para;</a></h2>
@@ -1156,65 +1178,107 @@ observer who learns <code>r</code> recovers the plaintext outright: compute <cod
 no multiplication. Time was then directly proportional to the number of
 non-zero digits of <code>r</code>. Measured: from 0.2 µs on an empty exponent to
 1576 on a full one, linear, at 6.1 µs per digit.</p>
-<p>Closed by multiplying <strong>at every window</strong>, with <code>n² + 1</code> sitting in the
-zero entry.</p>
+<p>Closed by multiplying <strong>at every window</strong>, without exception.</p>
 <div class="admonition note">
-<p class="admonition-title">Why <code>n² + 1</code> and not <code>1</code></p>
-<p>One is a single-limb number: GMP computes <code>result · 1</code> in one pass,
-and the following <code>% n²</code> returns immediately. A zero window is then
-nearly free again.</p>
-<p>How this was caught: I substituted one and expected a slowdown of
-one sixteenth. The measurement showed 0.6 % instead of 6.7 %, and I
-read that as good news — though the missing six percent <em>were</em> the
-work that was not being done.</p>
+<p class="admonition-title">The padding that used to be needed, and why it is gone</p>
+<p>The zero entry held <code>n² + 1</code> rather than <code>1</code>. One is a single-limb
+number: GMP computed <code>result · 1</code> in one pass and the following
+<code>% n²</code> returned immediately, so a zero window was nearly free again.</p>
+<p>How that was caught: I substituted one and expected a slowdown of one
+sixteenth. The measurement showed 0.6 % instead of 6.7 %, and I read
+that as good news — though the missing six percent <em>were</em> the work
+that was not being done.</p>
 <p><strong>Cheaper than expected is not a gift. It is a signal.</strong></p>
+<p>The padding is no longer there, and not because the problem went
+away. The arithmetic now runs on fixed-width limb buffers, where no
+value is cheaper to multiply by than another — see below.</p>
 </div>
 <p>Guarded by <code>tests/timing_channel.rs</code>. The criterion is the <strong>slope</strong> of
 time against weight, not absolute time: absolute time depends on the
 machine, slope does not.</p>
 <h2 id="cache-channel-closed">Cache channel — CLOSED<a class="headerlink" href="#cache-channel-closed" title="Permanent link">&para;</a></h2>
 <p>A table entry used to be fetched by an index equal to the secret digit.
-The operation itself does not branch, but the <strong>memory address depends
-on the secret</strong>, and a neighbour sharing the cache sees which line we
-pulled in.</p>
+The operation itself does not branch, but the <strong>memory address depends on
+the secret</strong>, and a neighbour sharing the cache sees which line we pulled
+in.</p>
 <p>Now the whole row is read and the wanted entry is selected with an
 arithmetic mask, with no branch anywhere. The sequence of addresses is
 identical for any exponent.</p>
 <p>The cost of that was measured and turned out not to be what I had
-assumed. The code said "closing it would mean paying sixteen times
-over" — a figure inflated by more than an order of magnitude: measured
+assumed. The code said "closing it would mean paying sixteen times over"
+— a figure inflated by more than an order of magnitude: measured
 <strong>1–5 %</strong>, invisible in an end-to-end run.</p>
-<div class="admonition note">
-<p class="admonition-title">Laid out in words, not bytes</p>
-<p>Byte-wise constant-time reading cost +26 %; word-wise, a few
-percent. The price is bounded by the number of iterations, not by
-the volume of data.</p>
+<p>That 1–5 % is a historical figure, taken when both arms of the benchmark
+were <code>mpz</code> and only the selection differed. <code>benches/window_select.rs</code>
+no longer isolates it — its second arm now also uses Montgomery form, so
+it prints the whole difference between the two states of the library.</p>
+<div class="admonition warning">
+<p class="admonition-title">This channel cannot be guarded by measurement</p>
+<p>And for a while the documentation claimed it was, next to the other
+two. It is not the same kind of thing. Reading one entry and reading
+all sixty-four give identical output, and the difference in cost —
+that same 1–5 % — is inside the run-to-run noise of the slope tests.
+An adversarial review reverted the selection to the address-dependent
+form and every test in the repository stayed green.</p>
+<p>What guards it now is <code>tests/constant_time_shape.py</code>: a check that
+<code>select_entry</code> never derives an address from the secret digit and
+always traverses the whole row. It is a source-level tripwire on the
+exact regression, not a proof — renaming the parameter evades it.
+Said plainly because the alternative was a claim that could not be
+cashed.</p>
 </div>
-<h2 id="leading-zeros-channel-open">Leading-zeros channel — OPEN<a class="headerlink" href="#leading-zeros-channel-open" title="Permanent link">&para;</a></h2>
-<p>The loop starts from one, and while the low digits of <code>r</code> are zero the
-accumulator stays single-limb, making those multiplications cheaper.
-Measured: about <strong>−6.3 µs per leading zero</strong>.</p>
-<p>The size of the leak is the entropy of the run of leading zeros. A digit
-is zero with probability <code>q = 2^−w</code>, the run length is geometric, and</p>
+<div class="admonition note">
+<p class="admonition-title">Laid out in limbs, not bytes</p>
+<p>Byte-wise constant-time reading cost +26 %; limb-wise, a few percent.
+The price is bounded by the number of iterations, not by the volume of
+data.</p>
+</div>
+<h2 id="leading-zeros-channel-closed">Leading-zeros channel — CLOSED<a class="headerlink" href="#leading-zeros-channel-closed" title="Permanent link">&para;</a></h2>
+<p>This one was open for a long time, and the record of it is worth keeping.</p>
+<p>The loop starts from one, and while the low digits of <code>r</code> were zero the
+accumulator stayed a single-limb <code>Integer</code>, making those multiplications
+cheaper. Measured: <strong>−6.3 µs per leading zero</strong>, at fixed weight.</p>
+<p>The obvious cure does not work, and it was tried: starting from <code>n² + 1</code>
+gave −6.56, because <code>%</code> returns the canonical residue and after the first
+reduction the accumulator is one again. <strong>While a value is congruent to
+one, GMP represents it as one.</strong></p>
+<p>What closes it is not a different value but a different container. The
+accumulator and the whole table now live in <strong>fixed-width limb buffers</strong>
+(<code>mpn_*</code> rather than <code>mpz_*</code>): a product of two <code>k</code>-limb buffers costs
+the same whether the operands are <code>n²−1</code> or one, because nothing looks at
+how many leading zeros there are. Reduction modulo <code>n²</code> would ordinarily
+need a division, which <em>is</em> value-dependent — so the arithmetic is in
+<strong>Montgomery form</strong>, which replaces the division with a multiplication
+and one branch-free conditional subtraction.</p>
+<p>Measured after the change: <strong>−0.2 µs per leading zero</strong>, thirty-one times
+smaller and indistinguishable from the residual slope of the
+already-closed weight channel. Over eight runs the residual wanders
+between −0.98 and +0.65 and changes sign, which is what noise looks like.</p>
+<div class="admonition info">
+<p class="admonition-title">The size of what used to leak</p>
+<p>The run of leading zeros is geometric, a digit is zero with
+probability <code>q = 2^−w</code>, and the entropy is</p>
 <div class="highlight"><pre><span></span><code>H = [−(1−q)·lg(1−q) − q·lg q] / (1−q)
 </code></pre></div>
-<p>At the current window width <code>w = 6</code> that is <strong>0.118 bits</strong> out of 1024.</p>
-<div class="admonition info">
-<p class="admonition-title">The number follows from the window width</p>
-<p>At <code>w = 4</code> the same formula gives 0.36. Widening the window from
-four bits to six cut the leak threefold without touching a single
-line of the loop. This is the only quantity in the repository that
-describes an <strong>open</strong> channel, so it has to follow from the code
-rather than survive an edit to it.</p>
+<p>At <code>w = 6</code> that is 0.118 bits out of 1024; at <code>w = 4</code> the same
+formula gives 0.36. Against a <code>2^512</code> margin it was never a break —
+but "does not breach the margin" and "is closed" are different
+statements.</p>
 </div>
-<p>Against a <code>2^512</code> margin this is nothing, and the remainder is accepted
-knowingly.</p>
-<p>The only known cure is a redundant representation in which one is not
-single-limb — that is, <strong>Montgomery form</strong>. It was rejected on speed,
-and the connection deserves to be stated plainly: the rejected technique
-is the only known cure for the remaining channel.</p>
-<p>Guarded by <code>tests/timing_channel.rs::position_remainder_has_not_grown</code> — not
-for absence, but for the remainder not growing.</p>
+<div class="admonition warning">
+<p class="admonition-title">The price: this crate is no longer free of <code>unsafe</code></p>
+<p><code>mpn_*</code> is a C API, so calling it needs <code>unsafe</code>. It is confined to
+one module, <code>src/mont.rs</code>, which is the only place the crate-wide
+<code>#![deny(unsafe_code)]</code> is lifted — four GMP calls over buffers whose
+lengths are checked in safe Rust immediately before each call. What
+changed is whose responsibility that arithmetic is: it used to be
+<code>rug</code>'s, and now 150 lines of it are ours.</p>
+</div>
+<p>Guarded by <code>tests/timing_channel.rs::time_does_not_depend_on_leading_zeros</code>
+— now for absence, not for the leak "not growing". The threshold was
+deliberately tightened from 15.0 to 2.5 µs per zero: at 15.0 the test
+stayed green under a mutation that reintroduced a branch on the secret
+digit and drove the slope to −4.58.</p>
 <h2 id="decryption">Decryption<a class="headerlink" href="#decryption" title="Permanent link">&para;</a></h2>
 <p>There the secret is different, and worse: the exponent derives from <code>λ</code>,
 the long-lived secret of the key. A leak during encryption costs
@@ -1224,6 +1288,24 @@ accumulates over every decryption for the whole life of the key.</p>
 <code>mpz_powm</code>: GMP's documentation requires exactly this for secret
 exponents. It costs a factor of 1.55, and it is the only place where we
 pay for security in a big way.</p>
+<h2 id="what-is-still-not-claimed">What is still NOT claimed<a class="headerlink" href="#what-is-still-not-claimed" title="Permanent link">&para;</a></h2>
+<p>Three closed channels are not a proof of constant time, and this page
+does not present them as one.</p>
+<ul>
+<li><strong>Key generation is not constant time</strong> and is not meant to be. It is a
+  search for safe primes: the time to a hit is random and depends on the
+  primes found, which is why the measured spread is 0.4–10.3 s.</li>
+<li><strong>GMP does not promise data-independence</strong> for <code>mpn_mul_n</code> and
+  <code>mpn_addmul_1</code>. They branch on SIZE, and our sizes are fixed for the
+  life of a key — but that is an argument from how they are implemented,
+  not a guarantee from their documentation. GMP's own explicitly
+  constant-time primitive, <code>mpn_sec_mul</code>, is deliberately not used: to
+  stay constant-time it forgoes sub-quadratic multiplication, which at 64
+  limbs costs more than everything gained here.</li>
+<li><strong>Only the channels that were looked for have been measured.</strong> Three
+  were found and closed; a fourth would be found the same way, by
+  measuring a slope.</li>
+</ul>
 <h2 id="nothing-is-claimed-about-other-implementations">Nothing is claimed about other implementations<a class="headerlink" href="#nothing-is-claimed-about-other-implementations" title="Permanent link">&para;</a></h2>
 <p>Whether any other Paillier library is constant-time is not asserted here
 either way. <strong>Absence of a stated guarantee is not proof that the

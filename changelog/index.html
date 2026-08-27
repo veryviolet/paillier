@@ -944,6 +944,89 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#040-2026-08-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.4.0 — 2026-08-27
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.4.0 — 2026-08-27">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-leading-zeros-timing-channel-is-closed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The leading-zeros timing channel is closed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-cache-address-channel-is-guarded-at-last" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The cache-address channel is guarded at last
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unsafe-in-one-module-and-nowhere-else" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        unsafe, in one module and nowhere else
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#faster-secondarily" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Faster, secondarily
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-fixture-that-could-not-see-the-subtraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The fixture that could not see the subtraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-repository-is-in-english" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The repository is in English
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#030-2026-08-26" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1122,6 +1205,89 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#040-2026-08-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.4.0 — 2026-08-27
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.4.0 — 2026-08-27">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-leading-zeros-timing-channel-is-closed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The leading-zeros timing channel is closed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-cache-address-channel-is-guarded-at-last" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The cache-address channel is guarded at last
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unsafe-in-one-module-and-nowhere-else" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        unsafe, in one module and nowhere else
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#faster-secondarily" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Faster, secondarily
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-fixture-that-could-not-see-the-subtraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The fixture that could not see the subtraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-repository-is-in-english" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The repository is in English
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#030-2026-08-26" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1286,6 +1452,83 @@
 
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
+<h2 id="040-2026-08-27">0.4.0 — 2026-08-27<a class="headerlink" href="#040-2026-08-27" title="Permanent link">&para;</a></h2>
+<p>Ciphertexts are unchanged and interoperate with 0.3.0 in both
+directions: the arithmetic below is a different way to compute the same
+residue, not a different scheme.</p>
+<h3 id="the-leading-zeros-timing-channel-is-closed">The leading-zeros timing channel is closed<a class="headerlink" href="#the-leading-zeros-timing-channel-is-closed" title="Permanent link">&para;</a></h3>
+<p>This was the last channel the documentation named as open. While the low
+windows of the secret exponent were zero, the accumulator stayed an
+<code>Integer</code> equal to one — a single limb, cheap to multiply by. Measured:
+<strong>−6.33 µs per leading zero</strong> at fixed weight.</p>
+<p>It is closed by a change of container rather than of value. The
+accumulator and the window table now live in fixed-width limb buffers
+(<code>mpn_*</code> instead of <code>mpz_*</code>), where a product of two <code>k</code>-limb operands
+costs the same whatever they hold, because nothing looks at how many
+leading zeros there are. Reduction modulo <code>n²</code> would otherwise need a
+division, which <em>is</em> value-dependent, so the arithmetic is in
+<strong>Montgomery form</strong>: one multiplication and one branch-free conditional
+subtraction.</p>
+<p>Measured after the change: <strong>−0.2 µs per leading zero</strong>, thirty-one
+times smaller and indistinguishable from the residual slope of the
+already-closed weight channel.</p>
+<p>The guard was tightened at the same time, from 15.0 to 2.5 µs per zero.
+At 15.0 it stayed green under a mutation that reintroduced a branch on
+the secret digit and drove the slope to −4.58 — a threshold written for
+an open channel does not guard a closed one. The weight channel keeps
+its own threshold of 1.0: merging the two onto a single number would
+have tightened one test and quietly loosened the other.</p>
+<h3 id="the-cache-address-channel-is-guarded-at-last">The cache-address channel is guarded at last<a class="headerlink" href="#the-cache-address-channel-is-guarded-at-last" title="Permanent link">&para;</a></h3>
+<p>It was described in the documentation as closed and measured, alongside
+the other two. Closed it is; measured it cannot be. Reading one table
+entry and reading all sixty-four produce identical output, and the
+difference in cost is inside the noise of the slope tests — reverting
+<code>select_entry</code> to the address-dependent form left every test in the
+repository green.</p>
+<p><code>tests/constant_time_shape.py</code> now checks the shape of that function:
+that no address is derived from the secret digit, and that the loop
+covers the whole row. A source-level tripwire rather than a proof, and
+the documentation now says which of the three channels is guarded how.</p>
+<h3 id="unsafe-in-one-module-and-nowhere-else"><code>unsafe</code>, in one module and nowhere else<a class="headerlink" href="#unsafe-in-one-module-and-nowhere-else" title="Permanent link">&para;</a></h3>
+<p><code>mpn_*</code> is a C API, so this crate is no longer free of <code>unsafe</code>. It
+carries <code>#![deny(unsafe_code)]</code>, lifted only in <code>src/mont.rs</code>: four GMP
+calls over buffers whose lengths are asserted in safe Rust immediately
+before each call, with no raw pointers stored anywhere and no allocation
+inside the blocks.</p>
+<p>What changed is whose responsibility that arithmetic is. It was <code>rug</code>'s
+and GMP's, and about 150 lines of it are now ours. The built wheel was
+never free of unsafe code — it statically contains GMP — and nothing in
+the documentation claimed otherwise. See <code>NOTICE.md</code>.</p>
+<h3 id="faster-secondarily">Faster, secondarily<a class="headerlink" href="#faster-secondarily" title="Permanent link">&para;</a></h3>
+<p>Single-threaded encryption <strong>1010 → 1066 ops/s</strong>, batched 6334 → 6855,
+measured as an A/B of the two builds on one machine with one script. At
+the level of the exponentiation itself the gain is larger — 958 → 832 µs
+at 2048 bits — and end to end it is diluted by encoding, serialisation
+and the GIL.</p>
+<p>Montgomery form had been implemented once before, over <code>rug::Integer</code>,
+and removed on measurement: assembled from <code>mpz</code> operations it allocates
+at every step and loses by a factor of 1.19. That measurement was right
+about what it measured and wrong as a conclusion — what lost was the
+<code>mpz</code> layer, not the algorithm.</p>
+<h3 id="the-fixture-that-could-not-see-the-subtraction">The fixture that could not see the subtraction<a class="headerlink" href="#the-fixture-that-could-not-see-the-subtraction" title="Permanent link">&para;</a></h3>
+<p>Worth recording, because it took two attempts and an adversarial review
+to get right. REDC ends in a conditional subtraction, and whether a test
+can SEE it depends not on how often it fires but on how far <code>n²</code> sits
+below the limb boundary. Two bits of slack are enough to make the
+recurrence without the subtraction a fixed point: every value the test
+observes is canonical anyway. Both earlier fixtures sat there, and
+deleting the subtraction entirely left the suite green — while the
+docstring blamed frequency, which was the wrong cause.</p>
+<p>Real keys are flush against that boundary about one time in seven, and
+there the missing subtraction overflows the buffer and corrupts
+ciphertexts. The fixture set now runs every test over three shapes,
+including the production one, and asserts the invariant the subtraction
+exists to establish — that <code>mul</code> returns a value below the modulus.</p>
+<h3 id="the-repository-is-in-english">The repository is in English<a class="headerlink" href="#the-repository-is-in-english" title="Permanent link">&para;</a></h3>
+<p>Sources, tests, documentation and package metadata. The short
+description shown on the PyPI page was still Russian in 0.3.0; it is a
+property of the published metadata and could only be corrected by a
+release.</p>
 <h2 id="030-2026-08-26">0.3.0 — 2026-08-26<a class="headerlink" href="#030-2026-08-26" title="Permanent link">&para;</a></h2>
 <p><strong>BREAKING.</strong> The blob now starts with a byte holding the power-of-ten
 scale exponent, and ciphertexts from 0.2.0 cannot be decrypted by this
