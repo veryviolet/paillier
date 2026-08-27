@@ -20,11 +20,15 @@ Whoever does the adding never sees the terms. Whoever holds the private
 key sees only the sum.
 
 ```bash
-pip install paillier
+pip install pypaillier
 ```
 
 Wheels for CPython 3.10, 3.11, 3.12 and 3.13. No compiler and no system
 GMP required.
+
+The distribution is `pypaillier`; the import name is `paillier`. PyPI
+would not take `paillier` as a project name, and there was no reason to
+carry that into the API.
 
 📖 **[Documentation](https://veryviolet.github.io/paillier/)**
 
@@ -114,7 +118,7 @@ combined work, not only our code.
 
 If you need a binary with no LGPL code inside, build it from the source
 distribution against your own GMP:
-`pip install --no-binary paillier paillier`.
+`pip install --no-binary pypaillier pypaillier`.
 
 Full breakdown, including how the LGPL §4 conditions are met and where
 the techniques came from:

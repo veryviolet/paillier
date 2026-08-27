@@ -86,7 +86,7 @@ What each benchmark answers and what it deliberately does not:
 ## Installation
 
 ```bash
-pip install paillier
+pip install pypaillier
 ```
 
 Wheels are built for CPython 3.10, 3.11, 3.12 and 3.13. Details:

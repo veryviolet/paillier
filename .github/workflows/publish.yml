@@ -5,14 +5,14 @@ name: publish to PyPI
 # which only the account owner can do:
 #
 #   pypi.org -> Manage -> Account -> Publishing -> Add a new pending publisher
-#     project:     paillier
+#     project:     pypaillier
 #     owner:       veryviolet
 #     repository:  paillier
 #     workflow:    publish.yml
 #     environment: pypi
 #
 # After that, pushing any vX.Y.Z tag builds the wheels and publishes
-# them to https://pypi.org/project/paillier/.
+# them to https://pypi.org/project/pypaillier/.
 #
 # Why the wheels are built inside a manylinux container rather than on
 # the runner: a local build gets its tag from the machine glibc

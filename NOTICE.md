@@ -10,7 +10,7 @@
 wheel from PyPI gets you a combined work, not only our code.
 
 If that does not suit you, build from the source distribution against
-your own GMP: `pip install --no-binary paillier paillier`.
+your own GMP: `pip install --no-binary pypaillier pypaillier`.
 
 ## LGPL: `rug`, `gmp-mpfr-sys`, GMP
 
@@ -34,7 +34,7 @@ documentation.
 
 **§4(b), copies of the licences.** `LICENSE-LGPL` and `LICENSE-GPL` are
 in the repository, in the source distribution, and inside the wheel
-(`paillier-*.dist-info/licenses/`).
+(`pypaillier-*.dist-info/licenses/`).
 
 **§4(d), ability to relink.** Option **d)(0)** is taken: everything
 needed to recombine our code with a DIFFERENT version of the library is
@@ -43,7 +43,7 @@ provided.
 * our sources are fully open:
   <https://github.com/veryviolet/paillier>;
 * the same code ships in the source distribution on PyPI
-  (`paillier-X.Y.Z.tar.gz`);
+  (`pypaillier-X.Y.Z.tar.gz`);
 * the build reproduces with one command (`maturin build --release`), and
   the `rug` version is not pinned exactly — `Cargo.toml` declares
   `rug = "1.24"`, i.e. semver-compatible, and it can be replaced with

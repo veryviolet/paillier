@@ -3,7 +3,10 @@ requires = ["maturin>=1.7,<2"]
 build-backend = "maturin"
 
 [project]
-name = "paillier"
+# The DISTRIBUTION name. The import name stays `paillier` and is set
+# below as `module-name` — PyPI refused `paillier` as a project name,
+# and there is no reason to drag that into the API.
+name = "pypaillier"
 description = "Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP, привязка к Python через pyo3"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -53,6 +56,10 @@ Issues = "https://github.com/veryviolet/paillier/issues"
 Changelog = "https://github.com/veryviolet/paillier/blob/main/CHANGELOG.md"
 
 [tool.maturin]
+# The import name, deliberately different from the distribution name:
+# `pip install pypaillier` then `import paillier`. Without this line
+# maturin would name the module after the distribution.
+module-name = "paillier"
 # Колёса собираются ПОД КАЖДУЮ версию Python отдельно, без `abi3`.
 #
 # The temptation of `abi3` is real — one wheel instead of four — but a

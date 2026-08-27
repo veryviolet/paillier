@@ -1,8 +1,13 @@
 # Installation
 
 ```bash
-pip install paillier
+pip install pypaillier
 ```
+
+The distribution is `pypaillier`; the import name is `paillier`. PyPI
+would not take `paillier` as a project name, and there was no reason to
+carry that into the API — every example in this documentation says
+`import paillier`.
 
 ## What actually gets installed
 
