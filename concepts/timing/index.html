@@ -1,12 +1,12 @@
 
 <!doctype html>
-<html lang="ru" class="no-js">
+<html lang="en" class="no-js">
   <head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP, привязка к Python через pyo3.">
+        <meta name="description" content="Additively homomorphic Paillier encryption: a Rust implementation on top of GMP, bound to Python through pyo3.">
       
       
       
@@ -27,7 +27,7 @@
     
     
       
-        <title>Побочные каналы по времени - paillier</title>
+        <title>Timing side channels - paillier</title>
       
     
     
@@ -78,8 +78,8 @@
     <div data-md-component="skip">
       
         
-        <a href="#_1" class="md-skip">
-          Перейти к содержанию
+        <a href="#timing-side-channels" class="md-skip">
+          Skip to content
         </a>
       
     </div>
@@ -91,7 +91,7 @@
       
 
 <header class="md-header" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="Верхний колонтитул">
+  <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../.." title="paillier" class="md-header__button md-logo" aria-label="paillier" data-md-component="logo">
       
   
@@ -112,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Побочные каналы по времени
+              Timing side channels
             
           </span>
         </div>
@@ -125,9 +125,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Тёмная тема"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
     
-      <label class="md-header__button md-icon" title="Тёмная тема" for="__palette_1" hidden>
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
@@ -135,9 +135,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Светлая тема"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
-      <label class="md-header__button md-icon" title="Светлая тема" for="__palette_0" hidden>
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
@@ -160,16 +160,16 @@
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Поиск" placeholder="Поиск" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
-      <nav class="md-search__options" aria-label="Поиск">
+      <nav class="md-search__options" aria-label="Search">
         
-        <button type="reset" class="md-search__icon md-icon" title="Очистить" aria-label="Очистить" tabindex="-1">
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
           
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
@@ -180,7 +180,7 @@
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
-            Инициализация поиска
+            Initializing search
           </div>
           <ol class="md-search-result__list" role="presentation"></ol>
         </div>
@@ -192,7 +192,7 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/veryviolet/paillier" title="Перейти к репозиторию" class="md-source" data-md-component="source">
+        <a href="https://github.com/veryviolet/paillier" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
@@ -213,7 +213,7 @@
         
           
             
-<nav class="md-tabs" aria-label="Вкладки" data-md-component="tabs">
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
   <div class="md-grid">
     <ul class="md-tabs__list">
       
@@ -229,7 +229,7 @@
           
   
   
-  Начало
+  Start here
 
         </a>
       </li>
@@ -251,7 +251,7 @@
           
   
   
-  Как устроено
+  How it works
 
         </a>
       </li>
@@ -271,7 +271,7 @@
           
   
   
-  Справочник
+  Reference
 
         </a>
       </li>
@@ -287,11 +287,11 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../heu-comparison/" class="md-tabs__link">
+        <a href="../../short-exponent-security/" class="md-tabs__link">
           
   
   
-  Разбор
+  Analysis
 
         </a>
       </li>
@@ -311,7 +311,7 @@
   
     
   
-  Изменения
+  Changelog
 
       </a>
     </li>
@@ -338,7 +338,7 @@
   
 
 
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Навигация" data-md-level="0">
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href="../.." title="paillier" class="md-nav__button md-logo" aria-label="paillier" data-md-component="logo">
       
@@ -350,7 +350,7 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/veryviolet/paillier" title="Перейти к репозиторию" class="md-source" data-md-component="source">
+      <a href="https://github.com/veryviolet/paillier" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
@@ -393,7 +393,7 @@
   <span class="md-ellipsis">
     
   
-    Начало
+    Start here
   
 
     
@@ -409,7 +409,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Начало
+    Start here
   
 
           </label>
@@ -429,7 +429,7 @@
   <span class="md-ellipsis">
     
   
-    Что это
+    What this is
   
 
     
@@ -457,7 +457,7 @@
   <span class="md-ellipsis">
     
   
-    Установка
+    Installation
   
 
     
@@ -485,7 +485,7 @@
   <span class="md-ellipsis">
     
   
-    Первый прогон
+    First run
   
 
     
@@ -541,7 +541,7 @@
   <span class="md-ellipsis">
     
   
-    Как устроено
+    How it works
   
 
     
@@ -557,7 +557,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Как устроено
+    How it works
   
 
           </label>
@@ -577,7 +577,7 @@
   <span class="md-ellipsis">
     
   
-    Схема и что она добавляет к предположениям
+    The scheme and what it assumes
   
 
     
@@ -614,7 +614,7 @@
   <span class="md-ellipsis">
     
   
-    Побочные каналы по времени
+    Timing side channels
   
 
     
@@ -632,7 +632,7 @@
   <span class="md-ellipsis">
     
   
-    Побочные каналы по времени
+    Timing side channels
   
 
     
@@ -644,7 +644,7 @@
       
         
 
-<nav class="md-nav md-nav--secondary" aria-label="Содержание">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -653,15 +653,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Содержание
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+  <a href="#what-constant-time-even-means" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Что вообще означает «постоянное время»
+        What "constant time" even means
       
     </span>
   </a>
@@ -669,10 +669,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+  <a href="#exponent-weight-channel-closed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Канал по весу показателя — ЗАКРЫТ
+        Exponent-weight channel — CLOSED
       
     </span>
   </a>
@@ -680,10 +680,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#-" class="md-nav__link">
+  <a href="#cache-channel-closed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Кэш-канал — ЗАКРЫТ
+        Cache channel — CLOSED
       
     </span>
   </a>
@@ -691,10 +691,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+  <a href="#leading-zeros-channel-open" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Канал по ведущим нулям — ОТКРЫТ
+        Leading-zeros channel — OPEN
       
     </span>
   </a>
@@ -702,10 +702,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
+  <a href="#decryption" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Расшифровка
+        Decryption
       
     </span>
   </a>
@@ -713,10 +713,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#heu" class="md-nav__link">
+  <a href="#nothing-is-claimed-about-other-implementations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Про heu не утверждается ничего
+        Nothing is claimed about other implementations
       
     </span>
   </a>
@@ -746,7 +746,7 @@
   <span class="md-ellipsis">
     
   
-    Кодирование и масштаб
+    Encoding and scale
   
 
     
@@ -797,7 +797,7 @@
   <span class="md-ellipsis">
     
   
-    Справочник
+    Reference
   
 
     
@@ -813,7 +813,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Справочник
+    Reference
   
 
           </label>
@@ -861,7 +861,7 @@
   <span class="md-ellipsis">
     
   
-    Границы и отказы
+    Limits and refusals
   
 
     
@@ -889,7 +889,7 @@
   <span class="md-ellipsis">
     
   
-    Прогоны
+    Benchmarks
   
 
     
@@ -940,7 +940,7 @@
   <span class="md-ellipsis">
     
   
-    Разбор
+    Analysis
   
 
     
@@ -956,39 +956,11 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Разбор
+    Analysis
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../heu-comparison/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Сравнение с heu
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -1004,7 +976,7 @@
   <span class="md-ellipsis">
     
   
-    Стойкость короткого показателя
+    Short-exponent security
   
 
     
@@ -1039,7 +1011,7 @@
   <span class="md-ellipsis">
     
   
-    Изменения
+    Changelog
   
 
     
@@ -1065,7 +1037,7 @@
                   <div class="md-sidebar__inner">
                     
 
-<nav class="md-nav md-nav--secondary" aria-label="Содержание">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -1074,15 +1046,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Содержание
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+  <a href="#what-constant-time-even-means" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Что вообще означает «постоянное время»
+        What "constant time" even means
       
     </span>
   </a>
@@ -1090,10 +1062,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+  <a href="#exponent-weight-channel-closed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Канал по весу показателя — ЗАКРЫТ
+        Exponent-weight channel — CLOSED
       
     </span>
   </a>
@@ -1101,10 +1073,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#-" class="md-nav__link">
+  <a href="#cache-channel-closed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Кэш-канал — ЗАКРЫТ
+        Cache channel — CLOSED
       
     </span>
   </a>
@@ -1112,10 +1084,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+  <a href="#leading-zeros-channel-open" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Канал по ведущим нулям — ОТКРЫТ
+        Leading-zeros channel — OPEN
       
     </span>
   </a>
@@ -1123,10 +1095,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
+  <a href="#decryption" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Расшифровка
+        Decryption
       
     </span>
   </a>
@@ -1134,10 +1106,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#heu" class="md-nav__link">
+  <a href="#nothing-is-claimed-about-other-implementations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Про heu не утверждается ничего
+        Nothing is claimed about other implementations
       
     </span>
   </a>
@@ -1164,92 +1136,99 @@
   
 
 
-<h1 id="_1">Побочные каналы по времени<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
-<p><strong>Постоянного времени эта библиотека НЕ даёт и не заявляет.</strong> Два канала
-закрыты, один открыт, назван и измерен. Ниже — все три, потому что
-разница между «названо» и «закрыто» здесь решающая.</p>
-<h2 id="_2">Что вообще означает «постоянное время»<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
-<p>Не «одинаковое число микросекунд» — от загрузки машины время гуляет
-всегда. Требование другое: <strong>изменение секрета не должно менять
-наблюдаемое поведение</strong>.</p>
-<p>Секрет здесь — показатель <code>r</code>, случайный на каждое сообщение. Если
-наблюдатель узнает <code>r</code>, он снимает открытый текст целиком: считает
-<code>hs^r</code> (основание и модуль публичны), делит на него шифротекст,
-получает <code>1 + m·n</code>, вычитает единицу, делит на <code>n</code>.</p>
-<p>Наблюдатель — не человек с секундомером по сети, а <strong>процесс на той же
-машине</strong>, делящий с нами кэш процессора.</p>
-<h2 id="_3">Канал по весу показателя — ЗАКРЫТ<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
-<p>Первая редакция таблицы пропускала нулевые цифры: нулевое окно —
-умножения нет. Время прямо равнялось числу ненулевых цифр <code>r</code>.
-Замерено: от 0.2 мкс на пустом показателе до 1576 на полном, линейно,
-по 6.1 мкс на цифру.</p>
-<p>Закрыто тем, что умножение делается <strong>на каждом окне</strong>, а в нулевой
-записи лежит <code>n² + 1</code>.</p>
+<h1 id="timing-side-channels">Timing side channels<a class="headerlink" href="#timing-side-channels" title="Permanent link">&para;</a></h1>
+<p><strong>This library does NOT provide constant time and does not claim to.</strong>
+Two channels are closed, one is open, named and measured. All three are
+below, because the difference between "named" and "closed" is decisive
+here.</p>
+<h2 id="what-constant-time-even-means">What "constant time" even means<a class="headerlink" href="#what-constant-time-even-means" title="Permanent link">&para;</a></h2>
+<p>Not "the same number of microseconds" — timing wanders with machine
+load regardless. The requirement is different: <strong>changing the secret
+must not change observable behaviour</strong>.</p>
+<p>The secret here is the exponent <code>r</code>, fresh for every message. An
+observer who learns <code>r</code> recovers the plaintext outright: compute <code>hs^r</code>
+(base and modulus are public), divide the ciphertext by it, get
+<code>1 + m·n</code>, subtract one, divide by <code>n</code>.</p>
+<p>The observer is not a person with a stopwatch on the network — it is a
+<strong>process on the same machine</strong>, sharing the CPU cache with us.</p>
+<h2 id="exponent-weight-channel-closed">Exponent-weight channel — CLOSED<a class="headerlink" href="#exponent-weight-channel-closed" title="Permanent link">&para;</a></h2>
+<p>The first version of the table skipped zero digits: a zero window meant
+no multiplication. Time was then directly proportional to the number of
+non-zero digits of <code>r</code>. Measured: from 0.2 µs on an empty exponent to
+1576 on a full one, linear, at 6.1 µs per digit.</p>
+<p>Closed by multiplying <strong>at every window</strong>, with <code>n² + 1</code> sitting in the
+zero entry.</p>
 <div class="admonition note">
-<p class="admonition-title">Почему <code>n² + 1</code>, а не <code>1</code></p>
-<p>Единица однолимбовая: <code>result · 1</code> GMP считает за один проход, и
-следующий <code>% n²</code> возвращается сразу. Нулевое окно тогда снова почти
-бесплатно.</p>
-<p>Как это ловилось: я подставил единицу и ждал подорожания на одну
-шестнадцатую. Замер дал 0.6 % вместо 6.7 %, и я прочёл это как
-хорошую новость — хотя недостающие шесть процентов и были той
-работой, которая не делается.</p>
-<p><strong>Дешевле ожидаемого — это не подарок, а сигнал.</strong></p>
+<p class="admonition-title">Why <code>n² + 1</code> and not <code>1</code></p>
+<p>One is a single-limb number: GMP computes <code>result · 1</code> in one pass,
+and the following <code>% n²</code> returns immediately. A zero window is then
+nearly free again.</p>
+<p>How this was caught: I substituted one and expected a slowdown of
+one sixteenth. The measurement showed 0.6 % instead of 6.7 %, and I
+read that as good news — though the missing six percent <em>were</em> the
+work that was not being done.</p>
+<p><strong>Cheaper than expected is not a gift. It is a signal.</strong></p>
 </div>
-<p>Сторожит <code>tests/timing_channel.rs</code>. Признак — <strong>наклон</strong> времени по
-весу, а не абсолютное время: абсолютное зависит от машины, наклон нет.</p>
-<h2 id="-">Кэш-канал — ЗАКРЫТ<a class="headerlink" href="#-" title="Permanent link">&para;</a></h2>
-<p>Запись таблицы бралась по индексу, равному секретной цифре. Сама
-операция не ветвится, но <strong>адрес обращения зависит от секрета</strong>, и
-сосед по кэшу видит, какую строку мы подтянули.</p>
-<p>Сейчас читается вся строка, а нужная запись выбирается арифметической
-маской без единого ветвления. Ряд адресов одинаков при любом
-показателе.</p>
-<p>Цена этого измерена и оказалась не той, что я считал. В коде стояло
-«закрыть значило бы платить в шестнадцать раз» — число завышено более
-чем на порядок: измерено <strong>1–5 %</strong>, в сквозном прогоне не видно вовсе.</p>
+<p>Guarded by <code>tests/timing_channel.rs</code>. The criterion is the <strong>slope</strong> of
+time against weight, not absolute time: absolute time depends on the
+machine, slope does not.</p>
+<h2 id="cache-channel-closed">Cache channel — CLOSED<a class="headerlink" href="#cache-channel-closed" title="Permanent link">&para;</a></h2>
+<p>A table entry used to be fetched by an index equal to the secret digit.
+The operation itself does not branch, but the <strong>memory address depends
+on the secret</strong>, and a neighbour sharing the cache sees which line we
+pulled in.</p>
+<p>Now the whole row is read and the wanted entry is selected with an
+arithmetic mask, with no branch anywhere. The sequence of addresses is
+identical for any exponent.</p>
+<p>The cost of that was measured and turned out not to be what I had
+assumed. The code said "closing it would mean paying sixteen times
+over" — a figure inflated by more than an order of magnitude: measured
+<strong>1–5 %</strong>, invisible in an end-to-end run.</p>
 <div class="admonition note">
-<p class="admonition-title">Укладка словами, а не байтами</p>
-<p>Побайтное постоянное чтение стоило +26 %, пословное — единицы
-процентов. Цена упирается в число итераций, а не в объём данных.</p>
+<p class="admonition-title">Laid out in words, not bytes</p>
+<p>Byte-wise constant-time reading cost +26 %; word-wise, a few
+percent. The price is bounded by the number of iterations, not by
+the volume of data.</p>
 </div>
-<h2 id="_4">Канал по ведущим нулям — ОТКРЫТ<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
-<p>Цикл стартует с единицы, и пока младшие цифры <code>r</code> нулевые, накопитель
-остаётся однолимбовым — умножения на него дешевле. Замерено: около
-<strong>−6.3 мкс на каждый ведущий нуль</strong>.</p>
-<p>Величина утечки — энтропия длины ряда ведущих нулей. Цифра нулевая с
-вероятностью <code>q = 2^−w</code>, длина геометрическая, и</p>
+<h2 id="leading-zeros-channel-open">Leading-zeros channel — OPEN<a class="headerlink" href="#leading-zeros-channel-open" title="Permanent link">&para;</a></h2>
+<p>The loop starts from one, and while the low digits of <code>r</code> are zero the
+accumulator stays single-limb, making those multiplications cheaper.
+Measured: about <strong>−6.3 µs per leading zero</strong>.</p>
+<p>The size of the leak is the entropy of the run of leading zeros. A digit
+is zero with probability <code>q = 2^−w</code>, the run length is geometric, and</p>
 <div class="highlight"><pre><span></span><code>H = [−(1−q)·lg(1−q) − q·lg q] / (1−q)
 </code></pre></div>
-<p>При нынешней ширине окна <code>w = 6</code> это <strong>0.118 бита</strong> из 1024.</p>
+<p>At the current window width <code>w = 6</code> that is <strong>0.118 bits</strong> out of 1024.</p>
 <div class="admonition info">
-<p class="admonition-title">Число следует из ширины окна</p>
-<p>При <code>w = 4</code> та же формула даёт 0.36. Расширение окна с четырёх бит
-до шести уменьшило утечку втрое, не тронув ни строки в самом цикле.
-Это единственная величина в репозитории, описывающая <strong>открытый</strong>
-канал, поэтому она обязана следовать из кода, а не пережить его
-правку.</p>
+<p class="admonition-title">The number follows from the window width</p>
+<p>At <code>w = 4</code> the same formula gives 0.36. Widening the window from
+four bits to six cut the leak threefold without touching a single
+line of the loop. This is the only quantity in the repository that
+describes an <strong>open</strong> channel, so it has to follow from the code
+rather than survive an edit to it.</p>
 </div>
-<p>Против запаса <code>2^512</code> это ничто, и остаток допущен осознанно.</p>
-<p>Единственное известное лечение — избыточное представление, где единица
-не однолимбовая, то есть <strong>форма Монтгомери</strong>. Она отвергнута по
-скорости, и связь стоит назвать прямо: отвергнутый приём — единственное
-известное лечение оставшегося канала.</p>
-<p>Сторожит <code>tests/timing_channel.rs::позиционный_остаток_не_вырос</code> — не
-на отсутствие, а на то, чтобы остаток не рос.</p>
-<h2 id="_5">Расшифровка<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
-<p>Там секрет другой и хуже: показатель выведен из <code>λ</code>, долговременного
-секрета ключа. Утечка при шифровании стоит доли бита про одноразовое
-<code>r</code>; утечка при расшифровке копится по всем расшифровкам за весь срок
-ключа.</p>
-<p>Поэтому возведение идёт через <code>mpz_powm_sec</code>, а не <code>mpz_powm</code>:
-документация GMP требует именно этого для секретных показателей.
-Стоит 1.55 раза, и это единственное место, где мы платим за стойкость
-по-крупному.</p>
-<h2 id="heu">Про <code>heu</code> не утверждается ничего<a class="headerlink" href="#heu" title="Permanent link">&para;</a></h2>
-<p>В его собственном коде запроса постоянного времени нет нигде, но
-возведение уходит в SPI длинной арифметики, исходников которого я не
-читал. <strong>Отсутствие запроса — не доказательство отсутствия свойства.</strong></p>
+<p>Against a <code>2^512</code> margin this is nothing, and the remainder is accepted
+knowingly.</p>
+<p>The only known cure is a redundant representation in which one is not
+single-limb — that is, <strong>Montgomery form</strong>. It was rejected on speed,
+and the connection deserves to be stated plainly: the rejected technique
+is the only known cure for the remaining channel.</p>
+<p>Guarded by <code>tests/timing_channel.rs::position_remainder_has_not_grown</code> — not
+for absence, but for the remainder not growing.</p>
+<h2 id="decryption">Decryption<a class="headerlink" href="#decryption" title="Permanent link">&para;</a></h2>
+<p>There the secret is different, and worse: the exponent derives from <code>λ</code>,
+the long-lived secret of the key. A leak during encryption costs
+fractions of a bit about a one-shot <code>r</code>; a leak during decryption
+accumulates over every decryption for the whole life of the key.</p>
+<p>That is why exponentiation goes through <code>mpz_powm_sec</code> rather than
+<code>mpz_powm</code>: GMP's documentation requires exactly this for secret
+exponents. It costs a factor of 1.55, and it is the only place where we
+pay for security in a big way.</p>
+<h2 id="nothing-is-claimed-about-other-implementations">Nothing is claimed about other implementations<a class="headerlink" href="#nothing-is-claimed-about-other-implementations" title="Permanent link">&para;</a></h2>
+<p>Whether any other Paillier library is constant-time is not asserted here
+either way. <strong>Absence of a stated guarantee is not proof that the
+property is missing</strong>, and its presence in a README is not proof that it
+is there.</p>
 
 
 
@@ -1301,7 +1280,7 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u043e \u0432 \u0431\u0443\u0444\u0435\u0440", "clipboard.copy": "\u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0432 \u0431\u0443\u0444\u0435\u0440", "search.result.more.one": "\u0415\u0449\u0451 1 \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435", "search.result.more.other": "\u0415\u0449\u0451 # \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435", "search.result.none": "\u0421\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0439 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e", "search.result.one": "\u041d\u0430\u0439\u0434\u0435\u043d\u043e 1 \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0435", "search.result.other": "\u041d\u0430\u0439\u0434\u0435\u043d\u043e \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0439: #", "search.result.placeholder": "\u041d\u0430\u0447\u043d\u0438\u0442\u0435 \u043f\u0435\u0447\u0430\u0442\u0430\u0442\u044c \u0434\u043b\u044f \u043f\u043e\u0438\u0441\u043a\u0430", "search.result.term.missing": "\u041e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442", "select.version": "\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0432\u0435\u0440\u0441\u0438\u044e"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>

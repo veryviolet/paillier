@@ -1,12 +1,12 @@
 
 <!doctype html>
-<html lang="ru" class="no-js">
+<html lang="en" class="no-js">
   <head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP, привязка к Python через pyo3.">
+        <meta name="description" content="Additively homomorphic Paillier encryption: a Rust implementation on top of GMP, bound to Python through pyo3.">
       
       
       
@@ -25,7 +25,7 @@
     
     
       
-        <title>Изменения - paillier</title>
+        <title>Changelog - paillier</title>
       
     
     
@@ -76,8 +76,8 @@
     <div data-md-component="skip">
       
         
-        <a href="#_1" class="md-skip">
-          Перейти к содержанию
+        <a href="#changelog" class="md-skip">
+          Skip to content
         </a>
       
     </div>
@@ -89,7 +89,7 @@
       
 
 <header class="md-header" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="Верхний колонтитул">
+  <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="paillier" class="md-header__button md-logo" aria-label="paillier" data-md-component="logo">
       
   
@@ -110,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Изменения
+              Changelog
             
           </span>
         </div>
@@ -123,9 +123,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Тёмная тема"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
     
-      <label class="md-header__button md-icon" title="Тёмная тема" for="__palette_1" hidden>
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
@@ -133,9 +133,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Светлая тема"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
-      <label class="md-header__button md-icon" title="Светлая тема" for="__palette_0" hidden>
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
@@ -158,16 +158,16 @@
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Поиск" placeholder="Поиск" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
-      <nav class="md-search__options" aria-label="Поиск">
+      <nav class="md-search__options" aria-label="Search">
         
-        <button type="reset" class="md-search__icon md-icon" title="Очистить" aria-label="Очистить" tabindex="-1">
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
           
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
@@ -178,7 +178,7 @@
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
-            Инициализация поиска
+            Initializing search
           </div>
           <ol class="md-search-result__list" role="presentation"></ol>
         </div>
@@ -190,7 +190,7 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/veryviolet/paillier" title="Перейти к репозиторию" class="md-source" data-md-component="source">
+        <a href="https://github.com/veryviolet/paillier" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
@@ -211,7 +211,7 @@
         
           
             
-<nav class="md-tabs" aria-label="Вкладки" data-md-component="tabs">
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
   <div class="md-grid">
     <ul class="md-tabs__list">
       
@@ -227,7 +227,7 @@
           
   
   
-  Начало
+  Start here
 
         </a>
       </li>
@@ -247,7 +247,7 @@
           
   
   
-  Как устроено
+  How it works
 
         </a>
       </li>
@@ -267,7 +267,7 @@
           
   
   
-  Справочник
+  Reference
 
         </a>
       </li>
@@ -283,11 +283,11 @@
     
     
       <li class="md-tabs__item">
-        <a href="../heu-comparison/" class="md-tabs__link">
+        <a href="../short-exponent-security/" class="md-tabs__link">
           
   
   
-  Разбор
+  Analysis
 
         </a>
       </li>
@@ -309,7 +309,7 @@
   
     
   
-  Изменения
+  Changelog
 
       </a>
     </li>
@@ -336,7 +336,7 @@
   
 
 
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Навигация" data-md-level="0">
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="paillier" class="md-nav__button md-logo" aria-label="paillier" data-md-component="logo">
       
@@ -348,7 +348,7 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/veryviolet/paillier" title="Перейти к репозиторию" class="md-source" data-md-component="source">
+      <a href="https://github.com/veryviolet/paillier" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
@@ -391,7 +391,7 @@
   <span class="md-ellipsis">
     
   
-    Начало
+    Start here
   
 
     
@@ -407,7 +407,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Начало
+    Start here
   
 
           </label>
@@ -427,7 +427,7 @@
   <span class="md-ellipsis">
     
   
-    Что это
+    What this is
   
 
     
@@ -455,7 +455,7 @@
   <span class="md-ellipsis">
     
   
-    Установка
+    Installation
   
 
     
@@ -483,7 +483,7 @@
   <span class="md-ellipsis">
     
   
-    Первый прогон
+    First run
   
 
     
@@ -534,7 +534,7 @@
   <span class="md-ellipsis">
     
   
-    Как устроено
+    How it works
   
 
     
@@ -550,7 +550,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Как устроено
+    How it works
   
 
           </label>
@@ -570,7 +570,7 @@
   <span class="md-ellipsis">
     
   
-    Схема и что она добавляет к предположениям
+    The scheme and what it assumes
   
 
     
@@ -598,7 +598,7 @@
   <span class="md-ellipsis">
     
   
-    Побочные каналы по времени
+    Timing side channels
   
 
     
@@ -626,7 +626,7 @@
   <span class="md-ellipsis">
     
   
-    Кодирование и масштаб
+    Encoding and scale
   
 
     
@@ -677,7 +677,7 @@
   <span class="md-ellipsis">
     
   
-    Справочник
+    Reference
   
 
     
@@ -693,7 +693,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Справочник
+    Reference
   
 
           </label>
@@ -741,7 +741,7 @@
   <span class="md-ellipsis">
     
   
-    Границы и отказы
+    Limits and refusals
   
 
     
@@ -769,7 +769,7 @@
   <span class="md-ellipsis">
     
   
-    Прогоны
+    Benchmarks
   
 
     
@@ -820,7 +820,7 @@
   <span class="md-ellipsis">
     
   
-    Разбор
+    Analysis
   
 
     
@@ -836,39 +836,11 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Разбор
+    Analysis
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../heu-comparison/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Сравнение с heu
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -884,7 +856,7 @@
   <span class="md-ellipsis">
     
   
-    Стойкость короткого показателя
+    Short-exponent security
   
 
     
@@ -928,7 +900,7 @@
   <span class="md-ellipsis">
     
   
-    Изменения
+    Changelog
   
 
     
@@ -946,7 +918,7 @@
   <span class="md-ellipsis">
     
   
-    Изменения
+    Changelog
   
 
     
@@ -958,7 +930,7 @@
       
         
 
-<nav class="md-nav md-nav--secondary" aria-label="Содержание">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -967,7 +939,7 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Содержание
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
@@ -984,10 +956,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+  <a href="#the-encoding-scale-is-configurable" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Масштаб кодирования настраивается
+        The encoding scale is configurable
       
     </span>
   </a>
@@ -995,10 +967,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-6" class="md-nav__link">
+  <a href="#window-width-4-6-bits" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Ширина окна 4 → 6 бит
+        Window width 4 → 6 bits
       
     </span>
   </a>
@@ -1006,10 +978,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+  <a href="#fixed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Исправлено
+        Fixed
       
     </span>
   </a>
@@ -1034,10 +1006,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+  <a href="#the-scheme" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Схема
+        The scheme
       
     </span>
   </a>
@@ -1045,10 +1017,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
+  <a href="#side-channels" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Побочные каналы
+        Side channels
       
     </span>
   </a>
@@ -1056,10 +1028,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#_6" class="md-nav__link">
+  <a href="#refusals-instead-of-a-plausible-number" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Отказы вместо правдоподобного числа
+        Refusals instead of a plausible number
       
     </span>
   </a>
@@ -1067,10 +1039,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#_7" class="md-nav__link">
+  <a href="#encoding" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Кодирование
+        Encoding
       
     </span>
   </a>
@@ -1078,10 +1050,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2048" class="md-nav__link">
+  <a href="#speed-2048-bit-key-one-machine" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Скорость (ключ 2048, одна машина)
+        Speed (2048-bit key, one machine)
       
     </span>
   </a>
@@ -1089,10 +1061,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#_8" class="md-nav__link">
+  <a href="#tooling" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Инструменты
+        Tooling
       
     </span>
   </a>
@@ -1136,7 +1108,7 @@
                   <div class="md-sidebar__inner">
                     
 
-<nav class="md-nav md-nav--secondary" aria-label="Содержание">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -1145,7 +1117,7 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Содержание
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
@@ -1162,10 +1134,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+  <a href="#the-encoding-scale-is-configurable" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Масштаб кодирования настраивается
+        The encoding scale is configurable
       
     </span>
   </a>
@@ -1173,10 +1145,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-6" class="md-nav__link">
+  <a href="#window-width-4-6-bits" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Ширина окна 4 → 6 бит
+        Window width 4 → 6 bits
       
     </span>
   </a>
@@ -1184,10 +1156,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+  <a href="#fixed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Исправлено
+        Fixed
       
     </span>
   </a>
@@ -1212,10 +1184,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+  <a href="#the-scheme" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Схема
+        The scheme
       
     </span>
   </a>
@@ -1223,10 +1195,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
+  <a href="#side-channels" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Побочные каналы
+        Side channels
       
     </span>
   </a>
@@ -1234,10 +1206,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#_6" class="md-nav__link">
+  <a href="#refusals-instead-of-a-plausible-number" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Отказы вместо правдоподобного числа
+        Refusals instead of a plausible number
       
     </span>
   </a>
@@ -1245,10 +1217,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#_7" class="md-nav__link">
+  <a href="#encoding" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Кодирование
+        Encoding
       
     </span>
   </a>
@@ -1256,10 +1228,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2048" class="md-nav__link">
+  <a href="#speed-2048-bit-key-one-machine" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Скорость (ключ 2048, одна машина)
+        Speed (2048-bit key, one machine)
       
     </span>
   </a>
@@ -1267,10 +1239,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#_8" class="md-nav__link">
+  <a href="#tooling" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Инструменты
+        Tooling
       
     </span>
   </a>
@@ -1313,138 +1285,136 @@
   
 
 
-<h1 id="_1">Изменения<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
+<h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
 <h2 id="030-2026-08-26">0.3.0 — 2026-08-26<a class="headerlink" href="#030-2026-08-26" title="Permanent link">&para;</a></h2>
-<p><strong>Формат шифротекста изменился.</strong> Блоб теперь начинается с байта —
-показателя степени десятки, — и шифротексты версии 0.2.0 этой версией
-не расшифровываются.</p>
-<h3 id="_2">Масштаб кодирования настраивается<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h3>
-<p><code>encrypt_many(pub, values, scale_pow10=8)</code>, значения от 0 до 18.</p>
-<p>Масштаб — свойство ШИФРОТЕКСТА, а не настройки вызова, и это не
-украшение. Несовпадение масштабов даёт не отказ, а правдоподобное
-неверное число: те же коды, та же длина, только результат меньше в
-<code>10^Δ</code> раз. Поэтому <code>decrypt</code> берёт масштаб из самого блоба, а
-<code>add_many</code> <strong>отказывает</strong> на пачке с разными масштабами. Отдельно важно
-для пассивной стороны: она собирает чужой ключ из одного <code>n</code>, где
-масштаба нет вовсе, — при настройке «сбоку» она молча разошлась бы с
-владельцем ключа.</p>
-<p>Цена — один байт на шифротекст: 512 → 513, всё ещё короче <code>heu</code> (524).</p>
-<p>При <code>scale_pow10 = 12</code> ошибка суммы миллиона знакопостоянных слагаемых
-падает с 4.69e-06 до <strong>1.86e-08</strong> — это пол <code>f64</code>, то есть ошибка
-самого <code>float()</code> от точной суммы. Ценой сужения диапазона входа с
-<code>|v| ≲ 9e7</code> до <code>≲ 9e3</code>. Умолчание оставлено на <code>8</code>: широкий диапазон —
-разумное умолчание, сужение ради точности — решение вызывающего.</p>
-<h3 id="4-6">Ширина окна 4 → 6 бит<a class="headerlink" href="#4-6" title="Permanent link">&para;</a></h3>
-<p>Однопоточное шифрование <strong>686 → 980 эл/с (×1.43)</strong>, пакетное
-4403 → 6500–6700. Отставание от <code>heu</code> по ядру сократилось с 2.05 до
-1.43 раза.</p>
-<p>Профилирование показало, что шифрование на 98.2 % состоит из умножений
-в <code>pow_by_table</code>, а цена ОДНОГО умножения у нас и у <code>heu</code> одинакова
-(5.8 против 5.9 мкс). Отличалось число окон: у <code>heu</code> ширина 10 бит
-(<code>kExpUnitBits</code>), у нас была 4. Шесть — там, где выигрыш ещё почти
-линеен, а таблица (5.6 МБ на ключ) остаётся заметно меньше кэша.</p>
-<p>Постоянное по времени чтение сохранено; его цена перемерена — 1–5 %.</p>
-<p>Прежнее объяснение разрыва — «94 % это Монтгомери на лимбах» —
-<strong>оказалось неверным</strong> и заменено. Монтгомери на <code>mpn_*</code> без аллокаций
-даёт 1.10–1.20, а не 2: REDC стоит почти столько же, сколько деление,
-потому что деление в GMP на этих длинах уже субквадратичное.</p>
-<h3 id="_3">Исправлено<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
+<p><strong>BREAKING.</strong> The blob now starts with a byte holding the power-of-ten
+scale exponent, and ciphertexts from 0.2.0 cannot be decrypted by this
+version.</p>
+<h3 id="the-encoding-scale-is-configurable">The encoding scale is configurable<a class="headerlink" href="#the-encoding-scale-is-configurable" title="Permanent link">&para;</a></h3>
+<p><code>encrypt_many(pub, values, scale_pow10=8)</code>, values from 0 to 18.</p>
+<p>The scale is a property of the CIPHERTEXT, not of the call, and that is
+not decoration. A scale mismatch produces not a refusal but a plausible
+wrong number: same codes, same length, just a result smaller by <code>10^Δ</code>.
+So <code>decrypt</code> reads the scale from the blob itself, and <code>add_many</code>
+<strong>refuses</strong> a batch that mixes scales. This matters especially for a
+party that only encrypts: it builds a peer key from <code>n</code> alone, where no
+scale exists — configured "on the side", it would silently disagree with
+the key holder.</p>
+<p>The cost is one byte per ciphertext: 512 → 513.</p>
+<p>At <code>scale_pow10 = 12</code> the sum error over a million sign-constant terms
+falls from 4.69e-06 to <strong>1.86e-08</strong> — the <code>f64</code> floor, i.e. the error of
+<code>float()</code> applied to the exact sum. The price is a narrower input range,
+from <code>|v| ≲ 9e7</code> down to <code>≲ 9e3</code>. The default stays at <code>8</code>: a wide range
+is a sensible default, narrowing it for accuracy is the caller's call.</p>
+<h3 id="window-width-4-6-bits">Window width 4 → 6 bits<a class="headerlink" href="#window-width-4-6-bits" title="Permanent link">&para;</a></h3>
+<p>Single-threaded encryption <strong>686 → 980 ops/s (×1.43)</strong>, batched
+4403 → 6500–6700.</p>
+<p>Profiling showed that encryption is 98.2 % multiplications inside
+<code>pow_by_table</code>, so the operation is essentially <code>windows + 2</code> modular
+multiplications and nothing else. Six bits is where the gain is still
+nearly linear in the window count while the table (5.6 MB per key) stays
+comfortably below the cache.</p>
+<p>Constant-time reading is preserved; its cost was re-measured at 1–5 %.</p>
+<p>An earlier explanation of where the time went — "it is the modular
+multiplication, and Montgomery form on limbs would fix it" — <strong>turned
+out to be wrong</strong> and has been replaced. Montgomery on <code>mpn_*</code> with no
+allocations gives 1.10–1.20, not 2: REDC costs almost as much as
+division, because division in GMP at these lengths is already
+subquadratic.</p>
+<h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Число окон считалось как <code>bytes * 2</code> в двух местах — формула верна
-  ровно для четырёхбитного окна. Теперь одна функция <code>windows_for</code>.</li>
-<li>То же <code>bytes * 2</code> стояло в <code>benches/exponent_length.rs</code> и печатало
-  вдвое больше окон, чем считалось.</li>
-<li>Три теста, разбиравшие блоб как одно число, после введения заголовка
-  продолжили ПРОХОДИТЬ, проверяя мусор: утверждения там вида «не равно»
-  и «не единица», а мусор им удовлетворяет. Разбор вынесен в
-  <code>cipher_int</code>.</li>
+<li>The window count was computed as <code>bytes * 2</code> in two places — a formula
+  correct only for a four-bit window. Now a single function,
+  <code>windows_for</code>.</li>
+<li>The same <code>bytes * 2</code> sat in <code>benches/exponent_length.rs</code> and printed
+  twice as many windows as were actually used.</li>
+<li>Three tests that parsed a blob as one integer kept PASSING after the
+  header byte was introduced, checking garbage: their assertions are of
+  the "not equal" and "not one" kind, and garbage satisfies those.
+  Parsing was moved into <code>cipher_int</code>.</li>
 </ul>
 <h2 id="020-2026-08-26">0.2.0 — 2026-08-26<a class="headerlink" href="#020-2026-08-26" title="Permanent link">&para;</a></h2>
-<p>Первый выпуск, в котором криптография своя. Прежде пакет был склейкой
-поверх крейта <code>fast-paillier</code>; теперь схема, генерация ключа,
-шифрование, сложение и расшифровка написаны здесь, а крейт остался
-только эталоном в тестах.</p>
-<h3 id="_4">Схема<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<p>The first release where the cryptography is our own. The package used to
+be glue on top of the <code>fast-paillier</code> crate; now the scheme, key
+generation, encryption, addition and decryption are written here, and
+the crate remains only as a test oracle.</p>
+<h3 id="the-scheme">The scheme<a class="headerlink" href="#the-scheme" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Шифрование КОРОТКИМ ПОКАЗАТЕЛЕМ: <code>c = (1 + m·n) · hs^r mod n²</code>, где
-  <code>hs = h^n</code>, <code>h = −x² mod n</code>, <code>|r| = |n|/2</code> — вариант
-  Дамгорда–Жюрика, тот же, что у <code>heu</code>. Это добавляет предположение о
-  стойкости сверх DCRA; разбор в <code>docs/short-exponent-security.md</code>.</li>
-<li>Своя генерация безопасных простых с двойным решетом.</li>
-<li>Расшифровка по китайской теореме через <code>mpz_powm_sec</code>: показатель
-  выведен из <code>λ</code>, то есть из долговременного секрета ключа.</li>
-<li>Таблица окон для фиксированного основания: 256 умножений вместо
-  ~1280 на возведение.</li>
+<li>Encryption with a SHORT EXPONENT: <code>c = (1 + m·n) · hs^r mod n²</code>, where
+  <code>hs = h^n</code>, <code>h = −x² mod n</code>, <code>|r| = |n|/2</code> — the Damgård–Jurik
+  variant. This adds a security assumption on top of DCRA; the analysis
+  is in <code>docs/short-exponent-security.md</code>.</li>
+<li>Our own safe-prime generation with a double sieve.</li>
+<li>CRT decryption through <code>mpz_powm_sec</code>: the exponent there derives from
+  <code>λ</code>, the long-lived secret of the key.</li>
+<li>A window table for the fixed base: 256 multiplications instead of
+  ~1280 per exponentiation.</li>
 </ul>
-<h3 id="_5">Побочные каналы<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h3>
+<h3 id="side-channels">Side channels<a class="headerlink" href="#side-channels" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Закрыт</strong> канал по весу показателя: умножение делается на каждом
-  окне, в нулевой записи лежит <code>n² + 1</code>, а не <code>1</code> (однолимбовая единица
-  умножается за <code>O(лимбов)</code> и утечку не закрывает).</li>
-<li><strong>Закрыт</strong> кэш-канал: строка таблицы лежит 64-битными словами,
-  читается целиком, запись выбирается арифметической маской без
-  ветвлений. Цена 1–3 % на возведении, в сквозном прогоне не видна.</li>
-<li><strong>Открыт</strong> канал по числу ведущих нулей показателя — около 0.36 бита
-  из 1024. Назван, замерен, сторожится тестом на нерост; единственное
-  известное лечение — форма Монтгомери, отвергнутая по замеру.</li>
+<li><strong>Closed</strong>: the exponent-weight channel. A multiplication happens at
+  every window, and the zero entry holds <code>n² + 1</code> rather than <code>1</code> (a
+  single-limb one multiplies in <code>O(limbs)</code> and does not close the leak).</li>
+<li><strong>Closed</strong>: the cache channel. The table row is laid out in 64-bit
+  words, read in full, and the entry is selected with an arithmetic mask
+  and no branches. The cost is 1–3 % on the exponentiation, invisible
+  end to end.</li>
+<li><strong>Open</strong>: the leading-zeros channel — about 0.36 bits out of 1024 at
+  the window width of this release. Named, measured, guarded by a test
+  that watches it does not grow; the only known cure is Montgomery form,
+  rejected on measurement.</li>
 </ul>
-<h3 id="_6">Отказы вместо правдоподобного числа<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h3>
+<h3 id="refusals-instead-of-a-plausible-number">Refusals instead of a plausible number<a class="headerlink" href="#refusals-instead-of-a-plausible-number" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Чужой модуль отсекается по длине СЫРЫХ БАЙТ, прежде любой арифметики.
-  Прежде <code>n²</code> считалось до проверки и под удержанным GIL: 64 МБ от пира
-  давали 4.07 с полной глухоты интерпретатора.</li>
-<li><code>NaN</code>, <code>±inf</code>, переполнение при масштабировании, пустая сумма, чужой
-  шифротекст, чётный модуль — отказ, а не результат.</li>
-<li>Ключ проверяется при сборке; пропуск проверки — ошибка КОМПИЛЯЦИИ
-  (свидетельство <code>keys::Validated</code> с приватным полем).</li>
+<li>A foreign modulus is cut off by RAW BYTE length, before any
+  arithmetic. Previously <code>n²</code> was computed before the check and with the
+  GIL held: 64 MB from a peer bought 4.07 seconds of complete deafness.</li>
+<li><code>NaN</code>, <code>±inf</code>, overflow when scaling, an empty sum, a foreign
+  ciphertext, an even modulus — all refusals, not results.</li>
+<li>The key is validated when assembled; skipping validation is a COMPILE
+  error (a <code>keys::Validated</code> witness with a private field).</li>
 </ul>
-<h3 id="_7">Кодирование<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h3>
+<h3 id="encoding">Encoding<a class="headerlink" href="#encoding" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Неподвижная точка, масштаб <code>1e8</code>, округление К БЛИЖАЙШЕМУ. <code>heu</code>
-  усекает к нулю, и на знакопостоянных данных это даёт ошибку, растущую
-  ЛИНЕЙНО: на 100 000 слагаемых 5.00e-04 против наших 1.17e-06.</li>
+<li>Fixed point, scale <code>1e8</code>, rounding TO NEAREST. Truncation toward zero
+  yields an error that grows LINEARLY on sign-constant data instead of
+  as <code>√k</code>: 5.00e-04 against 1.17e-06 over 100 000 terms.</li>
 </ul>
-<h3 id="2048">Скорость (ключ 2048, одна машина)<a class="headerlink" href="#2048" title="Permanent link">&para;</a></h3>
+<h3 id="speed-2048-bit-key-one-machine">Speed (2048-bit key, one machine)<a class="headerlink" href="#speed-2048-bit-key-one-machine" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
 <th></th>
-<th>эл/с в потоке</th>
-<th>сложение</th>
-<th>расшифровка</th>
+<th>ops/s per thread</th>
+<th>addition</th>
+<th>decryption</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>этот пакет</td>
+<td>this release</td>
 <td>686</td>
-<td>6.7 мкс</td>
-<td>3.65 мс</td>
-</tr>
-<tr>
-<td><code>heu</code></td>
-<td>1378</td>
-<td>9.8 мкс</td>
-<td>2.79 мс</td>
+<td>6.7 µs</td>
+<td>3.65 ms</td>
 </tr>
 </tbody>
 </table>
-<p>Перенос приёмов <code>heu</code> сократил отставание по ядру с тринадцатикратного
-до двукратного. Расшифровка медленнее не по алгоритму: с обычным
-<code>mpz_powm</code> вышло бы около 2.4 мс.</p>
-<h3 id="_8">Инструменты<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h3>
+<p>Decryption is slower than it could be by design, not by algorithm: with
+a plain <code>mpz_powm</code> it would be about 2.4 ms, but the exponent derives
+from the long-lived secret.</p>
+<h3 id="tooling">Tooling<a class="headerlink" href="#tooling" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>pytest.ini</code>: без него <code>pytest</code> в корне собирал НОЛЬ тестов — файлы
-  названы по предмету, а не <code>test_*.py</code>.</li>
-<li><code>tests/docs_references.py</code>: всё, что называет документация, обязано
-  существовать И лежать в индексе git.</li>
-<li>Прогоны в <code>benches/</code>: сравнение библиотек, цена постоянного чтения,
-  цена <code>mpz_powm_sec</code>, влияние длины показателя, правило округления,
-  накопление ошибки на симметричном и на знакопостоянном входе.</li>
+<li><code>pytest.ini</code>: without it, <code>pytest</code> at the repository root collected
+  ZERO tests — the files are named after their subject, not <code>test_*.py</code>.</li>
+<li><code>tests/docs_references.py</code>: everything the documentation names must
+  exist AND be in the git index.</li>
+<li>Benchmarks in <code>benches/</code>: the cost of constant-time reading, the cost
+  of <code>mpz_powm_sec</code>, the effect of exponent length, the rounding rule,
+  and error accumulation on symmetric and on sign-constant input.</li>
 </ul>
 <h2 id="010">0.1.0<a class="headerlink" href="#010" title="Permanent link">&para;</a></h2>
-<p>Привязка к Python поверх <code>fast-paillier</code>: кодирование <code>float</code>,
-сериализация, параллельное шифрование.</p>
+<p>A Python binding on top of <code>fast-paillier</code>: <code>float</code> encoding,
+serialisation, parallel encryption.</p>
 
 
 
@@ -1496,7 +1466,7 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u043e \u0432 \u0431\u0443\u0444\u0435\u0440", "clipboard.copy": "\u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0432 \u0431\u0443\u0444\u0435\u0440", "search.result.more.one": "\u0415\u0449\u0451 1 \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435", "search.result.more.other": "\u0415\u0449\u0451 # \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435", "search.result.none": "\u0421\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0439 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e", "search.result.one": "\u041d\u0430\u0439\u0434\u0435\u043d\u043e 1 \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0435", "search.result.other": "\u041d\u0430\u0439\u0434\u0435\u043d\u043e \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0439: #", "search.result.placeholder": "\u041d\u0430\u0447\u043d\u0438\u0442\u0435 \u043f\u0435\u0447\u0430\u0442\u0430\u0442\u044c \u0434\u043b\u044f \u043f\u043e\u0438\u0441\u043a\u0430", "search.result.term.missing": "\u041e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442", "select.version": "\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0432\u0435\u0440\u0441\u0438\u044e"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>

@@ -2,50 +2,46 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://veryviolet.github.io/paillier/</loc>
-         <lastmod>2026-08-26</lastmod>
+         <lastmod>2026-08-27</lastmod>
     </url>
     <url>
          <loc>https://veryviolet.github.io/paillier/changelog/</loc>
-         <lastmod>2026-08-26</lastmod>
-    </url>
-    <url>
-         <loc>https://veryviolet.github.io/paillier/heu-comparison/</loc>
-         <lastmod>2026-08-26</lastmod>
+         <lastmod>2026-08-27</lastmod>
     </url>
     <url>
          <loc>https://veryviolet.github.io/paillier/short-exponent-security/</loc>
-         <lastmod>2026-08-26</lastmod>
+         <lastmod>2026-08-27</lastmod>
     </url>
     <url>
          <loc>https://veryviolet.github.io/paillier/concepts/encoding/</loc>
-         <lastmod>2026-08-26</lastmod>
+         <lastmod>2026-08-27</lastmod>
     </url>
     <url>
          <loc>https://veryviolet.github.io/paillier/concepts/scheme/</loc>
-         <lastmod>2026-08-26</lastmod>
+         <lastmod>2026-08-27</lastmod>
     </url>
     <url>
          <loc>https://veryviolet.github.io/paillier/concepts/timing/</loc>
-         <lastmod>2026-08-26</lastmod>
+         <lastmod>2026-08-27</lastmod>
     </url>
     <url>
          <loc>https://veryviolet.github.io/paillier/getting-started/first-run/</loc>
-         <lastmod>2026-08-26</lastmod>
+         <lastmod>2026-08-27</lastmod>
     </url>
     <url>
          <loc>https://veryviolet.github.io/paillier/getting-started/installation/</loc>
-         <lastmod>2026-08-26</lastmod>
+         <lastmod>2026-08-27</lastmod>
     </url>
     <url>
          <loc>https://veryviolet.github.io/paillier/reference/api/</loc>
-         <lastmod>2026-08-26</lastmod>
+         <lastmod>2026-08-27</lastmod>
     </url>
     <url>
          <loc>https://veryviolet.github.io/paillier/reference/benches/</loc>
-         <lastmod>2026-08-26</lastmod>
+         <lastmod>2026-08-27</lastmod>
     </url>
     <url>
          <loc>https://veryviolet.github.io/paillier/reference/limits/</loc>
-         <lastmod>2026-08-26</lastmod>
+         <lastmod>2026-08-27</lastmod>
     </url>
 </urlset>

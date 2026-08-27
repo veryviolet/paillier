@@ -1,12 +1,12 @@
 
 <!doctype html>
-<html lang="ru" class="no-js">
+<html lang="en" class="no-js">
   <head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP, привязка к Python через pyo3.">
+        <meta name="description" content="Additively homomorphic Paillier encryption: a Rust implementation on top of GMP, bound to Python through pyo3.">
       
       
       
@@ -27,7 +27,7 @@
     
     
       
-        <title>Установка - paillier</title>
+        <title>Installation - paillier</title>
       
     
     
@@ -78,8 +78,8 @@
     <div data-md-component="skip">
       
         
-        <a href="#_1" class="md-skip">
-          Перейти к содержанию
+        <a href="#installation" class="md-skip">
+          Skip to content
         </a>
       
     </div>
@@ -91,7 +91,7 @@
       
 
 <header class="md-header" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="Верхний колонтитул">
+  <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../.." title="paillier" class="md-header__button md-logo" aria-label="paillier" data-md-component="logo">
       
   
@@ -112,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Установка
+              Installation
             
           </span>
         </div>
@@ -125,9 +125,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Тёмная тема"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
     
-      <label class="md-header__button md-icon" title="Тёмная тема" for="__palette_1" hidden>
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
@@ -135,9 +135,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Светлая тема"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
-      <label class="md-header__button md-icon" title="Светлая тема" for="__palette_0" hidden>
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
@@ -160,16 +160,16 @@
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Поиск" placeholder="Поиск" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
-      <nav class="md-search__options" aria-label="Поиск">
+      <nav class="md-search__options" aria-label="Search">
         
-        <button type="reset" class="md-search__icon md-icon" title="Очистить" aria-label="Очистить" tabindex="-1">
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
           
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
@@ -180,7 +180,7 @@
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
-            Инициализация поиска
+            Initializing search
           </div>
           <ol class="md-search-result__list" role="presentation"></ol>
         </div>
@@ -192,7 +192,7 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/veryviolet/paillier" title="Перейти к репозиторию" class="md-source" data-md-component="source">
+        <a href="https://github.com/veryviolet/paillier" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
@@ -213,7 +213,7 @@
         
           
             
-<nav class="md-tabs" aria-label="Вкладки" data-md-component="tabs">
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
   <div class="md-grid">
     <ul class="md-tabs__list">
       
@@ -231,7 +231,7 @@
           
   
   
-  Начало
+  Start here
 
         </a>
       </li>
@@ -251,7 +251,7 @@
           
   
   
-  Как устроено
+  How it works
 
         </a>
       </li>
@@ -271,7 +271,7 @@
           
   
   
-  Справочник
+  Reference
 
         </a>
       </li>
@@ -287,11 +287,11 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../heu-comparison/" class="md-tabs__link">
+        <a href="../../short-exponent-security/" class="md-tabs__link">
           
   
   
-  Разбор
+  Analysis
 
         </a>
       </li>
@@ -311,7 +311,7 @@
   
     
   
-  Изменения
+  Changelog
 
       </a>
     </li>
@@ -338,7 +338,7 @@
   
 
 
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Навигация" data-md-level="0">
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href="../.." title="paillier" class="md-nav__button md-logo" aria-label="paillier" data-md-component="logo">
       
@@ -350,7 +350,7 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/veryviolet/paillier" title="Перейти к репозиторию" class="md-source" data-md-component="source">
+      <a href="https://github.com/veryviolet/paillier" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
@@ -398,7 +398,7 @@
   <span class="md-ellipsis">
     
   
-    Начало
+    Start here
   
 
     
@@ -414,7 +414,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Начало
+    Start here
   
 
           </label>
@@ -434,7 +434,7 @@
   <span class="md-ellipsis">
     
   
-    Что это
+    What this is
   
 
     
@@ -471,7 +471,7 @@
   <span class="md-ellipsis">
     
   
-    Установка
+    Installation
   
 
     
@@ -489,7 +489,7 @@
   <span class="md-ellipsis">
     
   
-    Установка
+    Installation
   
 
     
@@ -501,7 +501,7 @@
       
         
 
-<nav class="md-nav md-nav--secondary" aria-label="Содержание">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -510,15 +510,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Содержание
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+  <a href="#what-actually-gets-installed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Что именно ставится
+        What actually gets installed
       
     </span>
   </a>
@@ -526,10 +526,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+  <a href="#building-from-source" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Сборка из исходников
+        Building from source
       
     </span>
   </a>
@@ -537,10 +537,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+  <a href="#verifying" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Проверка
+        Verifying
       
     </span>
   </a>
@@ -570,7 +570,7 @@
   <span class="md-ellipsis">
     
   
-    Первый прогон
+    First run
   
 
     
@@ -621,7 +621,7 @@
   <span class="md-ellipsis">
     
   
-    Как устроено
+    How it works
   
 
     
@@ -637,7 +637,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Как устроено
+    How it works
   
 
           </label>
@@ -657,7 +657,7 @@
   <span class="md-ellipsis">
     
   
-    Схема и что она добавляет к предположениям
+    The scheme and what it assumes
   
 
     
@@ -685,7 +685,7 @@
   <span class="md-ellipsis">
     
   
-    Побочные каналы по времени
+    Timing side channels
   
 
     
@@ -713,7 +713,7 @@
   <span class="md-ellipsis">
     
   
-    Кодирование и масштаб
+    Encoding and scale
   
 
     
@@ -764,7 +764,7 @@
   <span class="md-ellipsis">
     
   
-    Справочник
+    Reference
   
 
     
@@ -780,7 +780,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Справочник
+    Reference
   
 
           </label>
@@ -828,7 +828,7 @@
   <span class="md-ellipsis">
     
   
-    Границы и отказы
+    Limits and refusals
   
 
     
@@ -856,7 +856,7 @@
   <span class="md-ellipsis">
     
   
-    Прогоны
+    Benchmarks
   
 
     
@@ -907,7 +907,7 @@
   <span class="md-ellipsis">
     
   
-    Разбор
+    Analysis
   
 
     
@@ -923,39 +923,11 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Разбор
+    Analysis
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../heu-comparison/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Сравнение с heu
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -971,7 +943,7 @@
   <span class="md-ellipsis">
     
   
-    Стойкость короткого показателя
+    Short-exponent security
   
 
     
@@ -1006,7 +978,7 @@
   <span class="md-ellipsis">
     
   
-    Изменения
+    Changelog
   
 
     
@@ -1032,7 +1004,7 @@
                   <div class="md-sidebar__inner">
                     
 
-<nav class="md-nav md-nav--secondary" aria-label="Содержание">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -1041,15 +1013,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Содержание
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+  <a href="#what-actually-gets-installed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Что именно ставится
+        What actually gets installed
       
     </span>
   </a>
@@ -1057,10 +1029,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+  <a href="#building-from-source" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Сборка из исходников
+        Building from source
       
     </span>
   </a>
@@ -1068,10 +1040,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+  <a href="#verifying" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Проверка
+        Verifying
       
     </span>
   </a>
@@ -1098,47 +1070,52 @@
   
 
 
-<h1 id="_1">Установка<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>paillier
+<h1 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h1>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>pypaillier
 </code></pre></div>
-<h2 id="_2">Что именно ставится<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
-<p>Собранное расширение на Rust. Ни компилятора, ни GMP на машине не
-требуется: GMP собирается статически внутрь колеса при сборке пакета.</p>
-<p>Колёса собраны <strong>отдельно под каждую версию</strong> CPython — 3.10, 3.11,
-3.12 и 3.13, — и это осознанный отказ от <code>abi3</code>.</p>
+<p>The distribution is <code>pypaillier</code>; the import name is <code>paillier</code>. PyPI
+would not take <code>paillier</code> as a project name, and there was no reason to
+carry that into the API — every example in this documentation says
+<code>import paillier</code>.</p>
+<h2 id="what-actually-gets-installed">What actually gets installed<a class="headerlink" href="#what-actually-gets-installed" title="Permanent link">&para;</a></h2>
+<p>A compiled Rust extension. No compiler and no system GMP are required:
+GMP is built and linked statically into the wheel when the package is
+built.</p>
+<p>Wheels are built <strong>separately for each</strong> CPython version — 3.10, 3.11,
+3.12 and 3.13 — and that is a deliberate refusal of <code>abi3</code>.</p>
 <div class="admonition note">
-<p class="admonition-title">Почему не <code>abi3</code></p>
-<p>Одно колесо на все версии выглядит удобнее четырёх. Но метка
-совместимости, которой нельзя доверять, хуже её отсутствия, и
-пример перед глазами: <code>sf-heu==0.4.2b0</code> помечена <code>cp38-abi3</code>,
-прекрасно ставится и падает при импорте на
-<code>_PyObject_NextNotImplemented</code> — символе, удалённом из CPython 3.12.</p>
-<p>Отдельное колесо на версию соврать про совместимость не может: оно
-либо собрано под этот интерпретатор, либо его нет.</p>
+<p class="admonition-title">Why not <code>abi3</code></p>
+<p>One wheel for every version looks more convenient than four. But a
+compatibility tag you cannot trust is worse than no tag at all, and
+the failure mode is real: an extension tagged <code>abi3</code> while actually
+using an unstable symbol installs perfectly and then dies on import
+on the first interpreter that removed the symbol.</p>
+<p>A per-version wheel cannot lie about compatibility: either it was
+built for this interpreter or it does not exist.</p>
 </div>
-<p>Метка платформы — <code>manylinux_2_17</code> (она же <code>manylinux2014</code>). Это нижняя
-граница glibc, с которой колесо ставится почти на любом живом Linux.</p>
-<h2 id="_3">Сборка из исходников<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
-<p>Понадобится Rust (стабильный) и <code>maturin</code>:</p>
+<p>The platform tag is <code>manylinux_2_17</code> (also known as <code>manylinux2014</code>),
+the glibc floor that installs on essentially any live Linux.</p>
+<h2 id="building-from-source">Building from source<a class="headerlink" href="#building-from-source" title="Permanent link">&para;</a></h2>
+<p>You need stable Rust and <code>maturin</code>:</p>
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>maturin
 maturin<span class="w"> </span>build<span class="w"> </span>--release
 pip<span class="w"> </span>install<span class="w"> </span>target/wheels/paillier-*.whl
 </code></pre></div>
-<p>Либо прямо в текущее окружение, без промежуточного колеса:</p>
+<p>Or straight into the current environment, with no intermediate wheel:</p>
 <div class="highlight"><pre><span></span><code>maturin<span class="w"> </span>develop<span class="w"> </span>--release
 </code></pre></div>
 <div class="admonition warning">
-<p class="admonition-title">Не собирайте без <code>--release</code></p>
-<p>В debug-сборке порождение безопасных простых занимает минуты вместо
-секунд, а замеры постоянства времени не значат ничего.</p>
+<p class="admonition-title">Do not build without <code>--release</code></p>
+<p>In a debug build, safe-prime generation takes minutes instead of
+seconds, and the constant-time measurements mean nothing at all.</p>
 </div>
-<h2 id="_4">Проверка<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<h2 id="verifying">Verifying<a class="headerlink" href="#verifying" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">paillier</span>
 <span class="n">paillier</span><span class="o">.</span><span class="n">__version__</span>
 </code></pre></div>
-<p>Версия берётся из <code>Cargo.toml</code> <strong>на сборке</strong>, а не переписывается
-руками: две копии номера разъезжаются молча, а разъехавшаяся версия
-врёт про то, какой код установлен.</p>
+<p>The version comes from <code>Cargo.toml</code> <strong>at build time</strong> rather than being
+typed in a second place: two copies of a number drift apart silently,
+and a drifted version lies about which code is installed.</p>
 
 
 
@@ -1190,7 +1167,7 @@ pip<span class="w"> </span>install<span class="w"> </span>target/wheels/paillier
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u043e \u0432 \u0431\u0443\u0444\u0435\u0440", "clipboard.copy": "\u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0432 \u0431\u0443\u0444\u0435\u0440", "search.result.more.one": "\u0415\u0449\u0451 1 \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435", "search.result.more.other": "\u0415\u0449\u0451 # \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435", "search.result.none": "\u0421\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0439 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e", "search.result.one": "\u041d\u0430\u0439\u0434\u0435\u043d\u043e 1 \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0435", "search.result.other": "\u041d\u0430\u0439\u0434\u0435\u043d\u043e \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0439: #", "search.result.placeholder": "\u041d\u0430\u0447\u043d\u0438\u0442\u0435 \u043f\u0435\u0447\u0430\u0442\u0430\u0442\u044c \u0434\u043b\u044f \u043f\u043e\u0438\u0441\u043a\u0430", "search.result.term.missing": "\u041e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442", "select.version": "\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0432\u0435\u0440\u0441\u0438\u044e"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>

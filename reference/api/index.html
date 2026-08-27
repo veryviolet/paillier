@@ -1,12 +1,12 @@
 
 <!doctype html>
-<html lang="ru" class="no-js">
+<html lang="en" class="no-js">
   <head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP, привязка к Python через pyo3.">
+        <meta name="description" content="Additively homomorphic Paillier encryption: a Rust implementation on top of GMP, bound to Python through pyo3.">
       
       
       
@@ -79,7 +79,7 @@
       
         
         <a href="#api" class="md-skip">
-          Перейти к содержанию
+          Skip to content
         </a>
       
     </div>
@@ -91,7 +91,7 @@
       
 
 <header class="md-header" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="Верхний колонтитул">
+  <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../.." title="paillier" class="md-header__button md-logo" aria-label="paillier" data-md-component="logo">
       
   
@@ -125,9 +125,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Тёмная тема"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
     
-      <label class="md-header__button md-icon" title="Тёмная тема" for="__palette_1" hidden>
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
@@ -135,9 +135,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Светлая тема"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
-      <label class="md-header__button md-icon" title="Светлая тема" for="__palette_0" hidden>
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
@@ -160,16 +160,16 @@
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Поиск" placeholder="Поиск" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
-      <nav class="md-search__options" aria-label="Поиск">
+      <nav class="md-search__options" aria-label="Search">
         
-        <button type="reset" class="md-search__icon md-icon" title="Очистить" aria-label="Очистить" tabindex="-1">
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
           
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
@@ -180,7 +180,7 @@
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
-            Инициализация поиска
+            Initializing search
           </div>
           <ol class="md-search-result__list" role="presentation"></ol>
         </div>
@@ -192,7 +192,7 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/veryviolet/paillier" title="Перейти к репозиторию" class="md-source" data-md-component="source">
+        <a href="https://github.com/veryviolet/paillier" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
@@ -213,7 +213,7 @@
         
           
             
-<nav class="md-tabs" aria-label="Вкладки" data-md-component="tabs">
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
   <div class="md-grid">
     <ul class="md-tabs__list">
       
@@ -229,7 +229,7 @@
           
   
   
-  Начало
+  Start here
 
         </a>
       </li>
@@ -249,7 +249,7 @@
           
   
   
-  Как устроено
+  How it works
 
         </a>
       </li>
@@ -271,7 +271,7 @@
           
   
   
-  Справочник
+  Reference
 
         </a>
       </li>
@@ -287,11 +287,11 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../heu-comparison/" class="md-tabs__link">
+        <a href="../../short-exponent-security/" class="md-tabs__link">
           
   
   
-  Разбор
+  Analysis
 
         </a>
       </li>
@@ -311,7 +311,7 @@
   
     
   
-  Изменения
+  Changelog
 
       </a>
     </li>
@@ -338,7 +338,7 @@
   
 
 
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Навигация" data-md-level="0">
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href="../.." title="paillier" class="md-nav__button md-logo" aria-label="paillier" data-md-component="logo">
       
@@ -350,7 +350,7 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/veryviolet/paillier" title="Перейти к репозиторию" class="md-source" data-md-component="source">
+      <a href="https://github.com/veryviolet/paillier" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
@@ -393,7 +393,7 @@
   <span class="md-ellipsis">
     
   
-    Начало
+    Start here
   
 
     
@@ -409,7 +409,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Начало
+    Start here
   
 
           </label>
@@ -429,7 +429,7 @@
   <span class="md-ellipsis">
     
   
-    Что это
+    What this is
   
 
     
@@ -457,7 +457,7 @@
   <span class="md-ellipsis">
     
   
-    Установка
+    Installation
   
 
     
@@ -485,7 +485,7 @@
   <span class="md-ellipsis">
     
   
-    Первый прогон
+    First run
   
 
     
@@ -536,7 +536,7 @@
   <span class="md-ellipsis">
     
   
-    Как устроено
+    How it works
   
 
     
@@ -552,7 +552,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Как устроено
+    How it works
   
 
           </label>
@@ -572,7 +572,7 @@
   <span class="md-ellipsis">
     
   
-    Схема и что она добавляет к предположениям
+    The scheme and what it assumes
   
 
     
@@ -600,7 +600,7 @@
   <span class="md-ellipsis">
     
   
-    Побочные каналы по времени
+    Timing side channels
   
 
     
@@ -628,7 +628,7 @@
   <span class="md-ellipsis">
     
   
-    Кодирование и масштаб
+    Encoding and scale
   
 
     
@@ -684,7 +684,7 @@
   <span class="md-ellipsis">
     
   
-    Справочник
+    Reference
   
 
     
@@ -700,7 +700,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Справочник
+    Reference
   
 
           </label>
@@ -759,7 +759,7 @@
       
         
 
-<nav class="md-nav md-nav--secondary" aria-label="Содержание">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -768,7 +768,7 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Содержание
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
@@ -889,10 +889,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
+  <a href="#blob-format" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Формат блоба
+        Blob format
       
     </span>
   </a>
@@ -922,7 +922,7 @@
   <span class="md-ellipsis">
     
   
-    Границы и отказы
+    Limits and refusals
   
 
     
@@ -950,7 +950,7 @@
   <span class="md-ellipsis">
     
   
-    Прогоны
+    Benchmarks
   
 
     
@@ -1001,7 +1001,7 @@
   <span class="md-ellipsis">
     
   
-    Разбор
+    Analysis
   
 
     
@@ -1017,39 +1017,11 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Разбор
+    Analysis
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../heu-comparison/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Сравнение с heu
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -1065,7 +1037,7 @@
   <span class="md-ellipsis">
     
   
-    Стойкость короткого показателя
+    Short-exponent security
   
 
     
@@ -1100,7 +1072,7 @@
   <span class="md-ellipsis">
     
   
-    Изменения
+    Changelog
   
 
     
@@ -1126,7 +1098,7 @@
                   <div class="md-sidebar__inner">
                     
 
-<nav class="md-nav md-nav--secondary" aria-label="Содержание">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -1135,7 +1107,7 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Содержание
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
@@ -1256,10 +1228,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
+  <a href="#blob-format" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Формат блоба
+        Blob format
       
     </span>
   </a>
@@ -1287,74 +1259,76 @@
 
 
 <h1 id="api">API<a class="headerlink" href="#api" title="Permanent link">&para;</a></h1>
-<p>Модуль <code>paillier</code>. Всё, что он выводит наружу, перечислено здесь.</p>
+<p>The <code>paillier</code> module. Everything it exposes is listed here.</p>
 <h2 id="generate_keypairbits3072"><code>generate_keypair(bits=3072)</code><a class="headerlink" href="#generate_keypairbits3072" title="Permanent link">&para;</a></h2>
-<p>Возвращает <code>(PublicKey, SecretKey)</code>.</p>
-<p>Порождает два <strong>безопасных</strong> простых по <code>bits/2</code> бит каждое и проверяет
-получившийся ключ. Ключ короче 2048 бит не порождается: NIST SP 800-57
-требует этой длины для стойкости в 112 бит.</p>
-<p>Стоит секунды и имеет <strong>огромный разброс</strong> — от 1 до 10 секунд при 2048
-битах на одной и той же машине. Это поиск: безопасные простые редки, и
-время до попадания случайно.</p>
+<p>Returns <code>(PublicKey, SecretKey)</code>.</p>
+<p>Generates two <strong>safe</strong> primes of <code>bits/2</code> each and validates the
+resulting key. Keys shorter than 2048 bits are not generated: NIST
+SP 800-57 requires that length for 112-bit security.</p>
+<p>It costs seconds and has a <strong>huge spread</strong> — anywhere from 1 to 10
+seconds at 2048 bits on the same machine. It is a search: safe primes
+are rare, and the time to a hit is random.</p>
 <div class="highlight"><pre><span></span><code><span class="n">pub</span><span class="p">,</span> <span class="n">sec</span> <span class="o">=</span> <span class="n">paillier</span><span class="o">.</span><span class="n">generate_keypair</span><span class="p">(</span><span class="mi">2048</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="publickey"><code>PublicKey</code><a class="headerlink" href="#publickey" title="Permanent link">&para;</a></h2>
 <h3 id="publickeyfrom_nraw"><code>PublicKey.from_n(raw)</code><a class="headerlink" href="#publickeyfrom_nraw" title="Permanent link">&para;</a></h3>
-<p>Собирает открытый ключ из <strong>одного модуля</strong> — того, что уехал по
-проводу. <code>hs</code> выводится здесь же, из <code>n</code>, а не принимается извне.</p>
-<p>Стоит около 0.03 с при 3072 битах, потому что вместе с ключом строится
-таблица степеней. Делайте это <strong>один раз на сессию</strong>.</p>
-<p>Отказывает на чётном модуле, на слишком коротком и на слишком длинном.
-Длина отсекается по сырым байтам <strong>до всякой арифметики</strong>: модуль
-приезжает от пира, и 64 мегабайта вместо ключа не должны стоить
-процессу ничего.</p>
+<p>Builds a public key from <strong>the modulus alone</strong> — the thing that came
+over the wire. <code>hs</code> is derived right here, from <code>n</code>, rather than
+accepted from outside.</p>
+<p>It costs about 0.03 s at 3072 bits, because the table of powers is built
+along with the key. Do this <strong>once per session</strong>.</p>
+<p>Refuses an even modulus, one that is too short, and one that is too
+long. The length is cut off by raw byte count <strong>before any arithmetic</strong>:
+the modulus arrives from a peer, and 64 megabytes instead of a key must
+not cost the process anything.</p>
 <h3 id="modulus_bytes"><code>modulus_bytes()</code><a class="headerlink" href="#modulus_bytes" title="Permanent link">&para;</a></h3>
-<p>Модуль в байтах, старшим вперёд. Единственное, что уезжает к пиру.</p>
+<p>The modulus in bytes, most significant first. The only thing that
+travels to a peer.</p>
 <h3 id="exponent_bits"><code>exponent_bits</code><a class="headerlink" href="#exponent_bits" title="Permanent link">&para;</a></h3>
-<p>Длина случайного показателя в битах — половина длины модуля. Выведена
-наружу, чтобы её можно было проверить <strong>числом</strong>, а не подбором.</p>
+<p>The length of the random exponent in bits — half the modulus length.
+Exposed so it can be checked <strong>by number</strong> rather than by guesswork.</p>
 <h3 id="plaintext_bound_bits"><code>plaintext_bound_bits</code><a class="headerlink" href="#plaintext_bound_bits" title="Permanent link">&para;</a></h3>
-<p>Наибольший принимаемый открытый текст по модулю, в битах: <code>n/2</code>,
-ужатое под запас на сумму.</p>
+<p>The largest accepted plaintext in magnitude, in bits: <code>n/2</code>, shrunk to
+reserve headroom for a sum.</p>
 <h2 id="encrypt_manypub-values-scale_pow108"><code>encrypt_many(pub, values, scale_pow10=8)</code><a class="headerlink" href="#encrypt_manypub-values-scale_pow108" title="Permanent link">&para;</a></h2>
-<p>Шифрует список чисел, возвращает список блобов.</p>
-<p>Идёт <strong>по всем ядрам</strong>. Шифровать по одному в цикле Python — значит
-выбросить множитель в шесть раз.</p>
-<p><code>scale_pow10</code> — показатель степени десятки, от 0 до 18. Едет в каждом
-блобе первым байтом. См. <a href="../../concepts/encoding/">Кодирование</a>.</p>
-<p>Отказывает на <code>NaN</code>, на бесконечностях, на числах, которые при
-масштабировании переполняют <code>f64</code>, и на числах вне допустимого
-диапазона ключа.</p>
+<p>Encrypts a list of numbers, returns a list of blobs.</p>
+<p>Runs <strong>across all cores</strong>. Encrypting one at a time in a Python loop
+throws away a factor of six.</p>
+<p><code>scale_pow10</code> is the power-of-ten exponent, from 0 to 18. It travels in
+every blob as the first byte. See
+<a href="../../concepts/encoding/">Encoding</a>.</p>
+<p>Refuses <code>NaN</code>, infinities, numbers that overflow <code>f64</code> once scaled, and
+numbers outside the key's admissible range.</p>
 <h2 id="add_manypub-blobs"><code>add_many(pub, blobs)</code><a class="headerlink" href="#add_manypub-blobs" title="Permanent link">&para;</a></h2>
-<p>Складывает шифротексты, возвращает один блоб.</p>
-<p>Отказывает: на пустой пачке; на пачке длиннее <code>2^20</code>; на шифротексте
-вне <code>[1, n²)</code>; на пачке с <strong>разными масштабами</strong>.</p>
+<p>Adds ciphertexts, returns a single blob.</p>
+<p>Refuses: an empty batch; a batch longer than <code>2^20</code>; a ciphertext
+outside <code>[1, n²)</code>; a batch that <strong>mixes scales</strong>.</p>
 <div class="admonition note">
-<p class="admonition-title">Планка <code>2^20</code> — не гарантия</p>
-<p>Счётчик повызовный, и результат можно подать во второй вызов. Что
-действительно держит сумму в группе — соотношение между нижней
-границей ключа (<code>2^2026</code>) и тем, что вообще кодируется из <code>f64</code>
-(около <code>2^1024</code>): до переполнения не хватает тысячи бит.</p>
+<p class="admonition-title">The <code>2^20</code> cap is not a guarantee</p>
+<p>It is per call, and the result can be fed into a second call. What
+actually keeps sums in the group is the gap between the key floor
+(<code>2^2026</code>) and what is encodable from <code>f64</code> at all (about <code>2^1024</code>):
+a thousand bits short of overflow.</p>
 </div>
 <h2 id="decryptsec-blob"><code>decrypt(sec, blob)</code><a class="headerlink" href="#decryptsec-blob" title="Permanent link">&para;</a></h2>
-<p>Возвращает <code>float</code>. Масштаб берётся из самого блоба.</p>
-<p>Отказывает на пустом блобе, на неизвестном показателе масштаба и на
-значении, которое не является шифротекстом под этим ключом.</p>
+<p>Returns a <code>float</code>. The scale is taken from the blob itself.</p>
+<p>Refuses an empty blob, an unknown scale exponent, and a value that is
+not a ciphertext under this key.</p>
 <div class="admonition warning">
-<p class="admonition-title">Проверки «этот шифротекст под этим ключом» нет</p>
-<p>И быть не может: из одного <code>n</code> она не выводится. Шифротекст,
-сделанный под другим ключом, обычно приведёт к отказу — но не
-всегда.</p>
+<p class="admonition-title">There is no 'this ciphertext under this key' check</p>
+<p>Nor can there be: it does not follow from <code>n</code> alone. A ciphertext
+made under a different key will usually lead to a refusal — but not
+always.</p>
 </div>
 <h2 id="__version__"><code>__version__</code><a class="headerlink" href="#__version__" title="Permanent link">&para;</a></h2>
-<p>Версия пакета. Берётся из <code>Cargo.toml</code> на сборке, а не переписывается
-руками.</p>
-<h2 id="_1">Формат блоба<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>[1 байт: показатель масштаба] [шифротекст, старшим байтом вперёд]
+<p>The package version, taken from <code>Cargo.toml</code> at build time rather than
+typed in a second place.</p>
+<h2 id="blob-format">Blob format<a class="headerlink" href="#blob-format" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>[1 byte: scale exponent] [ciphertext, most significant byte first]
 </code></pre></div>
-<p>Шифротекст записан <strong>минимальной</strong> длиной, а не фиксированной ширины:
-замерено <code>{512: 2, 513: 398}</code> на четырёхстах шифрованиях ключом 2048
-бит. Нарезать буфер постоянным шагом нельзя.</p>
+<p>The ciphertext is written at <strong>minimal</strong> length, not padded to a fixed
+width: measured <code>{512: 2, 513: 398}</code> over four hundred encryptions with
+a 2048-bit key. You cannot slice the buffer at a constant stride.</p>
 
 
 
@@ -1406,7 +1380,7 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u043e \u0432 \u0431\u0443\u0444\u0435\u0440", "clipboard.copy": "\u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0432 \u0431\u0443\u0444\u0435\u0440", "search.result.more.one": "\u0415\u0449\u0451 1 \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435", "search.result.more.other": "\u0415\u0449\u0451 # \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435", "search.result.none": "\u0421\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0439 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e", "search.result.one": "\u041d\u0430\u0439\u0434\u0435\u043d\u043e 1 \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0435", "search.result.other": "\u041d\u0430\u0439\u0434\u0435\u043d\u043e \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0439: #", "search.result.placeholder": "\u041d\u0430\u0447\u043d\u0438\u0442\u0435 \u043f\u0435\u0447\u0430\u0442\u0430\u0442\u044c \u0434\u043b\u044f \u043f\u043e\u0438\u0441\u043a\u0430", "search.result.term.missing": "\u041e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442", "select.version": "\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0432\u0435\u0440\u0441\u0438\u044e"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>

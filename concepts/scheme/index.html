@@ -1,12 +1,12 @@
 
 <!doctype html>
-<html lang="ru" class="no-js">
+<html lang="en" class="no-js">
   <head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP, привязка к Python через pyo3.">
+        <meta name="description" content="Additively homomorphic Paillier encryption: a Rust implementation on top of GMP, bound to Python through pyo3.">
       
       
       
@@ -27,7 +27,7 @@
     
     
       
-        <title>Схема и что она добавляет к предположениям - paillier</title>
+        <title>The scheme and what it assumes - paillier</title>
       
     
     
@@ -78,8 +78,8 @@
     <div data-md-component="skip">
       
         
-        <a href="#_1" class="md-skip">
-          Перейти к содержанию
+        <a href="#the-scheme-and-what-it-assumes" class="md-skip">
+          Skip to content
         </a>
       
     </div>
@@ -91,7 +91,7 @@
       
 
 <header class="md-header" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="Верхний колонтитул">
+  <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../.." title="paillier" class="md-header__button md-logo" aria-label="paillier" data-md-component="logo">
       
   
@@ -112,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Схема и что она добавляет к предположениям
+              The scheme and what it assumes
             
           </span>
         </div>
@@ -125,9 +125,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Тёмная тема"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
     
-      <label class="md-header__button md-icon" title="Тёмная тема" for="__palette_1" hidden>
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
@@ -135,9 +135,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Светлая тема"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
-      <label class="md-header__button md-icon" title="Светлая тема" for="__palette_0" hidden>
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
@@ -160,16 +160,16 @@
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Поиск" placeholder="Поиск" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
-      <nav class="md-search__options" aria-label="Поиск">
+      <nav class="md-search__options" aria-label="Search">
         
-        <button type="reset" class="md-search__icon md-icon" title="Очистить" aria-label="Очистить" tabindex="-1">
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
           
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
@@ -180,7 +180,7 @@
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
-            Инициализация поиска
+            Initializing search
           </div>
           <ol class="md-search-result__list" role="presentation"></ol>
         </div>
@@ -192,7 +192,7 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/veryviolet/paillier" title="Перейти к репозиторию" class="md-source" data-md-component="source">
+        <a href="https://github.com/veryviolet/paillier" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
@@ -213,7 +213,7 @@
         
           
             
-<nav class="md-tabs" aria-label="Вкладки" data-md-component="tabs">
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
   <div class="md-grid">
     <ul class="md-tabs__list">
       
@@ -229,7 +229,7 @@
           
   
   
-  Начало
+  Start here
 
         </a>
       </li>
@@ -251,7 +251,7 @@
           
   
   
-  Как устроено
+  How it works
 
         </a>
       </li>
@@ -271,7 +271,7 @@
           
   
   
-  Справочник
+  Reference
 
         </a>
       </li>
@@ -287,11 +287,11 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../heu-comparison/" class="md-tabs__link">
+        <a href="../../short-exponent-security/" class="md-tabs__link">
           
   
   
-  Разбор
+  Analysis
 
         </a>
       </li>
@@ -311,7 +311,7 @@
   
     
   
-  Изменения
+  Changelog
 
       </a>
     </li>
@@ -338,7 +338,7 @@
   
 
 
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Навигация" data-md-level="0">
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href="../.." title="paillier" class="md-nav__button md-logo" aria-label="paillier" data-md-component="logo">
       
@@ -350,7 +350,7 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/veryviolet/paillier" title="Перейти к репозиторию" class="md-source" data-md-component="source">
+      <a href="https://github.com/veryviolet/paillier" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
@@ -393,7 +393,7 @@
   <span class="md-ellipsis">
     
   
-    Начало
+    Start here
   
 
     
@@ -409,7 +409,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Начало
+    Start here
   
 
           </label>
@@ -429,7 +429,7 @@
   <span class="md-ellipsis">
     
   
-    Что это
+    What this is
   
 
     
@@ -457,7 +457,7 @@
   <span class="md-ellipsis">
     
   
-    Установка
+    Installation
   
 
     
@@ -485,7 +485,7 @@
   <span class="md-ellipsis">
     
   
-    Первый прогон
+    First run
   
 
     
@@ -541,7 +541,7 @@
   <span class="md-ellipsis">
     
   
-    Как устроено
+    How it works
   
 
     
@@ -557,7 +557,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Как устроено
+    How it works
   
 
           </label>
@@ -586,7 +586,7 @@
   <span class="md-ellipsis">
     
   
-    Схема и что она добавляет к предположениям
+    The scheme and what it assumes
   
 
     
@@ -604,7 +604,7 @@
   <span class="md-ellipsis">
     
   
-    Схема и что она добавляет к предположениям
+    The scheme and what it assumes
   
 
     
@@ -616,7 +616,7 @@
       
         
 
-<nav class="md-nav md-nav--secondary" aria-label="Содержание">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -625,15 +625,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Содержание
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+  <a href="#what-is-computed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Что считается
+        What is computed
       
     </span>
   </a>
@@ -641,10 +641,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+  <a href="#why-decryption-is-unchanged" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Почему расшифровка не меняется
+        Why decryption is unchanged
       
     </span>
   </a>
@@ -652,10 +652,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+  <a href="#what-this-adds-to-the-assumptions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Что при этом добавляется к предположениям
+        What this adds to the assumptions
       
     </span>
   </a>
@@ -663,10 +663,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
+  <a href="#what-is-required-of-the-key" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Что требуется от ключа
+        What is required of the key
       
     </span>
   </a>
@@ -674,10 +674,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_6" class="md-nav__link">
+  <a href="#what-is-validated" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Что проверяется
+        What is validated
       
     </span>
   </a>
@@ -707,7 +707,7 @@
   <span class="md-ellipsis">
     
   
-    Побочные каналы по времени
+    Timing side channels
   
 
     
@@ -735,7 +735,7 @@
   <span class="md-ellipsis">
     
   
-    Кодирование и масштаб
+    Encoding and scale
   
 
     
@@ -786,7 +786,7 @@
   <span class="md-ellipsis">
     
   
-    Справочник
+    Reference
   
 
     
@@ -802,7 +802,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Справочник
+    Reference
   
 
           </label>
@@ -850,7 +850,7 @@
   <span class="md-ellipsis">
     
   
-    Границы и отказы
+    Limits and refusals
   
 
     
@@ -878,7 +878,7 @@
   <span class="md-ellipsis">
     
   
-    Прогоны
+    Benchmarks
   
 
     
@@ -929,7 +929,7 @@
   <span class="md-ellipsis">
     
   
-    Разбор
+    Analysis
   
 
     
@@ -945,39 +945,11 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Разбор
+    Analysis
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../heu-comparison/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Сравнение с heu
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -993,7 +965,7 @@
   <span class="md-ellipsis">
     
   
-    Стойкость короткого показателя
+    Short-exponent security
   
 
     
@@ -1028,7 +1000,7 @@
   <span class="md-ellipsis">
     
   
-    Изменения
+    Changelog
   
 
     
@@ -1054,7 +1026,7 @@
                   <div class="md-sidebar__inner">
                     
 
-<nav class="md-nav md-nav--secondary" aria-label="Содержание">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -1063,15 +1035,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Содержание
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+  <a href="#what-is-computed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Что считается
+        What is computed
       
     </span>
   </a>
@@ -1079,10 +1051,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+  <a href="#why-decryption-is-unchanged" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Почему расшифровка не меняется
+        Why decryption is unchanged
       
     </span>
   </a>
@@ -1090,10 +1062,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+  <a href="#what-this-adds-to-the-assumptions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Что при этом добавляется к предположениям
+        What this adds to the assumptions
       
     </span>
   </a>
@@ -1101,10 +1073,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
+  <a href="#what-is-required-of-the-key" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Что требуется от ключа
+        What is required of the key
       
     </span>
   </a>
@@ -1112,10 +1084,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_6" class="md-nav__link">
+  <a href="#what-is-validated" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Что проверяется
+        What is validated
       
     </span>
   </a>
@@ -1142,86 +1114,90 @@
   
 
 
-<h1 id="_1">Схема и что она добавляет к предположениям<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
-<h2 id="_2">Что считается<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<h1 id="the-scheme-and-what-it-assumes">The scheme and what it assumes<a class="headerlink" href="#the-scheme-and-what-it-assumes" title="Permanent link">&para;</a></h1>
+<h2 id="what-is-computed">What is computed<a class="headerlink" href="#what-is-computed" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>c = (1 + m·n) · hs^r  mod n²
 </code></pre></div>
-<p>где <code>hs = h^n mod n²</code>, <code>h = −x² mod n</code>, а <code>r</code> — случайное число длиной
-<code>|n|/2</code> бит, своё на каждое сообщение.</p>
-<p>Учебниковый Paillier считает <code>c = g^m · r^n mod n²</code> со <strong>случайным
-основанием</strong> <code>r</code>. Здесь основание фиксировано (<code>hs</code> живёт весь срок
-ключа), а случаен показатель. Это вариант Дамгорда–Жюрика, тот же, что
-у <code>heu</code>.</p>
-<p>Зачем: фиксированное основание позволяет предвычислить его степени один
-раз и превратить возведение в 171 умножение вместо примерно 1200.
-Отсюда почти вся скорость.</p>
-<h2 id="_3">Почему расшифровка не меняется<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<p>where <code>hs = h^n mod n²</code>, <code>h = −x² mod n</code>, and <code>r</code> is a random number of
+<code>|n|/2</code> bits, fresh for every message.</p>
+<p>Textbook Paillier computes <code>c = g^m · r^n mod n²</code> with a <strong>random
+base</strong> <code>r</code>. Here the base is fixed — <code>hs</code> lives for the whole life of
+the key — and the exponent is what varies. This is the Damgård–Jurik
+variant.</p>
+<p>Why: a fixed base means its powers can be precomputed once, turning the
+exponentiation into 171 multiplications instead of roughly 1200. Nearly
+all of the speed comes from there.</p>
+<h2 id="why-decryption-is-unchanged">Why decryption is unchanged<a class="headerlink" href="#why-decryption-is-unchanged" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>hs^r = (h^n)^r = (h^r)^n mod n²
 </code></pre></div>
-<p>Множитель имеет вид <code>ρ^n</code> при <code>ρ = h^r</code> — то есть остаётся законным
-рандомизатором обычного Paillier. Расшифровка работает без единой
-правки, и владельцу ключа <strong>не нужно знать</strong>, какое <code>hs</code> взял
-шифрующий.</p>
-<h2 id="_4">Что при этом добавляется к предположениям<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
-<p>Учебниковый Paillier стоит на одной DCRA (решающее предположение о
-составных вычетах). Короткий показатель требует <strong>второго</strong>: что <code>hs^r</code>
-при <code>|r| = |n|/2</code> неотличимо от <code>hs^r</code> при полном <code>r</code>.</p>
-<p>Предположение стандартное и опубликованное. Но оно есть, и фразу
-«стойко по DCRA» здесь сказать нельзя.</p>
-<p>Полный разбор, включая контрпример, на котором открытый текст
-снимается за семь секунд, и разбор того, чего этот контрпример
-<strong>не</strong> доказывает — <a href="../../short-exponent-security/">Стойкость короткого показателя</a>.</p>
-<h2 id="_5">Что требуется от ключа<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
-<p><strong>Порядок <code>hs</code> обязан быть НЕГЛАДКИМ.</strong> Не «большим» — именно
-неглаткость: на ключе с гладким <code>λ</code> метод Полига–Хеллмана снимает <code>r</code>
-целиком, и все проверки на величину при этом зелены.</p>
-<p>Безопасные простые дают это конструктивно. При <code>p = 2p′+1</code>,
-<code>q = 2q′+1</code> группа <code>Z*_n ≅ Z_{2p′} × Z_{2q′}</code>, и множество достижимых
-порядков <code>hs</code> есть <code>{2, 2p′, 2q′, 2p′q′}</code> — гладких значений выше
-двойки среди них нет вовсе. Это следствие, а не наблюдение; проверка
-стоит в <code>tests/order_of_hs.rs</code>.</p>
-<p><code>heu</code> порождает <strong>блюмовы</strong> простые и опирается на то, что у случайного
-1024-битного простого <code>λ</code> гладкой практически не бывает. Довод
-вероятностный, и в коде он не записан.</p>
-<h2 id="_6">Что проверяется<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h2>
+<p>The factor has the form <code>ρ^n</code> with <code>ρ = h^r</code> — that is, it remains a
+legitimate randomiser of ordinary Paillier. Decryption works without a
+single change, and the key holder <strong>does not need to know</strong> which <code>hs</code>
+the encrypting side chose.</p>
+<h2 id="what-this-adds-to-the-assumptions">What this adds to the assumptions<a class="headerlink" href="#what-this-adds-to-the-assumptions" title="Permanent link">&para;</a></h2>
+<p>Textbook Paillier rests on DCRA alone (the Decisional Composite
+Residuosity Assumption). A short exponent requires a <strong>second one</strong>:
+that <code>hs^r</code> with <code>|r| = |n|/2</code> is indistinguishable from <code>hs^r</code> with a
+full-length <code>r</code>.</p>
+<p>The assumption is standard and published. But it exists, and "secure
+under DCRA" is not a sentence you can say here.</p>
+<p>The full treatment — including a counterexample where the plaintext
+falls out in seven seconds, and an account of what that counterexample
+does <strong>not</strong> prove — is in
+<a href="../../short-exponent-security/">Short-exponent security</a>.</p>
+<h2 id="what-is-required-of-the-key">What is required of the key<a class="headerlink" href="#what-is-required-of-the-key" title="Permanent link">&para;</a></h2>
+<p><strong><code>ord(hs)</code> must be NON-SMOOTH.</strong> Not "large" — non-smooth. On a key
+with smooth <code>λ</code>, Pohlig–Hellman recovers <code>r</code> outright, and every
+magnitude check passes happily while it does.</p>
+<p>Safe primes give this by construction. With <code>p = 2p′+1</code>, <code>q = 2q′+1</code>
+the group is <code>Z*_n ≅ Z_{2p′} × Z_{2q′}</code>, and the set of reachable orders
+of <code>hs</code> is <code>{2, 2p′, 2q′, 2p′q′}</code> — no smooth value above two exists
+among them at all. That is a consequence, not an observation; the check
+lives in <code>tests/order_of_hs.rs</code>.</p>
+<p>The usual cheaper alternative is Blum primes, where the argument is
+that smooth <code>λ</code> is vanishingly rare for a random 1024-bit prime. That
+argument is probabilistic — and a probabilistic argument is not a check:
+nothing refuses a key that happens to be bad.</p>
+<h2 id="what-is-validated">What is validated<a class="headerlink" href="#what-is-validated" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>проверка</th>
-<th>где</th>
+<th>check</th>
+<th>where</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>(p−1)/2</code> и <code>(q−1)/2</code> просты</td>
+<td><code>(p−1)/2</code> and <code>(q−1)/2</code> are prime</td>
 <td><code>keys::validate_private</code></td>
 </tr>
 <tr>
-<td><code>\|p − q\|</code> не мала (Ферма)</td>
-<td>там же</td>
+<td><code>\|p − q\|</code> is not small (Fermat)</td>
+<td>same</td>
 </tr>
 <tr>
-<td>длина модуля в границах</td>
-<td>там же</td>
+<td>modulus length within bounds</td>
+<td>same</td>
 </tr>
 <tr>
-<td><code>hs</code> не вырожден (<code>ord ≤ 2</code>)</td>
+<td><code>hs</code> is not degenerate (<code>ord ≤ 2</code>)</td>
 <td><code>keys::derive_hs</code></td>
 </tr>
 <tr>
-<td>чужой модуль: нечётность и длина</td>
+<td>foreign modulus: oddness and length</td>
 <td><code>keys::validate_public</code></td>
 </tr>
 </tbody>
 </table>
-<p>Пропуск проверки приватного ключа — <strong>ошибка компиляции</strong>, а не
-недосмотр: <code>SecretKey</code> держит свидетельство <code>keys::Validated</code>, тип
-нулевого размера с приватным полем, собрать который вне модуля нельзя
-ничем.</p>
-<p>Проверка ЧУЖОГО модуля намеренно ограничена длиной и нечётностью —
-это <em>partial public key validation</em> по NIST SP 800-56B, то же, что
-делают все. Отравленный модуль ею не ловится, и никакой другой
-проверкой из одного <code>n</code> тоже: разбор в докстринге <code>validate_public</code>.</p>
+<p>Skipping private key validation is a <strong>compile error</strong>, not an
+oversight: <code>SecretKey</code> carries a <code>keys::Validated</code> witness — a
+zero-sized type with a private field that cannot be constructed outside
+its module by any means.</p>
+<p>Validation of a FOREIGN modulus is deliberately limited to length and
+oddness — <em>partial public key validation</em> per NIST SP 800-56B, which is
+what everyone does. A poisoned modulus is not caught by it, and it is
+not caught by any other check derivable from <code>n</code> alone either; the
+reasoning is in the docstring of <code>validate_public</code>.</p>
 
 
 
@@ -1273,7 +1249,7 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u043e \u0432 \u0431\u0443\u0444\u0435\u0440", "clipboard.copy": "\u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0432 \u0431\u0443\u0444\u0435\u0440", "search.result.more.one": "\u0415\u0449\u0451 1 \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435", "search.result.more.other": "\u0415\u0449\u0451 # \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435", "search.result.none": "\u0421\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0439 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e", "search.result.one": "\u041d\u0430\u0439\u0434\u0435\u043d\u043e 1 \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0435", "search.result.other": "\u041d\u0430\u0439\u0434\u0435\u043d\u043e \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0439: #", "search.result.placeholder": "\u041d\u0430\u0447\u043d\u0438\u0442\u0435 \u043f\u0435\u0447\u0430\u0442\u0430\u0442\u044c \u0434\u043b\u044f \u043f\u043e\u0438\u0441\u043a\u0430", "search.result.term.missing": "\u041e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442", "select.version": "\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0432\u0435\u0440\u0441\u0438\u044e"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>

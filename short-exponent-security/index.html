@@ -1,19 +1,19 @@
 
 <!doctype html>
-<html lang="ru" class="no-js">
+<html lang="en" class="no-js">
   <head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Аддитивно-гомоморфное шифрование Paillier: реализация на Rust поверх GMP, привязка к Python через pyo3.">
+        <meta name="description" content="Additively homomorphic Paillier encryption: a Rust implementation on top of GMP, bound to Python through pyo3.">
       
       
       
         <link rel="canonical" href="https://veryviolet.github.io/paillier/short-exponent-security/">
       
       
-        <link rel="prev" href="../heu-comparison/">
+        <link rel="prev" href="../reference/benches/">
       
       
         <link rel="next" href="../changelog/">
@@ -27,7 +27,7 @@
     
     
       
-        <title>Стойкость короткого показателя - paillier</title>
+        <title>Short-exponent security - paillier</title>
       
     
     
@@ -78,8 +78,8 @@
     <div data-md-component="skip">
       
         
-        <a href="#hr" class="md-skip">
-          Перейти к содержанию
+        <a href="#moving-to-hr-what-changes-in-the-security-argument" class="md-skip">
+          Skip to content
         </a>
       
     </div>
@@ -91,7 +91,7 @@
       
 
 <header class="md-header" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="Верхний колонтитул">
+  <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="paillier" class="md-header__button md-logo" aria-label="paillier" data-md-component="logo">
       
   
@@ -112,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Стойкость короткого показателя
+              Short-exponent security
             
           </span>
         </div>
@@ -125,9 +125,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Тёмная тема"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
     
-      <label class="md-header__button md-icon" title="Тёмная тема" for="__palette_1" hidden>
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
@@ -135,9 +135,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Светлая тема"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
-      <label class="md-header__button md-icon" title="Светлая тема" for="__palette_0" hidden>
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
@@ -160,16 +160,16 @@
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Поиск" placeholder="Поиск" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
-      <nav class="md-search__options" aria-label="Поиск">
+      <nav class="md-search__options" aria-label="Search">
         
-        <button type="reset" class="md-search__icon md-icon" title="Очистить" aria-label="Очистить" tabindex="-1">
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
           
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
@@ -180,7 +180,7 @@
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
-            Инициализация поиска
+            Initializing search
           </div>
           <ol class="md-search-result__list" role="presentation"></ol>
         </div>
@@ -192,7 +192,7 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/veryviolet/paillier" title="Перейти к репозиторию" class="md-source" data-md-component="source">
+        <a href="https://github.com/veryviolet/paillier" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
@@ -213,7 +213,7 @@
         
           
             
-<nav class="md-tabs" aria-label="Вкладки" data-md-component="tabs">
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
   <div class="md-grid">
     <ul class="md-tabs__list">
       
@@ -229,7 +229,7 @@
           
   
   
-  Начало
+  Start here
 
         </a>
       </li>
@@ -249,7 +249,7 @@
           
   
   
-  Как устроено
+  How it works
 
         </a>
       </li>
@@ -269,7 +269,7 @@
           
   
   
-  Справочник
+  Reference
 
         </a>
       </li>
@@ -287,11 +287,11 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../heu-comparison/" class="md-tabs__link">
+        <a href="./" class="md-tabs__link">
           
   
   
-  Разбор
+  Analysis
 
         </a>
       </li>
@@ -311,7 +311,7 @@
   
     
   
-  Изменения
+  Changelog
 
       </a>
     </li>
@@ -338,7 +338,7 @@
   
 
 
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Навигация" data-md-level="0">
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="paillier" class="md-nav__button md-logo" aria-label="paillier" data-md-component="logo">
       
@@ -350,7 +350,7 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/veryviolet/paillier" title="Перейти к репозиторию" class="md-source" data-md-component="source">
+      <a href="https://github.com/veryviolet/paillier" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
@@ -393,7 +393,7 @@
   <span class="md-ellipsis">
     
   
-    Начало
+    Start here
   
 
     
@@ -409,7 +409,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Начало
+    Start here
   
 
           </label>
@@ -429,7 +429,7 @@
   <span class="md-ellipsis">
     
   
-    Что это
+    What this is
   
 
     
@@ -457,7 +457,7 @@
   <span class="md-ellipsis">
     
   
-    Установка
+    Installation
   
 
     
@@ -485,7 +485,7 @@
   <span class="md-ellipsis">
     
   
-    Первый прогон
+    First run
   
 
     
@@ -536,7 +536,7 @@
   <span class="md-ellipsis">
     
   
-    Как устроено
+    How it works
   
 
     
@@ -552,7 +552,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Как устроено
+    How it works
   
 
           </label>
@@ -572,7 +572,7 @@
   <span class="md-ellipsis">
     
   
-    Схема и что она добавляет к предположениям
+    The scheme and what it assumes
   
 
     
@@ -600,7 +600,7 @@
   <span class="md-ellipsis">
     
   
-    Побочные каналы по времени
+    Timing side channels
   
 
     
@@ -628,7 +628,7 @@
   <span class="md-ellipsis">
     
   
-    Кодирование и масштаб
+    Encoding and scale
   
 
     
@@ -679,7 +679,7 @@
   <span class="md-ellipsis">
     
   
-    Справочник
+    Reference
   
 
     
@@ -695,7 +695,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Справочник
+    Reference
   
 
           </label>
@@ -743,7 +743,7 @@
   <span class="md-ellipsis">
     
   
-    Границы и отказы
+    Limits and refusals
   
 
     
@@ -771,7 +771,7 @@
   <span class="md-ellipsis">
     
   
-    Прогоны
+    Benchmarks
   
 
     
@@ -827,7 +827,7 @@
   <span class="md-ellipsis">
     
   
-    Разбор
+    Analysis
   
 
     
@@ -843,39 +843,11 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Разбор
+    Analysis
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../heu-comparison/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Сравнение с heu
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -900,7 +872,7 @@
   <span class="md-ellipsis">
     
   
-    Стойкость короткого показателя
+    Short-exponent security
   
 
     
@@ -918,7 +890,7 @@
   <span class="md-ellipsis">
     
   
-    Стойкость короткого показателя
+    Short-exponent security
   
 
     
@@ -930,7 +902,7 @@
       
         
 
-<nav class="md-nav md-nav--secondary" aria-label="Содержание">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -939,15 +911,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Содержание
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
+  <a href="#what-exactly-changes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Что именно меняется
+        What exactly changes
       
     </span>
   </a>
@@ -955,10 +927,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+  <a href="#why-decryption-does-not-break" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Почему расшифровка не ломается
+        Why decryption does not break
       
     </span>
   </a>
@@ -966,22 +938,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+  <a href="#the-key-requirement-the-order-must-be-non-smooth" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Требование к ключу: порядок должен быть НЕГЛАДКИМ
+        The key requirement: the order must be NON-SMOOTH
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Требование к ключу: порядок должен быть НЕГЛАДКИМ">
+    <nav class="md-nav" aria-label="The key requirement: the order must be NON-SMOOTH">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+  <a href="#what-this-counterexample-does-not-prove" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Чего этот контрпример НЕ доказывает
+        What this counterexample does NOT prove
       
     </span>
   </a>
@@ -989,10 +961,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#heu" class="md-nav__link">
+  <a href="#blum-primes-rest-on-statistics-not-on-construction" class="md-nav__link">
     <span class="md-ellipsis">
       
-        heu держится на статистике, а не на конструкции
+        Blum primes rest on statistics, not on construction
       
     </span>
   </a>
@@ -1005,10 +977,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#hs" class="md-nav__link">
+  <a href="#why-hs-is-not-imported" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Почему hs не импортируется
+        Why hs is not imported
       
     </span>
   </a>
@@ -1016,10 +988,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
+  <a href="#the-threat-model-in-our-protocol" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Модель угроз в нашем протоколе
+        The threat model in our protocol
       
     </span>
   </a>
@@ -1027,22 +999,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_6" class="md-nav__link">
+  <a href="#the-security-margin-of-a-short-exponent" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Запас стойкости короткого показателя
+        The security margin of a short exponent
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Запас стойкости короткого показателя">
+    <nav class="md-nav" aria-label="The security margin of a short exponent">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#n2" class="md-nav__link">
+  <a href="#the-n2-exponent-is-four-times-longer-than-needed-and-that-is-a-decision" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Показатель |n|/2 избыточен вчетверо, и это решение, а не дефект
+        The |n|/2 exponent is four times longer than needed, and that is a decision
       
     </span>
   </a>
@@ -1055,10 +1027,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_7" class="md-nav__link">
+  <a href="#requirements-on-our-key-generation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Требования к нашей генерации ключа
+        Requirements on our key generation
       
     </span>
   </a>
@@ -1066,10 +1038,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_8" class="md-nav__link">
+  <a href="#the-assumptions-that-get-added" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Предположения, которые добавляются
+        The assumptions that get added
       
     </span>
   </a>
@@ -1077,22 +1049,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_9" class="md-nav__link">
+  <a href="#how-the-implementation-is-checked" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Чем проверяем реализацию
+        How the implementation is checked
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Чем проверяем реализацию">
+    <nav class="md-nav" aria-label="How the implementation is checked">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#_10" class="md-nav__link">
+  <a href="#why-the-foreign-modulus-probes-are-gone" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Почему проверок чужого модуля больше нет
+        Why the foreign-modulus probes are gone
       
     </span>
   </a>
@@ -1100,10 +1072,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#_11" class="md-nav__link">
+  <a href="#compositeness-was-removed-by-a-separate-decision-and-the-three-arguments-above-do-not-apply-to-it" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Составность снята отдельным решением, и три довода выше к ней не относятся
+        Compositeness was removed by a separate decision, and the three arguments above do not apply to it
       
     </span>
   </a>
@@ -1116,10 +1088,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_12" class="md-nav__link">
+  <a href="#what-this-transition-does-not-give" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Чего этот переход не даёт
+        What this transition does not give
       
     </span>
   </a>
@@ -1156,7 +1128,7 @@
   <span class="md-ellipsis">
     
   
-    Изменения
+    Changelog
   
 
     
@@ -1182,7 +1154,7 @@
                   <div class="md-sidebar__inner">
                     
 
-<nav class="md-nav md-nav--secondary" aria-label="Содержание">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -1191,15 +1163,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Содержание
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
+  <a href="#what-exactly-changes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Что именно меняется
+        What exactly changes
       
     </span>
   </a>
@@ -1207,10 +1179,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+  <a href="#why-decryption-does-not-break" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Почему расшифровка не ломается
+        Why decryption does not break
       
     </span>
   </a>
@@ -1218,22 +1190,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+  <a href="#the-key-requirement-the-order-must-be-non-smooth" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Требование к ключу: порядок должен быть НЕГЛАДКИМ
+        The key requirement: the order must be NON-SMOOTH
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Требование к ключу: порядок должен быть НЕГЛАДКИМ">
+    <nav class="md-nav" aria-label="The key requirement: the order must be NON-SMOOTH">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+  <a href="#what-this-counterexample-does-not-prove" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Чего этот контрпример НЕ доказывает
+        What this counterexample does NOT prove
       
     </span>
   </a>
@@ -1241,10 +1213,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#heu" class="md-nav__link">
+  <a href="#blum-primes-rest-on-statistics-not-on-construction" class="md-nav__link">
     <span class="md-ellipsis">
       
-        heu держится на статистике, а не на конструкции
+        Blum primes rest on statistics, not on construction
       
     </span>
   </a>
@@ -1257,10 +1229,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#hs" class="md-nav__link">
+  <a href="#why-hs-is-not-imported" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Почему hs не импортируется
+        Why hs is not imported
       
     </span>
   </a>
@@ -1268,10 +1240,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
+  <a href="#the-threat-model-in-our-protocol" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Модель угроз в нашем протоколе
+        The threat model in our protocol
       
     </span>
   </a>
@@ -1279,22 +1251,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_6" class="md-nav__link">
+  <a href="#the-security-margin-of-a-short-exponent" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Запас стойкости короткого показателя
+        The security margin of a short exponent
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Запас стойкости короткого показателя">
+    <nav class="md-nav" aria-label="The security margin of a short exponent">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#n2" class="md-nav__link">
+  <a href="#the-n2-exponent-is-four-times-longer-than-needed-and-that-is-a-decision" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Показатель |n|/2 избыточен вчетверо, и это решение, а не дефект
+        The |n|/2 exponent is four times longer than needed, and that is a decision
       
     </span>
   </a>
@@ -1307,10 +1279,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_7" class="md-nav__link">
+  <a href="#requirements-on-our-key-generation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Требования к нашей генерации ключа
+        Requirements on our key generation
       
     </span>
   </a>
@@ -1318,10 +1290,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_8" class="md-nav__link">
+  <a href="#the-assumptions-that-get-added" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Предположения, которые добавляются
+        The assumptions that get added
       
     </span>
   </a>
@@ -1329,22 +1301,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_9" class="md-nav__link">
+  <a href="#how-the-implementation-is-checked" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Чем проверяем реализацию
+        How the implementation is checked
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Чем проверяем реализацию">
+    <nav class="md-nav" aria-label="How the implementation is checked">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#_10" class="md-nav__link">
+  <a href="#why-the-foreign-modulus-probes-are-gone" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Почему проверок чужого модуля больше нет
+        Why the foreign-modulus probes are gone
       
     </span>
   </a>
@@ -1352,10 +1324,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#_11" class="md-nav__link">
+  <a href="#compositeness-was-removed-by-a-separate-decision-and-the-three-arguments-above-do-not-apply-to-it" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Составность снята отдельным решением, и три довода выше к ней не относятся
+        Compositeness was removed by a separate decision, and the three arguments above do not apply to it
       
     </span>
   </a>
@@ -1368,10 +1340,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#_12" class="md-nav__link">
+  <a href="#what-this-transition-does-not-give" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Чего этот переход не даёт
+        What this transition does not give
       
     </span>
   </a>
@@ -1398,473 +1370,479 @@
   
 
 
-<h1 id="hr">Переход на <code>h^r</code>: что меняется в стойкости<a class="headerlink" href="#hr" title="Permanent link">&para;</a></h1>
-<p>Разбор перед реализацией. Приём взят из <code>heu</code>
-(<code>paillier_zahlen/key_generator.cc:43-57</code>, <code>encryptor.cc:26-31</code>), но
-разобран независимо.</p>
-<p><strong>Третья редакция.</strong> Первая требовала от порядка <code>h</code> величины вместо
-негладкости — на ключе, где все её проверки зелены, открытый текст
-снимался за семь секунд. Вторая это исправила, но ввела пробу на
-гладкость как защиту от подменённого <code>hs</code>; проба не даёт гарантии ни при
-какой границе и стоит 149 секунд на импорт нашего ключа. Здесь она
-заменена на устройство, при котором подменить нечего.</p>
-<h2 id="_1">Что именно меняется<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
-<p><strong>Было</strong> (<code>fast-paillier</code>, <code>encryption_key.rs:78</code>):</p>
-<div class="highlight"><pre><span></span><code>r ← равномерно из Z*_n
+<h1 id="moving-to-hr-what-changes-in-the-security-argument">Moving to <code>h^r</code>: what changes in the security argument<a class="headerlink" href="#moving-to-hr-what-changes-in-the-security-argument" title="Permanent link">&para;</a></h1>
+<p>Analysis written before the implementation. The scheme variant is
+published in the academic literature; what follows works through what it
+costs in assumptions and what it demands of the key.</p>
+<p><strong>Third edition.</strong> The first demanded magnitude of <code>ord(h)</code> instead of
+non-smoothness — on a key where all of its checks were green, the
+plaintext fell out in seven seconds. The second fixed that but
+introduced a smoothness probe as a defence against a substituted <code>hs</code>;
+the probe gives no guarantee at any bound and cost 149 seconds to import
+our own key. Here it is replaced by an arrangement in which there is
+nothing to substitute.</p>
+<h2 id="what-exactly-changes">What exactly changes<a class="headerlink" href="#what-exactly-changes" title="Permanent link">&para;</a></h2>
+<p><strong>Before</strong> (<code>fast-paillier</code>, <code>encryption_key.rs:78</code>):</p>
+<div class="highlight"><pre><span></span><code>r ← uniform from Z*_n
 c = (1 + m·n) · r^n mod n²
 </code></pre></div>
-<p><strong>Станет:</strong></p>
-<div class="highlight"><pre><span></span><code>шифрующий, один раз на модуль n:
-    x  ← случайное, gcd(x, n) = 1
+<p><strong>After:</strong></p>
+<div class="highlight"><pre><span></span><code>encrypting side, once per modulus n:
+    x  ← random, gcd(x, n) = 1
     h  = −x² mod n
     hs = h^n mod n²
 
-при шифровании:
-    r ← случайное, |n|/2 бит
+on every encryption:
+    r ← random, |n|/2 bits
     c = (1 + m·n) · hs^r mod n²
 </code></pre></div>
-<p>Существенно: <code>hs</code> <strong>выводит шифрующий сам</strong> из одного <code>n</code>. Он не едет по
-проводу и не берётся из чужого ключа.</p>
-<h2 id="_2">Почему расшифровка не ломается<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<p>Crucially: <strong>the encrypting side derives <code>hs</code> itself</strong> from <code>n</code> alone.
+It does not travel over the wire and is not taken from someone else's
+key.</p>
+<h2 id="why-decryption-does-not-break">Why decryption does not break<a class="headerlink" href="#why-decryption-does-not-break" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>hs^r = (h^n)^r = (h^r)^n mod n²
 </code></pre></div>
-<p>Множитель имеет вид <code>ρ^n</code> при <code>ρ = h^r</code>, то есть остаётся законным
-рандомизатором обычного Paillier, и расшифровка <code>L(c^λ mod n²)·µ mod n</code>
-работает без единой правки.</p>
-<p>Приводить <code>ρ</code> можно хоть по <code>n</code>, хоть по <code>n²</code>: <code>a^n mod n²</code> зависит
-только от <code>a mod n</code>, потому что при <code>a = b + kn</code> биномиальное
-разложение оставляет от лишних слагаемых кратные <code>n²</code>.</p>
-<p>Владельцу ключа при этом <strong>не нужно знать, какое <code>hs</code> взял шифрующий</strong>.
-Проверено: два шифрующих с разными <code>hs</code> под одним <code>n</code> дают шифротексты,
-которые складываются и расшифровываются верно.</p>
-<h2 id="_3">Требование к ключу: порядок должен быть НЕГЛАДКИМ<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
-<p>Не «большим». Разница решающая.</p>
-<p>Контрпример: <code>p = 2·M_p+1</code>, <code>q = 2·M_q+1</code>, где <code>M_p</code>, <code>M_q</code> —
-произведения различных малых простых. Тогда <code>p ≡ q ≡ 3 (mod 4)</code>,
-<code>gcd(p−1, q−1) = 2</code>, <code>|p − q|</code> велика, <code>ord(h) = 597</code> бит — всё
-«выполнено». Но <code>λ</code> гладкая, Полиг–Хеллман снимает <code>r</code> целиком:
-открытый текст восстанавливается за 7 секунд.</p>
-<p>Правильное требование: <strong><code>ord(hs)</code> обязан иметь большой простой
-делитель.</strong> (<code>ord(h)</code> и <code>ord(hs)</code> совпадают: возведение в <code>n</code>-ю степень
-— изоморфизм на подгруппу <code>n</code>-х вычетов.)</p>
-<p><strong>Безопасные простые дают это конструктивно</strong>: при <code>p = 2p′+1</code>,
-<code>q = 2q′+1</code> получается <code>λ = 2p′q′</code>, и наибольший простой делитель —
-порядка половины длины модуля. Проверено <code>tests/order_of_hs.rs</code>:
-двенадцать ключей на 256-битных простых и один боевой длины, у всех
+<p>The factor has the form <code>ρ^n</code> with <code>ρ = h^r</code>, i.e. it remains a
+legitimate randomiser of ordinary Paillier, and decryption
+<code>L(c^λ mod n²)·µ mod n</code> works without a single change.</p>
+<p><code>ρ</code> may be reduced modulo <code>n</code> or modulo <code>n²</code> indifferently: <code>a^n mod n²</code>
+depends only on <code>a mod n</code>, because for <code>a = b + kn</code> the binomial
+expansion leaves only multiples of <code>n²</code> from the extra terms.</p>
+<p>The key holder, moreover, <strong>does not need to know which <code>hs</code> the
+encrypting side chose</strong>. Verified: two encrypting parties with different
+<code>hs</code> under one <code>n</code> produce ciphertexts that add and decrypt correctly.</p>
+<h2 id="the-key-requirement-the-order-must-be-non-smooth">The key requirement: the order must be NON-SMOOTH<a class="headerlink" href="#the-key-requirement-the-order-must-be-non-smooth" title="Permanent link">&para;</a></h2>
+<p>Not "large". The distinction is decisive.</p>
+<p>Counterexample: <code>p = 2·M_p+1</code>, <code>q = 2·M_q+1</code> where <code>M_p</code>, <code>M_q</code> are
+products of distinct small primes. Then <code>p ≡ q ≡ 3 (mod 4)</code>,
+<code>gcd(p−1, q−1) = 2</code>, <code>|p − q|</code> is large, <code>ord(h)</code> is 597 bits —
+everything "checks out". But <code>λ</code> is smooth, Pohlig–Hellman recovers <code>r</code>
+outright, and the plaintext is restored in 7 seconds.</p>
+<p>The correct requirement: <strong><code>ord(hs)</code> must have a large prime divisor.</strong>
+(<code>ord(h)</code> and <code>ord(hs)</code> coincide: raising to the <code>n</code>-th power is an
+isomorphism onto the subgroup of <code>n</code>-th residues.)</p>
+<p><strong>Safe primes give this by construction</strong>: with <code>p = 2p′+1</code>, <code>q = 2q′+1</code>
+you get <code>λ = 2p′q′</code>, and the largest prime divisor is of the order of
+half the modulus length. Verified by <code>tests/order_of_hs.rs</code>: twelve keys
+on 256-bit primes and one of production length, all with
 <code>ord(hs) = λ</code>.</p>
-<p>Здесь стояло «в 200 случаях из 200» — число без артефакта, как и
-«полный перебор всех x» ниже.</p>
-<p>Блюмовы простые этого <strong>не дают</strong>. Они дают другое: <code>(h|p) = (h|q) = −1</code>
-при <code>(h|n) = +1</code>, то есть <code>⟨h⟩ ⊆ J_n</code> — свойство про расположение, а не
-про величину.</p>
-<p>Поэтому <strong>главная проверка ключа — что простые действительно
-безопасные</strong>: <code>(p−1)/2</code> и <code>(q−1)/2</code> просты. Блюмовость, <code>gcd</code> и разность
-— вспомогательные.</p>
-<p>Это утверждение стоит исполняемым тестом, а не рассуждением:
-<code>tests/smooth_order_attack.rs</code> строит ровно такой контрпример — модуль
-длиннее нижней границы, простые блюмовы, <code>gcd(p−1, q−1) = 2</code>, простые
-далеки друг от друга, — и снимает с него открытый текст, располагая
-<strong>только <code>n</code> и шифротекстом</strong>. Метод — Поллард <code>p−1</code>; он раскладывает
-модуль, после чего расшифровка идёт как у владельца ключа.</p>
-<h3 id="_4">Чего этот контрпример НЕ доказывает<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
-<p>Первая редакция теста снимала показатель <code>r</code> методом Полига–Хеллмана и
-называла это атакой на короткий показатель. Так было неверно дважды.</p>
-<p>Во-первых, за черту «дальше только <code>n</code> и шифротекст» проносились две
-величины, которых у наблюдателя нет: сам <code>hs</code> — он выводится шифрующим
-из случайного <code>x</code> и наружу не отдаётся (<code>dir(PublicKey)</code> содержит только
-<code>modulus_bytes</code>, <code>exponent_bits</code>, <code>plaintext_bound_bits</code>, <code>from_n</code>), — и
-порядок <code>hs</code>, который вычислялся из <code>λ</code>, то есть из <code>p</code> и <code>q</code>.</p>
-<p>Во-вторых, и это существеннее: такой ключ ломается <strong>вообще без всякой
-связи с коротким показателем</strong>. Гладкое <code>p−1</code> открывает Полларда <code>p−1</code>,
-а это метод против МОДУЛЯ, а не против рандомизатора. Канонический
-Paillier с полным показателем на том же ключе падает точно так же.</p>
-<p>Так что контрпример доказывает «гладкое <code>p−1</code> губит любой Paillier» —
-утверждение верное и достаточное, чтобы требовать безопасных простых, но
-не то, что было написано. Требование неглаткости порядка <code>hs</code>,
-специфичное именно для короткого показателя, стережёт <code>DegenerateHs</code>
-(<code>tests/degenerate_x.rs</code>), а при безопасных простых оно выполняется
-конструктивно: множество достижимых порядков <code>hs</code> есть
-<code>{2, 2p′, 2q′, 2p′q′}</code>, то есть гладких значений выше двойки среди них
-нет.</p>
-<p>Это СЛЕДСТВИЕ, а не наблюдение. <code>Z*_n ≅ Z_{2p′} × Z_{2q′}</code>, а
-<code>hs = h^n</code>; в <code>Z*_{n²} ≅ Z*_{p²} × Z*_{q²}</code> возведение в степень
-<code>n = pq</code> оставляет в компонентах порядки, делящие <code>2p′</code> и <code>2q′</code>, откуда
-<code>ord(hs)</code> делит <code>lcm(2p′, 2q′) = 2p′q′</code>. Нечётные делители отпадают
-(<code>h = −x²</code> чётного порядка), а <code>1</code> и <code>2</code> отсекает <code>DegenerateHs</code>.</p>
-<p>Здесь стояло: «полный перебор всех <code>x</code> на пяти НАСТОЯЩИХ ключах». Такой
-перебор невозможен ни при какой машине — <code>Z*_n</code> при <code>|n| ≥ 2048</code>
-содержит <code>2^2047</code> элементов, — и никакого артефакта за этой фразой не
-было. Утверждение верное, свидетельство было выдуманным.</p>
-<p>Что есть теперь (<code>tests/order_of_hs.rs</code>): перебор ЧЕСТНО полный, но на
-игрушечном ключе <code>p = 23</code>, <code>q = 59</code>, где перебор идёт по 1354
-значениям и обходятся все; выборка из двенадцати ключей на 256-битных простых; и один
-ключ боевой длины — чтобы «довод не зависит от длины» не осталось
-словами.</p>
-<h3 id="heu"><code>heu</code> держится на статистике, а не на конструкции<a class="headerlink" href="#heu" title="Permanent link">&para;</a></h3>
-<p><code>key_generator.cc:34,36</code> зовёт <code>RandPrimeOver(half, PrimeType::BBS)</code> —
-блюмовы простые, не безопасные. Стойкость там опирается на то, что у
-случайного 1024-битного простого <code>λ</code> гладкой практически не бывает.
-Довод вероятностный и в коде не записан.</p>
-<p>Значит из <code>heu</code> нельзя перенести проверку ключа — её там нет. Мы
-отступаем от него в сторону строгости сознательно.</p>
-<h2 id="hs">Почему <code>hs</code> не импортируется<a class="headerlink" href="#hs" title="Permanent link">&para;</a></h2>
-<p><code>heu</code> кладёт <code>h_s_</code> в публичный ключ и принимает его с провода дословно
-(<code>public_key.h:86-87</code>: распаковка, <code>Init()</code>, ни одной проверки). При
-этом <code>h</code> не публикуется, поэтому проверить <code>hs = (−x²)^n</code> не может никто
-в принципе.</p>
-<p>Проверить импортированный <code>hs</code> вычислением <strong>невозможно</strong>, и это не
-вопрос усердия. Проба «<code>hs^E ≠ 1</code> при <code>E</code> — произведении простых до
-<code>B</code>» при границе <code>B</code> удостоверяет лишь <code>√B</code> работы, а стоит <code>π(B)·|n|</code>
-возведений в квадрат:</p>
+<p>Blum primes do <strong>not</strong> give this. They give something else:
+<code>(h|p) = (h|q) = −1</code> while <code>(h|n) = +1</code>, i.e. <code>⟨h⟩ ⊆ J_n</code> — a property
+about location, not about magnitude.</p>
+<p>So <strong>the main key check is that the primes really are safe</strong>: <code>(p−1)/2</code>
+and <code>(q−1)/2</code> are prime. Blumness, the <code>gcd</code> and the gap are auxiliary.</p>
+<p>This statement stands as an executable test rather than as reasoning:
+<code>tests/smooth_order_attack.rs</code> builds exactly such a counterexample — a
+modulus longer than the floor, Blum primes, <code>gcd(p−1, q−1) = 2</code>, primes
+far apart — and lifts the plaintext off it given <strong>only <code>n</code> and the
+ciphertext</strong>. The method is Pollard's <code>p−1</code>; it factors the modulus,
+after which decryption proceeds as for the key holder.</p>
+<h3 id="what-this-counterexample-does-not-prove">What this counterexample does NOT prove<a class="headerlink" href="#what-this-counterexample-does-not-prove" title="Permanent link">&para;</a></h3>
+<p>The first version of the test recovered the exponent <code>r</code> by
+Pohlig–Hellman and called that an attack on the short exponent. That was
+wrong twice over.</p>
+<p>First, two quantities the observer does not have were carried across the
+line "from here on, only <code>n</code> and the ciphertext": <code>hs</code> itself — derived
+by the encrypting side from a random <code>x</code> and never handed out
+(<code>dir(PublicKey)</code> contains only <code>modulus_bytes</code>, <code>exponent_bits</code>,
+<code>plaintext_bound_bits</code>, <code>from_n</code>) — and the order of <code>hs</code>, which was
+computed from <code>λ</code>, i.e. from <code>p</code> and <code>q</code>.</p>
+<p>Second, and more importantly: such a key breaks <strong>with no connection to
+the short exponent at all</strong>. A smooth <code>p−1</code> opens Pollard's <code>p−1</code>, and
+that is a method against the MODULUS, not against the randomiser.
+Canonical Paillier with a full-length exponent falls on the same key in
+exactly the same way.</p>
+<p>So the counterexample proves "a smooth <code>p−1</code> ruins any Paillier" — a
+true statement, and enough to demand safe primes, but not the one that
+was written. The non-smoothness requirement specific to the short
+exponent is guarded by <code>DegenerateHs</code> (<code>tests/degenerate_x.rs</code>), and
+with safe primes it holds by construction: the set of reachable orders
+of <code>hs</code> is <code>{2, 2p′, 2q′, 2p′q′}</code>, so no smooth value above two exists
+among them.</p>
+<p>This is a CONSEQUENCE, not an observation. <code>Z*_n ≅ Z_{2p′} × Z_{2q′}</code>,
+and <code>hs = h^n</code>; in <code>Z*_{n²} ≅ Z*_{p²} × Z*_{q²}</code>, raising to the power
+<code>n = pq</code> leaves component orders dividing <code>2p′</code> and <code>2q′</code>, so <code>ord(hs)</code>
+divides <code>lcm(2p′, 2q′) = 2p′q′</code>. Odd divisors are excluded (<code>h = −x²</code>
+has even order), and <code>1</code> and <code>2</code> are cut off by <code>DegenerateHs</code>.</p>
+<p>This used to say: "an exhaustive sweep of all <code>x</code> on five REAL keys".
+Such a sweep is impossible on any machine — <code>Z*_n</code> at <code>|n| ≥ 2048</code> has
+<code>2^2047</code> elements — and there was no artefact behind the phrase. The
+statement was true; the evidence was invented.</p>
+<p>What exists now (<code>tests/order_of_hs.rs</code>): a sweep that is HONESTLY
+exhaustive, but on a toy key <code>p = 23</code>, <code>q = 59</code>, where the search runs
+over 1354 values and covers all of them; a sample of twelve keys on
+256-bit primes; and one key of production length, so that "the argument
+does not depend on length" is not left as words.</p>
+<h3 id="blum-primes-rest-on-statistics-not-on-construction">Blum primes rest on statistics, not on construction<a class="headerlink" href="#blum-primes-rest-on-statistics-not-on-construction" title="Permanent link">&para;</a></h3>
+<p>The usual alternative is Blum primes — cheaper to find, and the security
+argument then rests on smooth <code>λ</code> being practically nonexistent for a
+random 1024-bit prime. That argument is probabilistic, and a
+probabilistic argument is not a check: nothing in such an
+implementation refuses a key that happens to be bad.</p>
+<p>We take the strict side deliberately, and pay for it in key generation
+time.</p>
+<h2 id="why-hs-is-not-imported">Why <code>hs</code> is not imported<a class="headerlink" href="#why-hs-is-not-imported" title="Permanent link">&para;</a></h2>
+<p>An implementation could put <code>hs</code> into the public key and accept it off
+the wire. Then <code>h</code> is not published either, so nobody can verify
+<code>hs = (−x²)^n</code> even in principle.</p>
+<p>Verifying an imported <code>hs</code> by computation is <strong>impossible</strong>, and that is
+not a question of diligence. The probe "<code>hs^E ≠ 1</code> for <code>E</code> the product
+of primes up to <code>B</code>" certifies only <code>√B</code> of work at bound <code>B</code>, while
+costing <code>π(B)·|n|</code> squarings:</p>
 <table>
 <thead>
 <tr>
 <th><code>B</code></th>
 <th><code>π(B)</code></th>
-<th>стоимость при <code>\|n\| = 3072</code></th>
-<th>удостоверяет</th>
+<th>cost at <code>\|n\| = 3072</code></th>
+<th>certifies</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>2^16</code></td>
 <td>6 542</td>
-<td>2 мин</td>
+<td>2 min</td>
 <td><code>2^8</code></td>
 </tr>
 <tr>
 <td><code>2^20</code></td>
 <td>82 025</td>
-<td>25 мин</td>
+<td>25 min</td>
 <td><code>2^10</code></td>
 </tr>
 <tr>
 <td><code>2^24</code></td>
 <td>1 077 871</td>
-<td>5.5 ч</td>
+<td>5.5 h</td>
 <td><code>2^12</code></td>
 </tr>
 </tbody>
 </table>
-<p>Чтобы удостоверить 128 бит, нужно <code>B = 2^256</code>. Сверх того, проба
-безразлична к степеням: Полиг–Хеллман стоит <code>Σ eᵢ·√pᵢ</code>, и ключ, у
-которого все простые множители меньше 500, пробу при <code>2^20</code> проходит, а
-открытый текст отдаёт за 0.1 секунды.</p>
-<p><strong>Поэтому <code>hs</code> не импортируется, а выводится.</strong> Шифрующий берёт своё
-<code>x</code> и считает <code>hs</code> сам из одного <code>n</code> — 0.30 с на ключ пира, считается
-один раз и кэшируется. Подменять нечего.</p>
-<p>Остаточный риск — злонамеренный <strong><code>n</code></strong> с гладкой <code>λ</code>. Его не ловит
-никакое вычисление по <code>(n, hs)</code>, и он остаётся в силе для любой схемы,
-включая исходную. В нашем протоколе <code>n</code> приходит от владельца ключа,
-который и так расшифровывает всё, что мы ему шлём, — то есть выигрыша у
-такой подмены нет.</p>
-<h2 id="_5">Модель угроз в нашем протоколе<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
-<p>Ключ порождает активная сторона и <strong>сама же им шифрует</strong>: владелец ключа
-и шифрующий — одно лицо.</p>
-<p>Чужим ключом мы шифруем ровно в одном месте — нули пустых бакетов на
-пассивной стороне. Что там можно узнать подменой, активная сторона и так
-получает по устройству протокола. Провод при этом под mTLS.</p>
-<p>То есть острой угрозы здесь нет. Вывод <code>hs</code> на месте вместо импорта
-делается не поэтому, а потому, что он <strong>проще</strong> импорта с проверкой и
-снимает целый класс возможностей, не требуя ни одной проверки.</p>
-<h2 id="_6">Запас стойкости короткого показателя<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h2>
-<p>Пусть <code>ord(hs) = S · L</code>, где <code>S</code> — гладкая часть, то есть произведение
-малых простых <code>pᵢ</code> в степенях <code>eᵢ</code>.</p>
+<p>To certify 128 bits you would need <code>B = 2^256</code>. On top of that the probe
+is blind to exponents: Pohlig–Hellman costs <code>Σ eᵢ·√pᵢ</code>, and a key whose
+prime factors are all below 500 passes the probe at <code>2^20</code> while giving
+up the plaintext in 0.1 seconds.</p>
+<p><strong>Hence <code>hs</code> is not imported but derived.</strong> The encrypting side takes
+its own <code>x</code> and computes <code>hs</code> from <code>n</code> alone — 0.30 s for a peer key,
+computed once and cached. There is nothing to substitute.</p>
+<p>The residual risk is a malicious <strong><code>n</code></strong> with smooth <code>λ</code>. No computation
+over <code>(n, hs)</code> catches it, and it applies to any variant of the scheme,
+the original included. In our protocol <code>n</code> comes from the key holder,
+who decrypts everything we send them anyway — so such a substitution
+buys nothing.</p>
+<h2 id="the-threat-model-in-our-protocol">The threat model in our protocol<a class="headerlink" href="#the-threat-model-in-our-protocol" title="Permanent link">&para;</a></h2>
+<p>The key is generated by the active side, which <strong>also encrypts with
+it</strong>: key holder and encrypting party are the same.</p>
+<p>We encrypt under a foreign key in exactly one place — the zeros of empty
+buckets on the passive side. Whatever could be learned there by
+substitution, the active side already gets by the protocol's design.
+The wire is under mTLS.</p>
+<p>So there is no acute threat here. Deriving <code>hs</code> in place instead of
+importing it is done not for that reason but because it is <strong>simpler</strong>
+than importing with validation, and removes a whole class of
+possibilities without requiring a single check.</p>
+<h2 id="the-security-margin-of-a-short-exponent">The security margin of a short exponent<a class="headerlink" href="#the-security-margin-of-a-short-exponent" title="Permanent link">&para;</a></h2>
+<p>Let <code>ord(hs) = S · L</code>, where <code>S</code> is the smooth part — a product of small
+primes <code>pᵢ</code> with exponents <code>eᵢ</code>.</p>
 <div class="highlight"><pre><span></span><code>max( Σ eᵢ·√pᵢ ,  2^(|r|/2) / √S )
 </code></pre></div>
-<p>Первое — Полиг–Хеллман по гладкой части. Второе — кенгуру Полларда в
-интервале, <strong>сокращённом этой же гладкой частью</strong>: логарифм по модулю
-<code>S</code> берётся дёшево, и кенгуру остаётся интервал длиной <code>2^|r|/S</code>, то
-есть <code>2^(|r|/2)/√S</code> шагов.</p>
-<p>Здесь прежде стояло</p>
-<div class="highlight"><pre><span></span><code>min( 2^(|r|/2),  √(наибольший простой делитель ord(hs)) )
+<p>The first term is Pohlig–Hellman over the smooth part. The second is
+Pollard's kangaroo over an interval <strong>shortened by that same smooth
+part</strong>: the logarithm modulo <code>S</code> comes cheap, leaving the kangaroo an
+interval of length <code>2^|r|/S</code>, i.e. <code>2^(|r|/2)/√S</code> steps.</p>
+<p>This used to say</p>
+<div class="highlight"><pre><span></span><code>min( 2^(|r|/2),  √(largest prime divisor of ord(hs)) )
 </code></pre></div>
-<p>и это неверно дважды. Во-первых, кенгуру там не знает про <code>S</code>: формула
-судит по НАИБОЛЬШЕМУ простому делителю, тогда как работу нападающему
-сокращает гладкая часть. Во-вторых, <code>min</code> берёт дешевейшую из двух
-атак, но настоящая атака одна и складывается из обеих частей.</p>
-<p>Разница не умозрительная: ключ с <code>ord(hs) = 2^100 · L</code> старая формула
-оценит в <code>2^512</code> там, где настоящая цена <code>2^462</code>.</p>
-<p>На наших ключах разницы нет — <code>ord(hs) = 2p′q′</code>, значит <code>S = 2</code>, и обе
-формулы дают одно. Но это КРИТЕРИЙ, по которому судится ключ, и совпасть
-с верным в одном частном случае для критерия недостаточно.</p>
-<p>Оценка <code>2^(|r|/2)</code> сама по себе
-неверна: на гладком ключе она даёт <code>2^152</code> там, где настоящая стоимость
-семь секунд.</p>
-<p>При наших ключах — безопасные простые, <code>bits = 3072</code> по умолчанию,
-значит <code>|r| = 1536</code> — оба слагаемых велики. Но запас зависит от ключа
-целиком, а не только от длины показателя.</p>
-<h3 id="n2">Показатель <code>|n|/2</code> избыточен вчетверо, и это решение, а не дефект<a class="headerlink" href="#n2" title="Permanent link">&para;</a></h3>
-<p>Считаем по формуле выше. При <code>|n| = 2048</code> показатель даёт <code>2^512</code>, при
-3072 — <code>2^768</code>. А сам модуль стоит 112–128 бит (NIST SP 800-57). То
-есть показатель защищён вчетверо надёжнее ключа, который он охраняет:
-<code>|r| = 256</code> дало бы <code>2^128</code> — вровень.</p>
-<p>Что это стоит по скорости. Замерено (<code>benches/exponent_length.rs</code>,
-<code>|n| = 2048</code>, медиана пяти серий):</p>
+<p>which is wrong twice over. First, the kangaroo term there does not know
+about <code>S</code>: the formula judges by the LARGEST prime divisor, whereas what
+shortens the attacker's work is the smooth part. Second, <code>min</code> picks the
+cheaper of two attacks, but the real attack is one and combines both
+parts.</p>
+<p>The difference is not academic: a key with <code>ord(hs) = 2^100 · L</code> is
+rated <code>2^512</code> by the old formula where the real cost is <code>2^462</code>.</p>
+<p>On our keys there is no difference — <code>ord(hs) = 2p′q′</code>, so <code>S = 2</code>, and
+both formulas agree. But this is the CRITERION a key is judged by, and
+agreeing with the correct one in a single special case is not enough for
+a criterion.</p>
+<p>The estimate <code>2^(|r|/2)</code> on its own is wrong too: on a smooth key it
+gives <code>2^152</code> where the real cost is seven seconds.</p>
+<h3 id="the-n2-exponent-is-four-times-longer-than-needed-and-that-is-a-decision">The <code>|n|/2</code> exponent is four times longer than needed, and that is a decision<a class="headerlink" href="#the-n2-exponent-is-four-times-longer-than-needed-and-that-is-a-decision" title="Permanent link">&para;</a></h3>
+<p>Compute by the formula above. At <code>|n| = 2048</code> the exponent gives
+<code>2^512</code>, at 3072 it gives <code>2^768</code>. The modulus itself is worth 112–128
+bits (NIST SP 800-57). So the exponent is protected four times better
+than the key it guards: <code>|r| = 256</code> would give <code>2^128</code> — level.</p>
+<p>What this costs in speed. Measured (<code>benches/exponent_length.rs</code>,
+<code>|n| = 2048</code>, median of five series):</p>
 <table>
 <thead>
 <tr>
-<th>показатель</th>
-<th>окон</th>
+<th>exponent</th>
+<th>windows</th>
 <th><code>pow_by_table</code></th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>1024 бита (сейчас)</td>
+<td>1024 bits (current)</td>
 <td>171</td>
-<td>1048 мкс</td>
+<td>1048 µs</td>
 </tr>
 <tr>
 <td>512</td>
 <td>86</td>
-<td>502 мкс</td>
+<td>502 µs</td>
 </tr>
 <tr>
 <td>256</td>
 <td>43</td>
-<td>262 мкс</td>
+<td>262 µs</td>
 </tr>
 </tbody>
 </table>
-<p>Полное последовательное шифрование на той же машине — 1006–1050 мкс на
-элемент (<code>benches/measure.py</code>), медиана 1020. Значит постоянная часть,
-от длины показателя не зависящая, — <strong>меньше двадцати мкс</strong>, около двух
-процентов. Отсюда:</p>
+<p>Full sequential encryption on the same machine is 1006–1050 µs per
+element (<code>benches/measure.py</code>), median 1020. So the constant part,
+independent of exponent length, is <strong>under twenty µs</strong>, about two
+percent. Hence:</p>
 <table>
 <thead>
 <tr>
-<th>показатель</th>
-<th>полное время</th>
-<th>эл/с в потоке</th>
+<th>exponent</th>
+<th>total time</th>
+<th>ops/s per thread</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>1024 бита</td>
-<td>1020 мкс</td>
+<td>1024 bits</td>
+<td>1020 µs</td>
 <td>980</td>
 </tr>
 <tr>
 <td>512</td>
-<td>~520 мкс</td>
+<td>~520 µs</td>
 <td>~1900</td>
 </tr>
 <tr>
 <td>256</td>
-<td>~280 мкс</td>
+<td>~280 µs</td>
 <td><strong>~3500</strong></td>
 </tr>
 </tbody>
 </table>
-<p>При <code>heu</code> 1407 эл/с по ядру сокращение до 256 бит <strong>обгоняет его</strong>
-в два с половиной раза.</p>
-<p>Два предостережения, и оба существенны.</p>
-<p>Во-первых, числа ВЫВЕДЕНЫ вычитанием, а не измерены сквозным прогоном:
-длина показателя снаружи не настраивается, она жёстко следует из <code>|n|</code>.</p>
-<p>Во-вторых, постоянная часть — разность двух независимо замеренных
-величин около 1030 мкс каждая, поэтому её собственная неопределённость
-сравнима с ней самой. Правый столбец округлён до сотни именно поэтому:
-точнее эти замеры не дают.</p>
-<p>Числа здесь менялись трижды, и лишь однажды — от уточнения. Сперва
-стояло «примерно 2600 эл/с», не следовавшее ни из какого замера; потом
-<code>2360–2630</code>, выведенное честно, но при <code>WINDOW_BITS = 4</code>. Нынешние —
-при шести битах, и к прежнему коду отношения не имеют.</p>
-<p>Прежде здесь стояло «примерно 2600 эл/с» — величина, как теперь видно,
-близкая к правде, но не следовавшая ни из какого замера: линейность по
-окнам была измерена, а постоянная часть в расчёт не входила вовсе.</p>
-<p>Здесь у меня был довод, и он оказался <strong>неверным</strong>. Я писал, что при
-<code>|r| = |n|/2</code> величина <code>hs^r</code> статистически близка к равномерной на
-<code>⟨hs⟩</code>, а при 256 битах близости нет, — то есть что сокращение меняет
-основание неразличимости.</p>
-<p>Посылка ложна. <code>hs = h^n</code>, а в <code>Z*_{n²} ≅ Z*_{p²} × Z*_{q²}</code> возведение
-в степень <code>n = pq</code> оставляет в компонентах порядки <code>2p′</code> и <code>2q′</code>, откуда
-<code>ord(hs) = lcm(2p′, 2q′) = 2p′q′ = λ</code>. Падение до <code>2p′</code> или <code>2q′</code>
-случается с вероятностью <code>1/q′</code>, <code>1/p′</code>, то есть исчезающе редко.</p>
-<p>Здесь стояло «<strong>400 из 400</strong> дали полную <code>λ</code>» — числа без артефакта, как
-и «пять настоящих ключей» выше. Проверка теперь есть и говорит ровно то,
-что делает: <code>tests/order_of_hs.rs</code> — двенадцать ключей на 256-битных
-простых и один боевой длины, у всех <code>ord(hs) = λ</code>.</p>
-<p>Значит порядок не <code>2^(|n|/2)</code>, а <code>≈ 2^(|n|−1)</code>. При <code>|n| = 2048</code>
-показатель в 1024 бита покрывает <code>2^1024</code> из <code>2^2047</code> — долю <code>2^−1023</code>,
-статистическое расстояние до равномерного равно <code>1 − 2^−1023</code>.
-<strong>Статистической близости нет и при <code>|n|/2</code>.</strong></p>
-<p>Отсюда верная формулировка выбора: оба варианта стоят на ОДНОМ
-предположении — о коротком показателе, пункт 1 ниже, — и различаются
-только величиной запаса, <code>2^512</code> против <code>2^128</code>. Бесплатным сокращение
-от этого не становится: сужение запаса вчетверо по битам реально. Но
-решать надо по запасу, а не по «более узкому основанию»: основание одно
-и то же.</p>
-<h2 id="_7">Требования к нашей генерации ключа<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h2>
-<p>Что даёт крейт: <code>decryption_key.rs:31-32</code> зовёт
-<code>generate_safe_prime(rng, 1536)</code> дважды, а <code>backend.rs:115-148</code> строит
-<code>p′</code>, проверяет на простоту, берёт <code>p = 2p′+1</code> и проверяет снова.
-Настоящие безопасные простые.</p>
-<p>Чего крейт <strong>не</strong> делает:</p>
+<p>Shortening to 256 bits would therefore buy roughly a factor of three and
+a half in single-threaded throughput.</p>
+<p>Two caveats, both substantial.</p>
+<p>First, the numbers are DERIVED by subtraction, not measured end to end:
+the exponent length is not configurable from outside, it follows rigidly
+from <code>|n|</code>.</p>
+<p>Second, the constant part is the difference of two independently
+measured quantities of about 1030 µs each, so its own uncertainty is
+comparable to itself. The right-hand column is rounded to the nearest
+hundred for exactly that reason: these measurements do not support more
+precision.</p>
+<p>The numbers in this section have changed three times, and only once
+because of a refinement. First it said "about 2600 ops/s", which
+followed from no measurement at all; then <code>2360–2630</code>, derived honestly
+but at <code>WINDOW_BITS = 4</code>. The current ones are at six bits and have
+nothing to do with the earlier code.</p>
+<p>I had an argument here, and it turned out to be <strong>wrong</strong>. I wrote that
+at <code>|r| = |n|/2</code> the value <code>hs^r</code> is statistically close to uniform on
+<code>⟨hs⟩</code>, and that at 256 bits there is no such closeness — i.e. that
+shortening changes the basis of indistinguishability.</p>
+<p>The premise is false. <code>hs = h^n</code>, and in <code>Z*_{n²} ≅ Z*_{p²} × Z*_{q²}</code>
+raising to the power <code>n = pq</code> leaves component orders <code>2p′</code> and <code>2q′</code>,
+so <code>ord(hs) = lcm(2p′, 2q′) = 2p′q′ = λ</code>. A drop to <code>2p′</code> or <code>2q′</code>
+happens with probability <code>1/q′</code>, <code>1/p′</code> — vanishingly rare.</p>
+<p>This used to say "<strong>400 out of 400</strong> gave the full <code>λ</code>" — numbers with
+no artefact behind them, like "five real keys" above. The check exists
+now and says exactly what it does: <code>tests/order_of_hs.rs</code> — twelve keys
+on 256-bit primes and one of production length, all with <code>ord(hs) = λ</code>.</p>
+<p>So the order is not <code>2^(|n|/2)</code> but <code>≈ 2^(|n|−1)</code>. At <code>|n| = 2048</code> a
+1024-bit exponent covers <code>2^1024</code> out of <code>2^2047</code> — a fraction of
+<code>2^−1023</code>, and the statistical distance to uniform is <code>1 − 2^−1023</code>.
+<strong>There is no statistical closeness even at <code>|n|/2</code>.</strong></p>
+<p>Hence the correct framing of the choice: both options rest on the SAME
+assumption — the short-exponent one, item 1 below — and differ only in
+the size of the margin, <code>2^512</code> against <code>2^128</code>. That does not make the
+shortening free: narrowing the margin fourfold in bits is real. But the
+decision must be made on the margin, not on "a narrower foundation": the
+foundation is the same.</p>
+<h2 id="requirements-on-our-key-generation">Requirements on our key generation<a class="headerlink" href="#requirements-on-our-key-generation" title="Permanent link">&para;</a></h2>
+<p>What the crate provides: <code>decryption_key.rs:31-32</code> calls
+<code>generate_safe_prime(rng, 1536)</code> twice, and <code>backend.rs:115-148</code> builds
+<code>p′</code>, tests it for primality, takes <code>p = 2p′+1</code> and tests again. Genuine
+safe primes.</p>
+<p>What the crate does <strong>not</strong> do:</p>
 <ul>
-<li><strong>проверки <code>|p − q|</code> в нём нет вовсе.</strong> Свойство держится
-  вероятностно. Явную проверку делает <code>heu</code>
-  (<code>key_generator.cc:38-39</code>), а не мы, — значит её надо добавить.</li>
-<li><strong><code>from_primes</code> и десериализация минуют всё.</strong> Проверяются только
-  <code>p ≠ q</code>, <code>λ ≠ 0</code> и обратимость <code>λ</code>. Причём докстринг самого крейта у
-  <code>from_primes</code> гласит, что простые <strong>обязаны</strong> быть безопасными, — и не
-  проверяет этого.</li>
+<li><strong>there is no <code>|p − q|</code> check in it at all.</strong> The property holds
+  probabilistically, and a probabilistic property is not a check — so an
+  explicit one has to be added on our side.</li>
+<li><strong><code>from_primes</code> and deserialisation bypass everything.</strong> Only <code>p ≠ q</code>,
+  <code>λ ≠ 0</code> and invertibility of <code>λ</code> are checked. And the crate's own
+  docstring on <code>from_primes</code> states that the primes <strong>must</strong> be safe —
+  without checking it.</li>
 </ul>
-<p>Поэтому «наши ключи удовлетворяют требованиям автоматически» верно
-только для пути <code>generate_keypair</code>, а всё остальное надо проверять.</p>
-<p>Плюс при выводе <code>h</code> проверяем знак: <code>jacobi(h, p) = jacobi(h, q) = −1</code>.
-Если знак потеряется и выйдет <code>h = x²</code>, порядок упадёт, а все проверки
-на корректность останутся зелёными. Проверка возможна только там, где
-есть <code>p</code> и <code>q</code>, то есть у владельца ключа.</p>
-<h2 id="_8">Предположения, которые добавляются<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h2>
+<p>So "our keys satisfy the requirements automatically" is true only for
+the <code>generate_keypair</code> path; everything else has to be validated.</p>
+<p>Plus, when deriving <code>h</code> we check the sign:
+<code>jacobi(h, p) = jacobi(h, q) = −1</code>. If the sign is lost and <code>h = x²</code>
+results, the order drops while every correctness check stays green. The
+check is only possible where <code>p</code> and <code>q</code> are available, i.e. at the key
+holder.</p>
+<h2 id="the-assumptions-that-get-added">The assumptions that get added<a class="headerlink" href="#the-assumptions-that-get-added" title="Permanent link">&para;</a></h2>
 <ol>
-<li><strong>Короткий показатель.</strong> <code>h^r</code> при коротком <code>r</code> неотличимо от <code>h^R</code>
-   при полном. Стандартное, опубликованное, но новое относительно
-   исходной схемы.</li>
-<li><strong>DCR, ограниченное <code>J_n</code>.</strong> Рандомизатор пробегает подгруппу индекса
-   два. Открытый текст это не выдаёт, но наши шифротексты публично
-   отличимы от стоковых: у всех символ Якоби <code>+1</code>, тогда как у стоковых
-   он делится примерно поровну. Отпечаток схемы виден на проводе.</li>
-<li><strong>Постоянство времени по <code>r</code>.</strong> Секрет переехал из основания в
-   показатель: было секретное основание и публичный показатель <code>n</code>,
-   стало публичное основание и секретный показатель. Оконная таблица
-   индексируется его битами — мишень для замера через кэш, а
-   восстановление <code>r</code> даёт <code>m</code>.</li>
+<li><strong>Short exponent.</strong> <code>h^r</code> with short <code>r</code> is indistinguishable from
+   <code>h^R</code> with a full-length one. Standard, published, but new relative
+   to the original scheme.</li>
+<li><strong>DCR restricted to <code>J_n</code>.</strong> The randomiser ranges over an
+   index-two subgroup. This does not give away the plaintext, but our
+   ciphertexts are publicly distinguishable from stock ones: all of them
+   have Jacobi symbol <code>+1</code>, whereas stock ones split roughly evenly. The
+   scheme's fingerprint is visible on the wire.</li>
+<li><strong>Constant time in <code>r</code>.</strong> The secret has moved from the base to the
+   exponent: it used to be a secret base and a public exponent <code>n</code>, now
+   it is a public base and a secret exponent. The window table is
+   indexed by its bits — a target for cache measurement, and recovering
+   <code>r</code> yields <code>m</code>.</li>
 </ol>
-<p>Четвёртого предположения — про второе поле в публичном ключе — больше
-нет: <code>hs</code> не едет по проводу, ключ остаётся одним <code>n</code>, терять нечего.</p>
-<h2 id="_9">Чем проверяем реализацию<a class="headerlink" href="#_9" title="Permanent link">&para;</a></h2>
+<p>A fourth assumption — about a second field in the public key — is gone:
+<code>hs</code> does not travel over the wire, the key stays a single <code>n</code>, there is
+nothing to lose.</p>
+<h2 id="how-the-implementation-is-checked">How the implementation is checked<a class="headerlink" href="#how-the-implementation-is-checked" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Круг на немодифицированной расшифровке крейта: положительные,
-   отрицательные, ноль, границы диапазона.</li>
-<li>Гомоморфность, включая переход суммы через ноль.</li>
-<li>Совместимость: шифротекст нового вида расшифровывается стоковой
-   функцией — проверка утверждения <code>hs^r = (h^r)^n</code>.</li>
-<li><strong>Разные <code>hs</code> под одним <code>n</code> складываются.</strong> Два шифрующих выводят
-   своё <code>hs</code>; сумма их шифротекстов расшифровывается верно. Без этого
-   вывод на месте не имеет права на существование.</li>
-<li>Тысяча шифрований одного значения — все различны.</li>
-<li><strong>Столкновение рандомизатора при РАЗНЫХ открытых текстах.</strong> Проверка
-   5 к этому слепа, а именно так выглядит повторное использование <code>r</code>
-   после ветвления процесса с общим зерном. Признак считается только по
-   публичному ключу: <code>(c₁·c₂⁻¹ mod n²) mod n ≠ 1</code>.</li>
-<li><strong>Простые действительно безопасные</strong>: <code>(p−1)/2</code> и <code>(q−1)/2</code> просты.
-   Главная проверка ключа.</li>
-<li>Блюмовость, <code>gcd(p−1, q−1) = 2</code>, <code>|p − q|</code> — вспомогательные,
-   отдельными отказами.</li>
-<li>Знак <code>h</code>: <code>jacobi(h, p) = jacobi(h, q) = −1</code>.</li>
-<li>Длина показателя закреплена ЧИСЛОМ и считается от ФАКТИЧЕСКОЙ длины
-    <code>n</code>. Проверять надо на размере, где запрошенная и фактическая
-    величины расходятся, — иначе тест зелен по совпадению.</li>
-<li>Сквозной путь ключа: сериализация → передача → шифрование →
-    расшифровка.</li>
-<li><strong>Рандомизация на пути <code>from_n</code>, а не только у владельца.</strong> Все
-    проверки рандомизации стояли на ключе владельца, и мутация «<code>hs = 1</code>
-    только в <code>from_n</code>» проходила сьют целиком — то есть приватности не
-    было у той самой стороны, ради которой приём и существует.</li>
-<li><strong>Нижняя граница длины ключа.</strong> Её не было вовсе, и
-    <code>generate_keypair(32)</code> возвращал 32-битный модуль при зелёном
-    сьюте. Проверяется отказ, потому что всё остальное на таком ключе в
-    порядке.</li>
+<li>Round trip against the crate's unmodified decryption: positive,
+   negative, zero, range boundaries.</li>
+<li>Homomorphism, including a sum crossing zero.</li>
+<li>Compatibility: a ciphertext of the new form decrypts with the stock
+   function — a check of the claim <code>hs^r = (h^r)^n</code>.</li>
+<li><strong>Different <code>hs</code> under one <code>n</code> add up.</strong> Two encrypting parties
+   derive their own <code>hs</code>; the sum of their ciphertexts decrypts
+   correctly. Without this, deriving in place has no right to exist.</li>
+<li>A thousand encryptions of one value — all distinct.</li>
+<li><strong>Randomiser collision across DIFFERENT plaintexts.</strong> Check 5 is
+   blind to that, and it is exactly what reusing <code>r</code> after a process
+   fork with a shared seed looks like. The criterion is computed from
+   the public key alone: <code>(c₁·c₂⁻¹ mod n²) mod n ≠ 1</code>.</li>
+<li><strong>The primes really are safe</strong>: <code>(p−1)/2</code> and <code>(q−1)/2</code> are prime.
+   The main key check.</li>
+<li>Blumness, <code>gcd(p−1, q−1) = 2</code>, <code>|p − q|</code> — auxiliary, each with its
+   own refusal.</li>
+<li>The sign of <code>h</code>: <code>jacobi(h, p) = jacobi(h, q) = −1</code>.</li>
+<li>The exponent length is pinned BY NUMBER and computed from the ACTUAL
+    length of <code>n</code>. It must be checked at a size where the requested and
+    actual values diverge — otherwise the test is green by coincidence.</li>
+<li>The key's end-to-end path: serialise → transmit → encrypt → decrypt.</li>
+<li><strong>Randomisation on the <code>from_n</code> path, not only at the key holder.</strong>
+    All randomisation checks used to stand on the owner's key, and the
+    mutation "<code>hs = 1</code> only in <code>from_n</code>" passed the whole suite — that
+    is, there was no privacy for exactly the party the technique exists
+    for.</li>
+<li><strong>A floor on key length.</strong> There was none at all, and
+    <code>generate_keypair(32)</code> returned a 32-bit modulus with a green suite.
+    A refusal is asserted, because everything else on such a key is
+    fine.</li>
 <li>
-<p><strong>Чужой модуль.</strong> Отравленный <code>n</code> даёт отравленный <code>hs</code>, сколько
-    его ни выводи на месте. Проверяются две вещи:</p>
+<p><strong>The foreign modulus.</strong> A poisoned <code>n</code> yields a poisoned <code>hs</code>
+    however diligently it is derived in place. Two things are checked:</p>
 <ul>
-<li>нечётность;</li>
-<li>длина снизу и сверху.</li>
+<li>oddness;</li>
+<li>length, floor and ceiling.</li>
 </ul>
-<p>И это <strong>всё</strong>. Ровно <em>partial public key validation</em> из NIST SP
-800-56B, то есть то, что делают все. Ни одна из двух не закрывает
-случай «приватности нет, а круг верен» — короткий модуль приватность
-ослабляет, а не снимает. Проверки, которые такие случаи закрывали,
-сняты; чего это стоит — ниже.</p>
+<p>And that is <strong>all</strong> — precisely <em>partial public key validation</em> from
+NIST SP 800-56B, i.e. what everyone does. Neither closes the case
+"no privacy but a correct round trip": a short modulus weakens
+privacy rather than removing it. The checks that did close such
+cases have been removed; what that costs is below.</p>
 </li>
 </ol>
-<h3 id="_10">Почему проверок чужого модуля больше нет<a class="headerlink" href="#_10" title="Permanent link">&para;</a></h3>
-<p>Здесь были ещё три пробы — перебор малыми простыми, ро-Брента и Поллард
-<code>p−1</code> — и проверка составности. Всё снято, и разбор стоит записать,
-потому что путь к ним был ошибкой рассуждения, а не недосмотром.</p>
-<p>Довод был такой: отравленный модуль открывает шифротексты пассивной
-стороны любому перехватчику, владелец ключа при этом не теряет ничего,
-потому и может так поступить. Довод верен. Неверен вывод, что отсюда
-следует проверять модуль вычислением.</p>
-<p><strong>Не работает.</strong> Из одного <code>n</code> нельзя установить, что он произведение
-двух больших различных простых: это задача факторизации. Любая проба
-даёт границу и стоит ровно столько, сколько нападающему её перешагнуть,
-а он читает исходники и выберет множитель за границей. Замерено: ро с
-бюджетом <code>2^16</code> достаёт примерно до 32 бит, и 40-битный безопасный
-множитель — тот самый пример, ради которого проба и писалась, —
-проходил её насквозь.</p>
-<p><strong>Дорого.</strong> Пробы стоили две трети разбора чужого ключа (0.46 с из
-0.69 с при <code>|n| = 2048</code>) и утроили окно, в течение которого узел не
-отвечает на сигналы: с 2.4 до 6.8 с на предельном модуле, под снятым
-GIL. То есть защита от отказа в обслуживании сама стала отказом в
-обслуживании.</p>
-<p><strong>Не туда.</strong> Задача решается не пассивной проверкой, а доказательством
-формы модуля от владельца: Gennaro–Micciancio–Rabin для свободы от
-квадратов, van de Graaf–Peralta для «ровно два простых». Это конечная
-работа с ясным концом, но место для неё — вызов-ответ в рукопожатии
-узлов, а не функция в библиотеке.</p>
-<p>Так что верная формулировка: <strong><code>validate_public</code> закончить нельзя, а
-задачу — можно.</strong> Пока доказательства нет, доверие к <code>n</code> берётся из
-mTLS и приглашения, и это ВЫБОР, а не невозможность.</p>
-<h3 id="_11">Составность снята отдельным решением, и три довода выше к ней не относятся<a class="headerlink" href="#_11" title="Permanent link">&para;</a></h3>
-<p>Это надо разделить честно. Проверка <code>n</code> на простоту и на точную степень
-простого была снята вместе с пробами, но она <strong>не проба</strong>:</p>
+<h3 id="why-the-foreign-modulus-probes-are-gone">Why the foreign-modulus probes are gone<a class="headerlink" href="#why-the-foreign-modulus-probes-are-gone" title="Permanent link">&para;</a></h3>
+<p>There used to be three more probes here — trial division by small
+primes, Brent's rho and Pollard's <code>p−1</code> — plus a compositeness check.
+All removed, and the analysis is worth recording, because the path to
+them was an error of reasoning rather than an oversight.</p>
+<p>The argument was: a poisoned modulus opens the passive side's
+ciphertexts to any eavesdropper, while the key holder loses nothing, so
+they might well do it. The argument is correct. What is incorrect is the
+conclusion that the modulus should therefore be checked by computation.</p>
+<p><strong>It does not work.</strong> From <code>n</code> alone you cannot establish that it is a
+product of two large distinct primes: that is factorisation. Any probe
+gives a bound and costs exactly as much as stepping over it costs the
+attacker, who reads the sources and picks a factor beyond the bound.
+Measured: rho with a <code>2^16</code> budget reaches about 32 bits, and a 40-bit
+safe factor — the very example the probe was written for — passed
+straight through it.</p>
+<p><strong>It is expensive.</strong> The probes cost two thirds of parsing a foreign key
+(0.46 s out of 0.69 s at <code>|n| = 2048</code>) and tripled the window during
+which the node does not answer signals: from 2.4 to 6.8 s on a maximal
+modulus, with the GIL released. That is, the denial-of-service defence
+itself became a denial of service.</p>
+<p><strong>It is the wrong place.</strong> The problem is solved not by a passive check
+but by a proof of the modulus's form from its owner:
+Gennaro–Micciancio–Rabin for square-freeness, van de Graaf–Peralta for
+"exactly two primes". That is finite work with a clear end, but its
+place is a challenge-response in the node handshake, not a function in a
+library.</p>
+<p>So the correct framing is: <strong><code>validate_public</code> cannot be finished, but
+the problem can.</strong> Until such a proof exists, trust in <code>n</code> comes from
+mTLS and the invitation, and that is a CHOICE, not an impossibility.</p>
+<h3 id="compositeness-was-removed-by-a-separate-decision-and-the-three-arguments-above-do-not-apply-to-it">Compositeness was removed by a separate decision, and the three arguments above do not apply to it<a class="headerlink" href="#compositeness-was-removed-by-a-separate-decision-and-the-three-arguments-above-do-not-apply-to-it" title="Permanent link">&para;</a></h3>
+<p>This has to be separated honestly. The check that <code>n</code> is not prime and
+not an exact prime power was removed together with the probes, but it is
+<strong>not a probe</strong>:</p>
 <ul>
-<li><code>is_probably_prime</code> — решающая процедура, а не поиск с границей. У неё
-  нет порога, который нападающий перешагнёт: простой модуль ловится
-  достоверно;</li>
-<li>стоит она 2.3 мс при <code>|n| = 2048</code> — полпроцента от тех 0.46 с, ради
-  которых снимались пробы;</li>
-<li>и ловит она не только злой умысел: пир со сломанным генератором,
-  приславший простое, принимается молча.</li>
+<li><code>is_probably_prime</code> is a decision procedure, not a bounded search. It
+  has no threshold for an attacker to step over: a prime modulus is
+  caught reliably;</li>
+<li>it costs 2.3 ms at <code>|n| = 2048</code> — half a percent of the 0.46 s the
+  probes were removed for;</li>
+<li>and it catches more than malice: a peer with a broken generator that
+  sends a prime is accepted silently.</li>
 </ul>
-<p>То есть довод «не работает» к ней неверен, «дорого» — неверен, а «не
-туда» говорит про идеальное лечение, а не про то, зачем снимать
-достоверную проверку сегодня.</p>
-<p>Снята она по другому основанию: <strong>делаем ровно то, что делают все.</strong>
-<code>heu</code> составность не проверяет, NIST SP 800-56B её в partial validation
-не включает. Это решение о границах библиотеки, а не вывод из
-рассуждения выше.</p>
-<p>Цена решения, замеренная и записанная, чтобы её нельзя было не заметить:
-2048-битное простое <code>n</code> принимается <code>from_n</code> за 0.010 с, шифротексты при
-этом различны — рандомизация цела, круг цел, — а наблюдатель, у которого
-есть только <code>n</code>, читает все открытые тексты, потому что <code>λ = n−1</code>.
-Степень простого проходит так же. Возврат стоит две строки.</p>
-<p>Как это устроено у соседей, проверено по коду: <code>heu</code> при приёме чужого
-ключа не делает вообще ничего — <code>public_key.h:84-87</code> берёт <code>n_</code> и <code>h_s_</code>
-из msgpack дословно и зовёт <code>Init()</code>, который считает только <code>n²</code>,
-<code>n/2</code>, <code>key_size</code> и оконную таблицу. Все проверки у <code>heu</code> — на своём
-ключе, при генерации.
-15. <strong>Запас под сумму.</strong> Поштучной проверки диапазона мало: на
-    1024-битном ключе три законных значения складывались в конечное
-    правдоподобное число не того знака. Запас резервируется при
-    шифровании, и <code>add_many</code> держит планку на один вызов.</p>
-<pre><code>Гарантией эта пара НЕ является, и так написано в коде: счётчик
-повызовный, результат `add_many` подаётся во второй вызов, и два
-законных вызова дают `2^40` слагаемых. Держит инвариант соотношение
-между нижней границей ключа и тем, что вообще кодируется из `f64`:
-`2^2026`–`2^2027` против `2^1024`. Два значения потому, что
-произведение двух 1024-битных простых выходит и на 2048 бит, и на
-2047; здесь стояло одиночное `2^2027`, которое опровергал каждый
-второй ключ. Утверждается это числом — но числом ОТ ФАКТИЧЕСКОЙ
-длины модуля (`modulus_bits − 21`), а не литералом, поэтому тест
-расхождения не знал.
-
-Граница считается ОДНОЙ функцией на предикат шифрования и на
-геттер. Врозь мутация множителя в предикате проходила сьют целиком
-— геттер продолжал возвращать верное число. Это тот же дефект, что
-был с длиной показателя, повторённый в соседней строке.
-</code></pre>
+<p>So "it does not work" is false for it, "it is expensive" is false, and
+"wrong place" speaks about the ideal cure rather than about why a
+reliable check should be dropped today.</p>
+<p>It was removed on a different ground: <strong>we do exactly what the standard
+prescribes and no more.</strong> NIST SP 800-56B does not include compositeness
+in partial public key validation. That is a decision about the library's
+boundaries, not a conclusion from the reasoning above.</p>
+<p>The price of that decision, measured and written down so it cannot be
+missed: a 2048-bit prime <code>n</code> is accepted by <code>from_n</code> in 0.010 s, the
+ciphertexts are distinct — randomisation intact, round trip intact — and
+an observer holding only <code>n</code> reads every plaintext, because <code>λ = n−1</code>. A
+prime power passes the same way. Reverting costs two lines.</p>
 <ol>
-<li><strong>Отказ, а не паника.</strong> <code>PanicException</code> наследует <code>BaseException</code>
-    и сквозь <code>except Exception</code> вызывающего проходит насквозь.</li>
+<li>
+<p><strong>Headroom for the sum.</strong> Per-value range checking is not enough: on
+    a 1024-bit key three lawful values added up to a finite, plausible
+    number of the wrong sign. Headroom is reserved at encryption time,
+    and <code>add_many</code> holds a cap per call.</p>
+<p>That pair is NOT a guarantee, and the code says so: the counter is
+per call, the result of <code>add_many</code> can be fed into a second call,
+and two lawful calls give <code>2^40</code> terms. What holds the invariant is
+the relation between the key floor and what is encodable from <code>f64</code>
+at all: <code>2^2026</code>–<code>2^2027</code> against <code>2^1024</code>. Two values because the
+product of two 1024-bit primes lands on both 2048 and 2047 bits;
+a single <code>2^2027</code> used to stand here and was refuted by every other
+key. It is asserted by a number — but a number derived from the
+ACTUAL modulus length (<code>modulus_bits − 21</code>), not a literal, which is
+why the test never knew about the discrepancy.</p>
+<p>The bound is computed by ONE function for both the encryption
+predicate and the getter. Separately, a mutation of the multiplier
+in the predicate passed the whole suite — the getter kept returning
+the right number. That is the same defect as with the exponent
+length, repeated one line over.</p>
+</li>
+<li>
+<p><strong>Refusal, not panic.</strong> <code>PanicException</code> inherits <code>BaseException</code>
+    and passes straight through a caller's <code>except Exception</code>.</p>
+</li>
 </ol>
-<h2 id="_12">Чего этот переход не даёт<a class="headerlink" href="#_12" title="Permanent link">&para;</a></h2>
-<p>Заготовленного запаса готовых <code>hs^r</code>. Ускорил бы ещё, но повторное
-использование <code>r</code> ломает семантическую безопасность. Только с гарантией
-однократного расхода, и это отдельная работа.</p>
+<h2 id="what-this-transition-does-not-give">What this transition does not give<a class="headerlink" href="#what-this-transition-does-not-give" title="Permanent link">&para;</a></h2>
+<p>A precomputed pool of ready <code>hs^r</code> values. It would speed things up
+further, but reusing <code>r</code> breaks semantic security. Only with a
+guarantee that every value is spent exactly once — and that is separate
+work.</p>
 
 
 
@@ -1916,7 +1894,7 @@ mTLS и приглашения, и это ВЫБОР, а не невозможн
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u043e \u0432 \u0431\u0443\u0444\u0435\u0440", "clipboard.copy": "\u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0432 \u0431\u0443\u0444\u0435\u0440", "search.result.more.one": "\u0415\u0449\u0451 1 \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435", "search.result.more.other": "\u0415\u0449\u0451 # \u043d\u0430 \u044d\u0442\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435", "search.result.none": "\u0421\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0439 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e", "search.result.one": "\u041d\u0430\u0439\u0434\u0435\u043d\u043e 1 \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0435", "search.result.other": "\u041d\u0430\u0439\u0434\u0435\u043d\u043e \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0439: #", "search.result.placeholder": "\u041d\u0430\u0447\u043d\u0438\u0442\u0435 \u043f\u0435\u0447\u0430\u0442\u0430\u0442\u044c \u0434\u043b\u044f \u043f\u043e\u0438\u0441\u043a\u0430", "search.result.term.missing": "\u041e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442", "select.version": "\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0432\u0435\u0440\u0441\u0438\u044e"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
