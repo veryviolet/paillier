@@ -1,5 +1,106 @@
 # Changelog
 
+## 0.5.0 — 2026-08-27
+
+Additive only. Nothing existing changes behaviour, and ciphertexts keep
+their format.
+
+### `multiply_many` — multiplication by a known scalar
+
+`E(x) → E(k·x)`, which an additively homomorphic scheme gives for free
+and which this library did not expose. It is what lets a party compute a
+squared distance between two distributions without showing either of
+them, and its absence was the one thing keeping a consumer on another
+library.
+
+**The scale is handled here rather than by the caller.** A product lands
+at the sum of the two scales, and the returned blob says so in its
+header, so `decrypt` divides by the right thing without being told. The
+`phe`-based code this replaces returns the product with the ORIGINAL
+scale byte and states in its own docstring that the caller must divide —
+which is the plausible-wrong-number failure this library exists to
+refuse.
+
+Two consequences are worth knowing before they are met as errors:
+multiplication does not compose at the default (`16 + 16 = 32`, refused
+— chaining means lowering `scalar_scale_pow10`), and a product cannot be
+added to an ordinary ciphertext, because `add_many` refuses a mixed
+batch. Companions are encrypted at the product's scale.
+
+**A scalar that encodes to zero is refused, an exact zero included.**
+`E(x)^0` is the constant `1`: the value is destroyed and the output
+becomes a two-byte blob anyone can recognise. Where the scalar is a share
+or a weight, a vanishing one means "this bucket is empty", and shipping
+that as a distinctive blob is a leak rather than a result.
+
+**The exponent is secret, so this is the secret-exponent path** — the
+same `mpz_powm_sec` decryption uses, and for the same reason: in the
+caller this exists for, the scalar is the responder's own bucket share.
+
+That alone hides the exponent's value but not its length, and its length
+is the magnitude of the scalar. So the exponent is offset to a constant
+width — with `|k| < 2^64`, `k + 3·2^64` is 66 bits for every `k`,
+negative ones included — and the offset is divided out afterwards. The
+cost is a second exponentiation of the same width and one modular
+inversion; the width is the reason a scalar past `|k| ≤ 1.8e11` at the
+default scale is refused rather than run wider.
+
+The sign is hidden by the same construction: the offset makes every
+exponent positive, so both exponentiations and the inversion run
+unconditionally and there is no branch on the sign at all.
+
+### `rerandomize` — same plaintext, different bytes
+
+Every homomorphic operation here is deterministic: `add_many` of the same
+terms returns the same bytes, a one-term sum returns its input verbatim,
+and `multiply_many` returns exactly `E(x)^k`. Whoever knows the inputs
+can confirm a guess about the operation by recomputing it — which terms
+went into a sum, or what the scalar was.
+
+`rerandomize(pub, blobs)` multiplies each ciphertext by a fresh encryption
+of zero, so the value is unchanged and the bytes are not recomputable. It
+costs one encryption per ciphertext, because that is what it is.
+
+A separate call rather than a flag on the operations. It matters only
+when the result LEAVES, and the library cannot know which ciphertexts are
+about to be sent while the caller can. A flag on by default charges
+everyone for a property most calls do not need — the analytics exchange
+this was written for would pay for nothing, since it sums products with
+its own fresh noise; off by default it would be left off exactly where it
+costs most.
+
+It hides WHICH ciphertext, not the value. Against a party holding the
+private key it does nothing.
+
+### What the fixed width does NOT protect
+
+The product is `E(x)^k` and nothing else — a deterministic function of the
+input ciphertext and the scalar. Anyone who sees both recovers `k` by
+trying candidates, and a scalar that is a share or a small weight has
+few worth trying. So the constant-width exponent guards a side door —
+timing, available to a neighbour on the same machine — while this one
+stands open, and the documentation says so rather than letting the
+machinery imply otherwise.
+
+What closes it is `rerandomize` before transmitting, or summing the
+products with something the other side did not send. The analytics exchange this was
+built for does exactly that, which is why the library does not: it
+cannot know which of a caller's ciphertexts are about to leave.
+
+### What was considered and NOT done
+
+Rerandomising the output of `add_many`. It is byte-stable — the same
+terms give the same bytes, and a one-term sum returns its input verbatim
+— and `phe` obfuscates on serialisation precisely to stop that.
+
+An adversarial review refuted the harm in both real consumers: in the
+tree trainer the party that would run the test holds the private key and
+decrypts every aggregate anyway, and in the analytics exchange the
+responder folds its own encrypted noise into the reply, so the reply is
+not a deterministic function of what was sent. The property is worth
+having and may come later; it is not being sold as a fix for a leak that
+was not demonstrated.
+
 ## 0.4.0 — 2026-08-27
 
 Ciphertexts are unchanged and interoperate with 0.3.0 in both

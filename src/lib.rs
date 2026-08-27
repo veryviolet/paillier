@@ -534,6 +534,41 @@ fn generate_keypair(
     ))
 }
 
+/// The random exponent, drawn ONCE for the two places that need one.
+///
+/// `encrypt_many` masks a plaintext with `hs^r`, and `rerandomize` masks
+/// a finished ciphertext with the same thing. Both need the same length
+/// and the same entropy, and neither may quietly get less.
+///
+/// # Why this is a function and not two matching lines
+///
+/// The two lines matched, and a review broke them apart in a way no test
+/// noticed: filling only the first four bytes of a full-width buffer.
+/// The exponent stays `width` bytes long, so it costs exactly what it
+/// cost before — and every test passed, including the one whose
+/// docstring claimed a short exponent would be thirty times cheaper.
+///
+/// That claim was wrong about this library specifically. `pow_by_table`
+/// is deliberately blind to the VALUES of the exponent digits: it reads
+/// every row in full and multiplies at every window, so leading zeros
+/// cost the same as anything else. Timing therefore pins the WIDTH of
+/// the buffer and can never pin its ENTROPY.
+///
+/// Not that entropy is beyond measurement altogether: re-randomising one
+/// blob about `2^18` times and looking for a duplicate output catches a
+/// collapse to 32 bits in seconds. What no practical measurement
+/// distinguishes is 64 bits from full — and a collision test is not what
+/// a suite should rest on.
+///
+/// So the property is held structurally instead: there is one function,
+/// it fills the whole slice, and shortening it shortens encryption too —
+/// where the existing tests do notice.
+fn random_exponent(width: usize) -> Vec<u8> {
+    let mut raw = vec![0u8; width];
+    rand::thread_rng().fill(&mut raw[..]);
+    raw
+}
+
 /// Encrypt a list of values. Runs across all cores.
 #[pyfunction]
 #[pyo3(signature = (pk, values, scale_pow10 = DEFAULT_SCALE_POW10))]
@@ -552,12 +587,10 @@ fn encrypt_many(
         values
             .par_iter()
             .map(|v| -> Result<Vec<u8>, String> {
-                let mut rng = rand::thread_rng();
                 // The exponent is short — half the modulus length. This
                 // is the one place where we depart from the original
                 // scheme, and its length must not drift silently.
-                let mut raw = vec![0u8; width];
-                rng.fill(&mut raw[..]);
+                let raw = random_exponent(width);
                 // The exponent is never assembled into an `Integer`: the
                 // window digits are read straight from the generator's
                 // bytes. Assembling would be not only wasted work but a
@@ -722,6 +755,271 @@ fn add_many(
     Ok(PyBytes::new(py, &join_blob(scale_pow10, &total)).unbind())
 }
 
+/// The width, in bits, that an encoded scalar must fit.
+///
+/// Every scalar exponentiation runs at EXACTLY `SCALAR_BITS + 2` bits,
+/// whatever the scalar — see `multiply_many`. The bound therefore has to
+/// be a constant of the scheme rather than something derived per call:
+/// derived from the scale, it would vary between calls, and the width of
+/// the exponent is what an observer can see.
+///
+/// 64 bits covers everything the encoding can produce for a sane scalar:
+/// at the maximum scale `1e18` it admits `|k| ≤ 18.4`, and at the default
+/// `1e8` it admits `|k| ≤ 1.8e11`. A scalar outside that is refused.
+const SCALAR_BITS: u32 = 64;
+
+/// Multiply ciphertexts by KNOWN scalars: `E(x) → E(k·x)`.
+///
+/// An additively homomorphic scheme can do this — `E(x)^k = E(k·x)` —
+/// and it is what lets a party compute a squared distance between two
+/// distributions without showing either of them.
+///
+/// # The scale is handled here, not by the caller
+///
+/// The scalar is an integer under encryption, so the product arrives at
+/// the SUM of the two scales. The `phe`-based code this replaces returns
+/// that product with the original scale byte and says in its docstring
+/// that "the caller must divide" — which is the plausible-wrong-number
+/// failure this library exists to refuse. Here the scale travels in the
+/// blob, so the header is updated and `decrypt` divides by the right
+/// thing without being told.
+///
+/// `scalar_scale_pow10` defaults to the scale of the ciphertext, so the
+/// common case is `8 + 8 = 16`. Past `MAX_SCALE_POW10` it is a refusal.
+///
+/// Two consequences worth knowing before they are discovered as errors:
+///
+/// * **multiplication does not compose at the default.** A second
+///   multiplication would be `16 + 16 = 32`, refused (the scalar scale
+///   defaults to the CIPHERTEXT's, which is already 16 by then). Chaining
+///   means
+///   lowering `scalar_scale_pow10`;
+/// * **the products cannot be added to ordinary ciphertexts.**
+///   `add_many` refuses a mixed batch, so companions have to be
+///   encrypted at the product's scale: `encrypt_many(pub, values,
+///   scale_pow10=16)`.
+///
+/// # The exponent is SECRET, so it is the secret-exponent path
+///
+/// In the caller this feature exists for, the scalar is the secret: the
+/// responder multiplies by its own bucket share, the very quantity the
+/// exchange hides. So this is `secure_pow_mod`, for the same reason
+/// decryption is (`secret.rs`), and not the windowed `pow_mod`.
+///
+/// That alone hides the exponent's VALUE but not its LENGTH, and the
+/// length of `k` is roughly the magnitude of the scalar. So the exponent
+/// is offset to a fixed width: with `|k| < 2^B`,
+///
+/// ```text
+/// k + 3·2^B  ∈  (2^(B+1), 2^(B+2))
+/// ```
+///
+/// which is `B+2` bits for EVERY `k`, negative ones included. The offset
+/// is then divided out — `E(x)^(k+3·2^B) · (E(x)^(3·2^B))^{-1}` — at the
+/// cost of a second exponentiation of the same fixed width and one
+/// modular inversion. The inversion is not constant time, but what it
+/// inverts is a power of the ciphertext the caller was given, which the
+/// other side already holds; the secret here is only `k`.
+///
+/// # A scalar that encodes to zero is REFUSED
+///
+/// `round(1e-9 · 1e8) = 0`, and `E(x)^0 = 1`: the data is destroyed and
+/// the output becomes a two-byte constant that anyone can recognise. In
+/// the intended caller the scalar is a bucket share, so a vanishing one
+/// means an empty bucket — and publishing "this bucket is empty" as a
+/// distinctive blob is a leak, not a result. An exact zero is refused
+/// too, and for the same reason: encrypt a zero if that is what you
+/// want.
+#[pyfunction]
+#[pyo3(signature = (pk, blobs, scalars, scalar_scale_pow10 = None))]
+fn multiply_many(
+    py: Python<'_>,
+    pk: &PublicKey,
+    blobs: Vec<Bound<'_, PyBytes>>,
+    scalars: Vec<f64>,
+    scalar_scale_pow10: Option<u8>,
+) -> PyResult<Vec<Py<PyBytes>>> {
+    if blobs.len() != scalars.len() {
+        return Err(PyValueError::new_err(format!(
+            "multiply_many got {} ciphertexts and {} scalars: they are \
+             paired by position, and a length mismatch means the pairing \
+             the caller intended is not the one that would happen",
+            blobs.len(),
+            scalars.len()
+        )));
+    }
+    let nn = &pk.nn;
+    // `|k| < 2^SCALAR_BITS`, so `k + offset` is always `SCALAR_BITS + 2`
+    // bits wide.
+    let bound = Integer::from(1) << SCALAR_BITS;
+    let offset = Integer::from(3) * &bound;
+
+    let slices: Vec<&[u8]> = blobs.iter().map(|b| b.as_bytes()).collect();
+
+    let produced = py
+        .allow_threads(|| {
+            let mut out: Vec<Vec<u8>> = Vec::with_capacity(slices.len());
+            for (index, (blob, scalar)) in
+                slices.iter().zip(scalars.iter()).enumerate()
+            {
+                let (pow10, cipher) = split_blob(blob).map_err(|message| {
+                    format!("ciphertext #{}: {message}", index + 1)
+                })?;
+                if cipher < 1 || cipher >= *nn {
+                    return Err(format!(
+                        "ciphertext #{} is not in [1, n^2) of this key",
+                        index + 1
+                    ));
+                }
+
+                let scalar_pow10 = scalar_scale_pow10.unwrap_or(pow10);
+                let product_pow10 = u32::from(pow10) + u32::from(scalar_pow10);
+                if product_pow10 > u32::from(MAX_SCALE_POW10) {
+                    return Err(format!(
+                        "scalar #{}: the product lands at scale 1e{product_pow10} \
+                         (1e{pow10} of the ciphertext times 1e{scalar_pow10} of \
+                         the scalar), past the 1e{MAX_SCALE_POW10} this encoding \
+                         allows. Lower scalar_scale_pow10 - the product's scale \
+                         is the SUM of the two, so multiplication does not \
+                         compose at the default",
+                        index + 1
+                    ));
+                }
+                let scalar_scale = checked_scale(scalar_pow10)?;
+                let encoded = encode(*scalar, scalar_scale).map_err(
+                    |message| format!("scalar #{}: {message}", index + 1),
+                )?;
+                if encoded == 0 {
+                    return Err(format!(
+                        "scalar #{} encodes to zero at scale {scalar_scale:e} \
+                         (it is {scalar:e}): the product would be the constant \
+                         1, destroying the value and marking the result as \
+                         recognisably zero to anyone who sees it. Encrypt a \
+                         zero if that is the intent",
+                        index + 1
+                    ));
+                }
+                if encoded.clone().abs() >= bound {
+                    return Err(format!(
+                        "scalar #{} encodes to {} digits, past the \
+                         {SCALAR_BITS}-bit width every scalar exponentiation \
+                         runs at. The width is fixed on purpose: a per-scalar \
+                         width would show the magnitude of the scalar in the \
+                         timing",
+                        index + 1,
+                        encoded.to_string().trim_start_matches('-').len()
+                    ));
+                }
+
+                // `k + 3·2^B` — always positive, always `B+2` bits.
+                let shifted = Integer::from(&encoded + &offset);
+                let raised = cipher.clone().secure_pow_mod(&shifted, nn);
+                let planted = cipher.secure_pow_mod(&offset, nn);
+                let undo = planted.invert(nn).map_err(|_| {
+                    format!(
+                        "ciphertext #{} is not invertible modulo n^2: it \
+                         shares a factor with n, so it is not a ciphertext \
+                         under this key",
+                        index + 1
+                    )
+                })?;
+                let product = raised * undo % nn;
+
+                out.push(join_blob(product_pow10 as u8, &product));
+            }
+            Ok(out)
+        })
+        .map_err(PyValueError::new_err)?;
+
+    Ok(produced
+        .into_iter()
+        .map(|raw| PyBytes::new(py, &raw).unbind())
+        .collect())
+}
+
+/// Re-randomise ciphertexts: same plaintext, different bytes.
+///
+/// Each blob is multiplied by `hs^{r}` with a fresh `r` — an independent
+/// encryption of zero — so the plaintext is untouched while the
+/// ciphertext is distributed as a fresh one.
+///
+/// # What it is for
+///
+/// The homomorphic operations here are DETERMINISTIC. `add_many` of the
+/// same terms returns the same bytes, a one-term sum returns its input
+/// verbatim, and `multiply_many` returns exactly `E(x)^k`. Whoever knows
+/// the inputs can therefore confirm a guess about the operation offline
+/// by recomputing it — which terms went into a sum, or what the scalar
+/// was.
+///
+/// That matters only when the RESULT leaves the process. Hence a
+/// separate call rather than something the operations do for you:
+///
+/// * inside a computation the property buys nothing, and it costs one
+///   full-length exponentiation per ciphertext — about the price of an
+///   encryption;
+/// * the library cannot know which of your ciphertexts are about to be
+///   transmitted, and you do.
+///
+/// A flag on the operations was considered and rejected. On by default,
+/// everyone pays for a property most calls do not need — the analytics
+/// exchange this was written for would pay for nothing at all, since it
+/// sums products together with its own fresh noise and the result is
+/// already not a function of what arrived. Off by default, it would be
+/// left off exactly where it costs most.
+///
+/// # This is not a substitute for noise
+///
+/// Re-randomising hides WHICH ciphertext this is. It does not hide the
+/// value and it does not stop an observer who can decrypt: if the party
+/// receiving the result holds the private key, they read the plaintext,
+/// and no amount of re-randomising changes that.
+///
+/// The scale byte passes through unchanged — re-randomising is not an
+/// arithmetic operation and must not look like one.
+#[pyfunction]
+fn rerandomize(
+    py: Python<'_>,
+    pk: &PublicKey,
+    blobs: Vec<Bound<'_, PyBytes>>,
+) -> PyResult<Vec<Py<PyBytes>>> {
+    let (nn, table) = (&pk.nn, &pk.table);
+    let width = pk.exponent_bytes;
+    let slices: Vec<&[u8]> = blobs.iter().map(|b| b.as_bytes()).collect();
+
+    let produced: Result<Vec<Vec<u8>>, String> = py.allow_threads(|| {
+        slices
+            .par_iter()
+            .enumerate()
+            .map(|(index, blob)| -> Result<Vec<u8>, String> {
+                let (pow10, cipher) = split_blob(blob).map_err(|message| {
+                    format!("ciphertext #{}: {message}", index + 1)
+                })?;
+                if cipher < 1 || cipher >= *nn {
+                    return Err(format!(
+                        "ciphertext #{} is not in [1, n^2) of this key",
+                        index + 1
+                    ));
+                }
+                // The SAME function encryption draws its exponent from,
+                // not a matching pair of lines: matching lines were
+                // broken apart once, by filling only four bytes of a
+                // full-width buffer, and nothing noticed.
+                let raw = random_exponent(width);
+                let digits = windows_of(&raw);
+                let masked = cipher * pow_by_table(table, &digits) % nn;
+                Ok(join_blob(pow10, &masked))
+            })
+            .collect()
+    });
+
+    Ok(produced
+        .map_err(PyValueError::new_err)?
+        .into_iter()
+        .map(|raw| PyBytes::new(py, &raw).unbind())
+        .collect())
+}
+
 /// Decrypt one ciphertext. The scale is taken from the blob.
 #[pyfunction]
 fn decrypt(sk: &SecretKey, blob: &[u8]) -> PyResult<f64> {
@@ -753,6 +1051,68 @@ fn paillier(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(generate_keypair, m)?)?;
     m.add_function(wrap_pyfunction!(encrypt_many, m)?)?;
     m.add_function(wrap_pyfunction!(add_many, m)?)?;
+    m.add_function(wrap_pyfunction!(multiply_many, m)?)?;
+    m.add_function(wrap_pyfunction!(rerandomize, m)?)?;
     m.add_function(wrap_pyfunction!(decrypt, m)?)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every byte of the exponent must actually be drawn.
+    ///
+    /// This exists because of a specific break that nothing else could
+    /// see. Filling only the first four bytes of a full-width buffer
+    /// leaves the exponent the same LENGTH — so it costs the same, and
+    /// the Python test that measures the cost against an encryption
+    /// stays green — while its entropy collapses to 32 bits and the
+    /// guess-and-recompute attack `rerandomize` exists to close reopens
+    /// at 2^32 offline exponentiations.
+    ///
+    /// Timing cannot catch it, and not by accident: `pow_by_table` reads
+    /// every row in full and multiplies at every window precisely so
+    /// that the digit VALUES do not affect the cost. The property has to
+    /// be checked here, on the bytes.
+    ///
+    /// The criterion is per POSITION, not "some byte is non-zero": the
+    /// break leaves the first four bytes perfectly random, so a check on
+    /// the buffer as a whole passes. Over 200 draws the chance that a
+    /// given position is zero every time is `(1/256)^200`.
+    #[test]
+    fn the_whole_exponent_is_drawn() {
+        const WIDTH: usize = 128;
+        const DRAWS: usize = 200;
+
+        let mut seen_non_zero = vec![false; WIDTH];
+        for _ in 0..DRAWS {
+            let raw = random_exponent(WIDTH);
+            assert_eq!(raw.len(), WIDTH, "the exponent changed length");
+            for (position, byte) in raw.iter().enumerate() {
+                if *byte != 0 {
+                    seen_non_zero[position] = true;
+                }
+            }
+        }
+
+        let dead: Vec<usize> = seen_non_zero
+            .iter()
+            .enumerate()
+            .filter(|(_, live)| !**live)
+            .map(|(position, _)| position)
+            .collect();
+        assert!(
+            dead.is_empty(),
+            "byte positions {dead:?} were zero in all {DRAWS} draws: the \
+             exponent keeps its width but not its entropy, which no timing \
+             measurement can detect"
+        );
+    }
+
+    /// Two draws must differ — a constant would pass the check above.
+    #[test]
+    fn two_exponents_differ() {
+        assert_ne!(random_exponent(64), random_exponent(64));
+    }
 }
