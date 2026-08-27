@@ -944,6 +944,67 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#050-2026-08-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.5.0 — 2026-08-27
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.0 — 2026-08-27">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multiply_many-multiplication-by-a-known-scalar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        multiply_many — multiplication by a known scalar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerandomize-same-plaintext-different-bytes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rerandomize — same plaintext, different bytes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-fixed-width-does-not-protect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the fixed width does NOT protect
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-was-considered-and-not-done" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What was considered and NOT done
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#040-2026-08-27" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1205,6 +1266,67 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#050-2026-08-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.5.0 — 2026-08-27
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.5.0 — 2026-08-27">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multiply_many-multiplication-by-a-known-scalar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        multiply_many — multiplication by a known scalar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerandomize-same-plaintext-different-bytes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rerandomize — same plaintext, different bytes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-fixed-width-does-not-protect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the fixed width does NOT protect
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-was-considered-and-not-done" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What was considered and NOT done
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#040-2026-08-27" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1452,6 +1574,86 @@
 
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
+<h2 id="050-2026-08-27">0.5.0 — 2026-08-27<a class="headerlink" href="#050-2026-08-27" title="Permanent link">&para;</a></h2>
+<p>Additive only. Nothing existing changes behaviour, and ciphertexts keep
+their format.</p>
+<h3 id="multiply_many-multiplication-by-a-known-scalar"><code>multiply_many</code> — multiplication by a known scalar<a class="headerlink" href="#multiply_many-multiplication-by-a-known-scalar" title="Permanent link">&para;</a></h3>
+<p><code>E(x) → E(k·x)</code>, which an additively homomorphic scheme gives for free
+and which this library did not expose. It is what lets a party compute a
+squared distance between two distributions without showing either of
+them, and its absence was the one thing keeping a consumer on another
+library.</p>
+<p><strong>The scale is handled here rather than by the caller.</strong> A product lands
+at the sum of the two scales, and the returned blob says so in its
+header, so <code>decrypt</code> divides by the right thing without being told. The
+<code>phe</code>-based code this replaces returns the product with the ORIGINAL
+scale byte and states in its own docstring that the caller must divide —
+which is the plausible-wrong-number failure this library exists to
+refuse.</p>
+<p>Two consequences are worth knowing before they are met as errors:
+multiplication does not compose at the default (<code>16 + 16 = 32</code>, refused
+— chaining means lowering <code>scalar_scale_pow10</code>), and a product cannot be
+added to an ordinary ciphertext, because <code>add_many</code> refuses a mixed
+batch. Companions are encrypted at the product's scale.</p>
+<p><strong>A scalar that encodes to zero is refused, an exact zero included.</strong>
+<code>E(x)^0</code> is the constant <code>1</code>: the value is destroyed and the output
+becomes a two-byte blob anyone can recognise. Where the scalar is a share
+or a weight, a vanishing one means "this bucket is empty", and shipping
+that as a distinctive blob is a leak rather than a result.</p>
+<p><strong>The exponent is secret, so this is the secret-exponent path</strong> — the
+same <code>mpz_powm_sec</code> decryption uses, and for the same reason: in the
+caller this exists for, the scalar is the responder's own bucket share.</p>
+<p>That alone hides the exponent's value but not its length, and its length
+is the magnitude of the scalar. So the exponent is offset to a constant
+width — with <code>|k| &lt; 2^64</code>, <code>k + 3·2^64</code> is 66 bits for every <code>k</code>,
+negative ones included — and the offset is divided out afterwards. The
+cost is a second exponentiation of the same width and one modular
+inversion; the width is the reason a scalar past <code>|k| ≤ 1.8e11</code> at the
+default scale is refused rather than run wider.</p>
+<p>The sign is hidden by the same construction: the offset makes every
+exponent positive, so both exponentiations and the inversion run
+unconditionally and there is no branch on the sign at all.</p>
+<h3 id="rerandomize-same-plaintext-different-bytes"><code>rerandomize</code> — same plaintext, different bytes<a class="headerlink" href="#rerandomize-same-plaintext-different-bytes" title="Permanent link">&para;</a></h3>
+<p>Every homomorphic operation here is deterministic: <code>add_many</code> of the same
+terms returns the same bytes, a one-term sum returns its input verbatim,
+and <code>multiply_many</code> returns exactly <code>E(x)^k</code>. Whoever knows the inputs
+can confirm a guess about the operation by recomputing it — which terms
+went into a sum, or what the scalar was.</p>
+<p><code>rerandomize(pub, blobs)</code> multiplies each ciphertext by a fresh encryption
+of zero, so the value is unchanged and the bytes are not recomputable. It
+costs one encryption per ciphertext, because that is what it is.</p>
+<p>A separate call rather than a flag on the operations. It matters only
+when the result LEAVES, and the library cannot know which ciphertexts are
+about to be sent while the caller can. A flag on by default charges
+everyone for a property most calls do not need — the analytics exchange
+this was written for would pay for nothing, since it sums products with
+its own fresh noise; off by default it would be left off exactly where it
+costs most.</p>
+<p>It hides WHICH ciphertext, not the value. Against a party holding the
+private key it does nothing.</p>
+<h3 id="what-the-fixed-width-does-not-protect">What the fixed width does NOT protect<a class="headerlink" href="#what-the-fixed-width-does-not-protect" title="Permanent link">&para;</a></h3>
+<p>The product is <code>E(x)^k</code> and nothing else — a deterministic function of the
+input ciphertext and the scalar. Anyone who sees both recovers <code>k</code> by
+trying candidates, and a scalar that is a share or a small weight has
+few worth trying. So the constant-width exponent guards a side door —
+timing, available to a neighbour on the same machine — while this one
+stands open, and the documentation says so rather than letting the
+machinery imply otherwise.</p>
+<p>What closes it is <code>rerandomize</code> before transmitting, or summing the
+products with something the other side did not send. The analytics exchange this was
+built for does exactly that, which is why the library does not: it
+cannot know which of a caller's ciphertexts are about to leave.</p>
+<h3 id="what-was-considered-and-not-done">What was considered and NOT done<a class="headerlink" href="#what-was-considered-and-not-done" title="Permanent link">&para;</a></h3>
+<p>Rerandomising the output of <code>add_many</code>. It is byte-stable — the same
+terms give the same bytes, and a one-term sum returns its input verbatim
+— and <code>phe</code> obfuscates on serialisation precisely to stop that.</p>
+<p>An adversarial review refuted the harm in both real consumers: in the
+tree trainer the party that would run the test holds the private key and
+decrypts every aggregate anyway, and in the analytics exchange the
+responder folds its own encrypted noise into the reply, so the reply is
+not a deterministic function of what was sent. The property is worth
+having and may come later; it is not being sold as a fix for a leak that
+was not demonstrated.</p>
 <h2 id="040-2026-08-27">0.4.0 — 2026-08-27<a class="headerlink" href="#040-2026-08-27" title="Permanent link">&para;</a></h2>
 <p>Ciphertexts are unchanged and interoperate with 0.3.0 in both
 directions: the arithmetic below is a different way to compute the same

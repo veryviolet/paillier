@@ -867,6 +867,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#multiply_manypub-blobs-scalars-scalar_scale_pow10none" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        multiply_many(pub, blobs, scalars, *, scalar_scale_pow10=None)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rerandomizepub-blobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rerandomize(pub, blobs)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#decryptsec-blob" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1206,6 +1228,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#multiply_manypub-blobs-scalars-scalar_scale_pow10none" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        multiply_many(pub, blobs, scalars, *, scalar_scale_pow10=None)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rerandomizepub-blobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rerandomize(pub, blobs)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#decryptsec-blob" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1309,6 +1353,98 @@ outside <code>[1, n²)</code>; a batch that <strong>mixes scales</strong>.</p>
 actually keeps sums in the group is the gap between the key floor
 (<code>2^2026</code>) and what is encodable from <code>f64</code> at all (about <code>2^1024</code>):
 a thousand bits short of overflow.</p>
+</div>
+<h2 id="multiply_manypub-blobs-scalars-scalar_scale_pow10none"><code>multiply_many(pub, blobs, scalars, *, scalar_scale_pow10=None)</code><a class="headerlink" href="#multiply_manypub-blobs-scalars-scalar_scale_pow10none" title="Permanent link">&para;</a></h2>
+<p>Multiplies each ciphertext by a <strong>known</strong> scalar — <code>E(x) → E(k·x)</code> — and
+returns a list of blobs, paired with the input by position.</p>
+<p>The scale of a product is the <strong>sum</strong> of the two scales, and the header
+of the returned blob says so, so <code>decrypt</code> divides by the right thing
+without being told. <code>scalar_scale_pow10</code> defaults to the scale of the
+ciphertext, so the ordinary case is <code>8 + 8 = 16</code>.</p>
+<p>Refuses: a length mismatch between <code>blobs</code> and <code>scalars</code>; a scalar that
+is <code>NaN</code> or infinite; a scalar that <strong>encodes to zero</strong>; a scalar past
+the fixed exponent width; a product scale above <code>1e18</code>; a ciphertext
+outside <code>[1, n²)</code> or not invertible.</p>
+<div class="admonition warning">
+<p class="admonition-title">Multiplication does not compose at the default</p>
+<p>A second multiplication would be <code>16 + 16 = 32</code> — refused. Chaining
+means lowering <code>scalar_scale_pow10</code> on both calls.</p>
+<p>For the same reason a product cannot be added to an ordinary
+ciphertext: <code>add_many</code> refuses a mixed batch. Encrypt the companions
+at the product's scale — <code>encrypt_many(pub, values, scale_pow10=16)</code>.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">A scalar that encodes to zero is refused, an exact zero included</p>
+<p><code>E(x)^0</code> is the constant <code>1</code>: the value is destroyed and the result
+becomes a two-byte blob anyone can recognise. Where the scalar is a
+share or a weight, a vanishing one means "this bucket is empty", and
+publishing that as a distinctive blob is a leak rather than a result.
+Encrypt a zero if a zero is what is wanted.</p>
+</div>
+<div class="admonition info">
+<p class="admonition-title">The exponent runs at a FIXED width</p>
+<p>The scalar is usually the caller's own secret, so this takes the
+secret-exponent path, as decryption does. That hides the exponent's
+value but not its length — and its length is the magnitude of the
+scalar. So the exponent is offset to a constant width and the offset
+divided out afterwards, at the cost of a second exponentiation.</p>
+<p>The consequence is the refusal above: a scalar that does not fit the
+fixed width is rejected rather than run at a wider exponent. At the
+default scale that admits <code>|k| ≤ 1.8e11</code>.</p>
+<p>The sign is hidden too, and by construction rather than by care: the
+offset makes every exponent positive, so both exponentiations and the
+inversion run unconditionally. There is no branch on the sign to
+observe.</p>
+<p>An earlier draft of this page claimed the opposite — that a negative
+scalar costs an inversion and a positive one does not. That described
+a naive implementation, not this one, and it was caught by review
+rather than by a test.</p>
+</div>
+<div class="admonition danger">
+<p class="admonition-title">Do NOT transmit a raw product if the scalar is secret</p>
+<p>The output is <code>E(x)^k</code> and nothing else — a deterministic function of
+the input ciphertext and the scalar. Anyone who sees BOTH the input
+and the output recovers <code>k</code> by trying candidates: <code>n</code> is public, so
+each guess costs one exponentiation, and a scalar that is a share or
+a small weight has few candidates worth trying.</p>
+<p>Which means the fixed-width construction above protects a side door
+while this one stands open. It is worth having — timing is available
+to a neighbour on the same machine, who may never see the
+ciphertexts — but it is not what keeps <code>k</code> secret from someone
+watching the wire.</p>
+<p>Use <a href="#rerandomizepub-blobs"><code>rerandomize</code></a> before transmitting, or
+sum the products with something the other side did not send. The
+analytics exchange this feature was built for does the latter, which
+is why the library does not do it for you: it cannot know which of
+your ciphertexts are about to leave.</p>
+</div>
+<h2 id="rerandomizepub-blobs"><code>rerandomize(pub, blobs)</code><a class="headerlink" href="#rerandomizepub-blobs" title="Permanent link">&para;</a></h2>
+<p>Same plaintext, different bytes. Each ciphertext is multiplied by a fresh
+encryption of zero.</p>
+<p>Runs across all cores. Costs about one <strong>encryption</strong> per ciphertext,
+because that is what it is: one exponentiation at the full exponent
+length.</p>
+<p>Refuses an empty blob, an unknown scale exponent, and a ciphertext
+outside <code>[1, n²)</code>. The scale byte passes through unchanged.</p>
+<div class="admonition info">
+<p class="admonition-title">Why this is a separate call and not a flag</p>
+<p>The homomorphic operations are deterministic: <code>add_many</code> of the same
+terms gives the same bytes, a one-term sum gives its input back
+verbatim, <code>multiply_many</code> gives exactly <code>E(x)^k</code>. Whoever knows the
+inputs can confirm a guess about the operation by recomputing it.</p>
+<p>That only matters when the result LEAVES. Inside a computation the
+property buys nothing and costs an encryption apiece — so it is the
+caller who applies it, at the point where they know what is being
+sent, which the library cannot know.</p>
+<p>A flag was considered. On by default it charges every caller for
+something most do not need; off by default it is left off exactly
+where it costs most.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">It hides WHICH ciphertext, not the value</p>
+<p>Re-randomising does nothing against a party that can decrypt. If the
+recipient of your result holds the private key, they read the
+plaintext, and this changes nothing about that.</p>
 </div>
 <h2 id="decryptsec-blob"><code>decrypt(sec, blob)</code><a class="headerlink" href="#decryptsec-blob" title="Permanent link">&para;</a></h2>
 <p>Returns a <code>float</code>. The scale is taken from the blob itself.</p>
