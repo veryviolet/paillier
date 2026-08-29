@@ -165,6 +165,20 @@ pay for security in a big way.
 Three closed channels are not a proof of constant time, and this page
 does not present them as one.
 
+* **`multiply_many_public` is variable time BY CONSTRUCTION**, and that
+  is the point of it. Everything else on this page is a channel that was
+  closed; this one is a channel sold deliberately, for a factor of
+  twelve. Its exponent is the scalar itself, so the running time follows
+  the scalar's bit length: 0.0046 ms at one bit against 0.3200 ms at
+  sixty-four. One observation tells a small scalar from a large one about
+  93% of the time; twenty-seven give 99%.
+
+  It exists because a caller can know the scalar is not a secret —
+  vertical linear training multiplies by the multiplying party's own
+  features, which never leave it. `multiply_many` stays flat and stays
+  the answer whenever the question is unclear. If you are reading this
+  page to learn whether the timing is constant: for that one function it
+  is not, and nothing else here makes it so.
 * **Key generation is not constant time** and is not meant to be. It is a
   search for safe primes: the time to a hit is random and depends on the
   primes found, which is why the measured spread is 0.4–10.3 s.

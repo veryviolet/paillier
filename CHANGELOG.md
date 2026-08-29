@@ -1,5 +1,95 @@
 # Changelog
 
+## 0.6.0 — 2026-08-29
+
+Additive only. Nothing existing changes behaviour, and ciphertexts keep
+their format.
+
+### `multiply_many_public` — the scalar is not a secret
+
+Same arithmetic as `multiply_many`, different threat model.
+
+`multiply_many` hides the exponent: `secure_pow_mod` at a fixed width,
+then the offset divided back out. Two exponentiations and a modular
+inversion per product, because in the caller it was written for, the
+scalar IS the secret — a bucket share the exchange exists to conceal.
+
+Vertical linear training is the opposite case. The scalar is the
+multiplying party's own feature: it never leaves that party, and neither
+do the products — only their masked sum does. Concealing the exponent is
+still not free there, and the bill is the whole budget:
+
+Measured on a 2048-bit key, batches of 200, exponents around 29 bits —
+the shape the caller actually uses:
+
+| operation | time |
+|---|---|
+| encrypt | 0.142 ms |
+| multiply, secret scalar | 2.193 ms |
+| multiply, public scalar | 0.181 ms |
+| **speed-up** | **12.1×** |
+
+The protocol runs `rows × features` multiplications against `rows`
+encryptions, so at a hundred features this one term is over 99% of an
+epoch. Measured on 20000×100: **73.1 minutes of multiplication alone,
+against 6.0**.
+
+The number moved twice while this was written, and both moves are worth
+recording because both were measurement errors rather than code changes.
+A first draft claimed 13.7×, taken with an exponent narrower than the
+caller produced. Review then measured 7.3× in the caller's real shape —
+correct at the time, and the cause was that the caller pre-scaled the
+scalar by 1e8 while the library scaled it again, giving a 55-bit
+exponent instead of 29. With the double scaling removed the shape and
+the benchmark finally agree, at 12.1×.
+
+A benchmark run in a shape the caller does not use is a benchmark of
+nothing, and it took two passes to notice which shape that was.
+
+**What is given up, and there IS someone watching.** The exponent's
+magnitude becomes visible in the timing, and the observer is not
+hypothetical: it is the party the caller's protocol defends against,
+which receives the answer and therefore times it. Measured: a 1-bit
+exponent takes 0.0046 ms, a 64-bit one 0.3200 ms — a factor of 70, while
+the secret path stays flat at 2.09–2.20 ms. One observation separates a
+small feature from a large one at 93%; twenty-seven give 99%.
+
+So reaching for this function is not "the scalar is not a secret". It is
+"the magnitudes may be timed, and that is acceptable here". Where it is
+not, `multiply_many` is flat and costs 13× for exactly that.
+
+**The range is NARROWER here, not wider.** The `SCALAR_BITS` ceiling
+goes with the fixed width that needed it, and what replaces it is
+stricter. `multiply_many` refuses an encoded `|k| ≥ 2^64`; this refuses
+`|k| ≥ 2^53`, and 2^53 < 2^64 at every scale. Measured across 3000
+combinations of scale and magnitude: 108 inputs this path refuses and
+the other accepts, and none the other way round.
+
+The bound differs in kind, which is why it is a limit to respect rather
+than a regression to fix. `2^64` was a timing requirement — every
+exponent had to be the same width. `2^53` is where an `f64` stops
+holding every integer, so past it the value multiplied in is not the
+value the caller named: `10^20` arrives as `1.9999999999999997e20`.
+`multiply_many` rounds there silently; this refuses.
+
+What it costs, concretely, at the default scale of 1e8: an encoded bound
+of 2^53 means `|k| ≤ 9.0e7`. A unix timestamp (1.7e9), a population
+count, a revenue figure — all pass `multiply_many` and are refused here.
+The way through is a lower `scalar_scale_pow10`, trading fractional
+precision for range; at 1e2 the ceiling is 9.0e13.
+
+The plaintext space (2^2027 at this key size) never binds either way,
+and there is no silent wrap-around: every path out of range ends in a
+refusal.
+
+Refusals that carry meaning are kept and one is added. A scalar encoding
+to zero is still refused — `E(x)^0 = 1` destroys the value and marks the
+result as recognisably zero to anyone who sees it. New: a ciphertext
+sharing a factor with `n` is refused for **every** scalar. `pow_mod`
+reports it only for a negative exponent, because only then does it need
+the inverse, so left to it the same input was accepted or rejected
+depending on the sign of an unrelated number.
+
 ## 0.5.0 — 2026-08-27
 
 Additive only. Nothing existing changes behaviour, and ciphertexts keep

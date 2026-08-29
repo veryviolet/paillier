@@ -151,6 +151,80 @@ outside `[1, n²)` or not invertible.
     is why the library does not do it for you: it cannot know which of
     your ciphertexts are about to leave.
 
+## `multiply_many_public(pub, blobs, scalars, *, scalar_scale_pow10=None)`
+
+The same product as
+[`multiply_many`](#multiply_manypub-blobs-scalars-scalar_scale_pow10none),
+computed for a caller who states that the scalar is **not** a secret.
+
+Byte-for-byte identical results. The same refusals, plus one of its own.
+About twelve times faster, and one property fewer.
+
+### Which one to reach for
+
+`multiply_many` keeps the exponent's width constant, at the cost of two
+exponentiations and a modular inversion per product. That is right when
+the scalar is what the exchange conceals — an analytics bucket share,
+say.
+
+This one runs a single windowed exponentiation. Reach for it when the
+scalar is the multiplying party's own data, never leaves it, and neither
+do the products. Vertical linear training is the case it was added for:
+the passive party multiplies encrypted residuals by its own features and
+sends only their masked sum.
+
+### What is traded, measured
+
+The time depends on the scalar's magnitude. On a 2048-bit key:
+
+| exponent | this function | `multiply_many` |
+|---|---|---|
+| 1 bit | 0.0046 ms | ~2.1 ms |
+| 64 bits | 0.3200 ms | ~2.2 ms |
+
+One observation separates a small scalar from a large one at about 93%
+accuracy; twenty-seven reach 99%. If the party receiving the answer must
+not learn the magnitudes, this is the wrong function — and that party is
+usually the one being defended against, so the question is worth asking
+rather than assuming.
+
+Typical shape, batches of 200 at ~29-bit exponents: **0.181 ms against
+2.193 ms, a factor of 12.1**.
+
+### Bounds
+
+`|k| < 2^53` after encoding, and **this range is narrower than
+[`multiply_many`](#multiply_manypub-blobs-scalars-scalar_scale_pow10none)'s,
+not wider.** That function refuses an encoded `|k| ≥ 2^64`; 2^53 is below
+2^64 at every scale. Measured across 3000 combinations of scale and
+magnitude: 108 inputs this path refuses and the other accepts, none the
+other way round.
+
+The two bounds differ in kind. `2^64` was a timing requirement — every
+exponent had to be the same width. `2^53` is where an `f64` stops holding
+every integer, so past it the value multiplied in is not the value you
+named: `10^20` arrives as `1.9999999999999997e20`. `multiply_many` rounds
+there silently; this refuses.
+
+At the default scale of 1e8 that means `|k| ≤ 9.0e7`. A unix timestamp
+(1.7e9), a population count, a revenue figure — all accepted by
+`multiply_many`, all refused here. The way through is a lower
+`scalar_scale_pow10`, trading fractional precision for range: at 1e2 the
+ceiling is 9.0e13.
+
+The plaintext space (2^2027 at a 2048-bit key) never binds either way,
+and nothing wraps silently: every out-of-range path ends in a refusal.
+
+### Refusals
+
+Everything `multiply_many` refuses, plus:
+
+*   **a ciphertext sharing a factor with `n` — for every scalar.**
+    `pow_mod` reports this only when the exponent is negative, because
+    only then does it need the inverse. Left to it, the same input was
+    accepted on positive scalars and rejected on negative ones. The check
+    is explicit here.
+
 ## `rerandomize(pub, blobs)`
 
 Same plaintext, different bytes. Each ciphertext is multiplied by a fresh
