@@ -878,6 +878,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#multiply_many_publicpub-blobs-scalars-scalar_scale_pow10none" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        multiply_many_public(pub, blobs, scalars, *, scalar_scale_pow10=None)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="multiply_many_public(pub, blobs, scalars, *, scalar_scale_pow10=None)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#which-one-to-reach-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which one to reach for
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-is-traded-measured" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is traded, measured
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bounds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bounds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refusals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refusals
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#rerandomizepub-blobs" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1239,6 +1300,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#multiply_many_publicpub-blobs-scalars-scalar_scale_pow10none" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        multiply_many_public(pub, blobs, scalars, *, scalar_scale_pow10=None)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="multiply_many_public(pub, blobs, scalars, *, scalar_scale_pow10=None)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#which-one-to-reach-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which one to reach for
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-is-traded-measured" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is traded, measured
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bounds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bounds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refusals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refusals
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#rerandomizepub-blobs" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1418,6 +1540,80 @@ analytics exchange this feature was built for does the latter, which
 is why the library does not do it for you: it cannot know which of
 your ciphertexts are about to leave.</p>
 </div>
+<h2 id="multiply_many_publicpub-blobs-scalars-scalar_scale_pow10none"><code>multiply_many_public(pub, blobs, scalars, *, scalar_scale_pow10=None)</code><a class="headerlink" href="#multiply_many_publicpub-blobs-scalars-scalar_scale_pow10none" title="Permanent link">&para;</a></h2>
+<p>The same product as
+<a href="#multiply_manypub-blobs-scalars-scalar_scale_pow10none"><code>multiply_many</code></a>,
+computed for a caller who states that the scalar is <strong>not</strong> a secret.</p>
+<p>Byte-for-byte identical results. The same refusals, plus one of its own.
+About twelve times faster, and one property fewer.</p>
+<h3 id="which-one-to-reach-for">Which one to reach for<a class="headerlink" href="#which-one-to-reach-for" title="Permanent link">&para;</a></h3>
+<p><code>multiply_many</code> keeps the exponent's width constant, at the cost of two
+exponentiations and a modular inversion per product. That is right when
+the scalar is what the exchange conceals — an analytics bucket share,
+say.</p>
+<p>This one runs a single windowed exponentiation. Reach for it when the
+scalar is the multiplying party's own data, never leaves it, and neither
+do the products. Vertical linear training is the case it was added for:
+the passive party multiplies encrypted residuals by its own features and
+sends only their masked sum.</p>
+<h3 id="what-is-traded-measured">What is traded, measured<a class="headerlink" href="#what-is-traded-measured" title="Permanent link">&para;</a></h3>
+<p>The time depends on the scalar's magnitude. On a 2048-bit key:</p>
+<table>
+<thead>
+<tr>
+<th>exponent</th>
+<th>this function</th>
+<th><code>multiply_many</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 bit</td>
+<td>0.0046 ms</td>
+<td>~2.1 ms</td>
+</tr>
+<tr>
+<td>64 bits</td>
+<td>0.3200 ms</td>
+<td>~2.2 ms</td>
+</tr>
+</tbody>
+</table>
+<p>One observation separates a small scalar from a large one at about 93%
+accuracy; twenty-seven reach 99%. If the party receiving the answer must
+not learn the magnitudes, this is the wrong function — and that party is
+usually the one being defended against, so the question is worth asking
+rather than assuming.</p>
+<p>Typical shape, batches of 200 at ~29-bit exponents: <strong>0.181 ms against
+2.193 ms, a factor of 12.1</strong>.</p>
+<h3 id="bounds">Bounds<a class="headerlink" href="#bounds" title="Permanent link">&para;</a></h3>
+<p><code>|k| &lt; 2^53</code> after encoding, and <strong>this range is narrower than
+<a href="#multiply_manypub-blobs-scalars-scalar_scale_pow10none"><code>multiply_many</code></a>'s,
+not wider.</strong> That function refuses an encoded <code>|k| ≥ 2^64</code>; 2^53 is below
+2^64 at every scale. Measured across 3000 combinations of scale and
+magnitude: 108 inputs this path refuses and the other accepts, none the
+other way round.</p>
+<p>The two bounds differ in kind. <code>2^64</code> was a timing requirement — every
+exponent had to be the same width. <code>2^53</code> is where an <code>f64</code> stops holding
+every integer, so past it the value multiplied in is not the value you
+named: <code>10^20</code> arrives as <code>1.9999999999999997e20</code>. <code>multiply_many</code> rounds
+there silently; this refuses.</p>
+<p>At the default scale of 1e8 that means <code>|k| ≤ 9.0e7</code>. A unix timestamp
+(1.7e9), a population count, a revenue figure — all accepted by
+<code>multiply_many</code>, all refused here. The way through is a lower
+<code>scalar_scale_pow10</code>, trading fractional precision for range: at 1e2 the
+ceiling is 9.0e13.</p>
+<p>The plaintext space (2^2027 at a 2048-bit key) never binds either way,
+and nothing wraps silently: every out-of-range path ends in a refusal.</p>
+<h3 id="refusals">Refusals<a class="headerlink" href="#refusals" title="Permanent link">&para;</a></h3>
+<p>Everything <code>multiply_many</code> refuses, plus:</p>
+<ul>
+<li><strong>a ciphertext sharing a factor with <code>n</code> — for every scalar.</strong>
+    <code>pow_mod</code> reports this only when the exponent is negative, because
+    only then does it need the inverse. Left to it, the same input was
+    accepted on positive scalars and rejected on negative ones. The check
+    is explicit here.</li>
+</ul>
 <h2 id="rerandomizepub-blobs"><code>rerandomize(pub, blobs)</code><a class="headerlink" href="#rerandomizepub-blobs" title="Permanent link">&para;</a></h2>
 <p>Same plaintext, different bytes. Each ciphertext is multiplied by a fresh
 encryption of zero.</p>

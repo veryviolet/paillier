@@ -1292,20 +1292,33 @@ pay for security in a big way.</p>
 <p>Three closed channels are not a proof of constant time, and this page
 does not present them as one.</p>
 <ul>
-<li><strong>Key generation is not constant time</strong> and is not meant to be. It is a
+<li><strong><code>multiply_many_public</code> is variable time BY CONSTRUCTION</strong>, and that
+  is the point of it. Everything else on this page is a channel that was
+  closed; this one is a channel sold deliberately, for a factor of
+  twelve. Its exponent is the scalar itself, so the running time follows
+  the scalar's bit length: 0.0046 ms at one bit against 0.3200 ms at
+  sixty-four. One observation tells a small scalar from a large one about
+  93% of the time; twenty-seven give 99%.</li>
+</ul>
+<p>It exists because a caller can know the scalar is not a secret —
+  vertical linear training multiplies by the multiplying party's own
+  features, which never leave it. <code>multiply_many</code> stays flat and stays
+  the answer whenever the question is unclear. If you are reading this
+  page to learn whether the timing is constant: for that one function it
+  is not, and nothing else here makes it so.
+* <strong>Key generation is not constant time</strong> and is not meant to be. It is a
   search for safe primes: the time to a hit is random and depends on the
-  primes found, which is why the measured spread is 0.4–10.3 s.</li>
-<li><strong>GMP does not promise data-independence</strong> for <code>mpn_mul_n</code> and
+  primes found, which is why the measured spread is 0.4–10.3 s.
+* <strong>GMP does not promise data-independence</strong> for <code>mpn_mul_n</code> and
   <code>mpn_addmul_1</code>. They branch on SIZE, and our sizes are fixed for the
   life of a key — but that is an argument from how they are implemented,
   not a guarantee from their documentation. GMP's own explicitly
   constant-time primitive, <code>mpn_sec_mul</code>, is deliberately not used: to
   stay constant-time it forgoes sub-quadratic multiplication, which at 64
-  limbs costs more than everything gained here.</li>
-<li><strong>Only the channels that were looked for have been measured.</strong> Three
+  limbs costs more than everything gained here.
+* <strong>Only the channels that were looked for have been measured.</strong> Three
   were found and closed; a fourth would be found the same way, by
-  measuring a slope.</li>
-</ul>
+  measuring a slope.</p>
 <h2 id="nothing-is-claimed-about-other-implementations">Nothing is claimed about other implementations<a class="headerlink" href="#nothing-is-claimed-about-other-implementations" title="Permanent link">&para;</a></h2>
 <p>Whether any other Paillier library is constant-time is not asserted here
 either way. <strong>Absence of a stated guarantee is not proof that the

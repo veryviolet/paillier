@@ -944,6 +944,34 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#060-2026-08-29" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.6.0 — 2026-08-29
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.0 — 2026-08-29">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multiply_many_public-the-scalar-is-not-a-secret" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        multiply_many_public — the scalar is not a secret
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#050-2026-08-27" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1266,6 +1294,34 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#060-2026-08-29" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.6.0 — 2026-08-29
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.6.0 — 2026-08-29">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multiply_many_public-the-scalar-is-not-a-secret" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        multiply_many_public — the scalar is not a secret
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#050-2026-08-27" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1574,6 +1630,98 @@
 
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
+<h2 id="060-2026-08-29">0.6.0 — 2026-08-29<a class="headerlink" href="#060-2026-08-29" title="Permanent link">&para;</a></h2>
+<p>Additive only. Nothing existing changes behaviour, and ciphertexts keep
+their format.</p>
+<h3 id="multiply_many_public-the-scalar-is-not-a-secret"><code>multiply_many_public</code> — the scalar is not a secret<a class="headerlink" href="#multiply_many_public-the-scalar-is-not-a-secret" title="Permanent link">&para;</a></h3>
+<p>Same arithmetic as <code>multiply_many</code>, different threat model.</p>
+<p><code>multiply_many</code> hides the exponent: <code>secure_pow_mod</code> at a fixed width,
+then the offset divided back out. Two exponentiations and a modular
+inversion per product, because in the caller it was written for, the
+scalar IS the secret — a bucket share the exchange exists to conceal.</p>
+<p>Vertical linear training is the opposite case. The scalar is the
+multiplying party's own feature: it never leaves that party, and neither
+do the products — only their masked sum does. Concealing the exponent is
+still not free there, and the bill is the whole budget:</p>
+<p>Measured on a 2048-bit key, batches of 200, exponents around 29 bits —
+the shape the caller actually uses:</p>
+<table>
+<thead>
+<tr>
+<th>operation</th>
+<th>time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>encrypt</td>
+<td>0.142 ms</td>
+</tr>
+<tr>
+<td>multiply, secret scalar</td>
+<td>2.193 ms</td>
+</tr>
+<tr>
+<td>multiply, public scalar</td>
+<td>0.181 ms</td>
+</tr>
+<tr>
+<td><strong>speed-up</strong></td>
+<td><strong>12.1×</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The protocol runs <code>rows × features</code> multiplications against <code>rows</code>
+encryptions, so at a hundred features this one term is over 99% of an
+epoch. Measured on 20000×100: <strong>73.1 minutes of multiplication alone,
+against 6.0</strong>.</p>
+<p>The number moved twice while this was written, and both moves are worth
+recording because both were measurement errors rather than code changes.
+A first draft claimed 13.7×, taken with an exponent narrower than the
+caller produced. Review then measured 7.3× in the caller's real shape —
+correct at the time, and the cause was that the caller pre-scaled the
+scalar by 1e8 while the library scaled it again, giving a 55-bit
+exponent instead of 29. With the double scaling removed the shape and
+the benchmark finally agree, at 12.1×.</p>
+<p>A benchmark run in a shape the caller does not use is a benchmark of
+nothing, and it took two passes to notice which shape that was.</p>
+<p><strong>What is given up, and there IS someone watching.</strong> The exponent's
+magnitude becomes visible in the timing, and the observer is not
+hypothetical: it is the party the caller's protocol defends against,
+which receives the answer and therefore times it. Measured: a 1-bit
+exponent takes 0.0046 ms, a 64-bit one 0.3200 ms — a factor of 70, while
+the secret path stays flat at 2.09–2.20 ms. One observation separates a
+small feature from a large one at 93%; twenty-seven give 99%.</p>
+<p>So reaching for this function is not "the scalar is not a secret". It is
+"the magnitudes may be timed, and that is acceptable here". Where it is
+not, <code>multiply_many</code> is flat and costs 13× for exactly that.</p>
+<p><strong>The range is NARROWER here, not wider.</strong> The <code>SCALAR_BITS</code> ceiling
+goes with the fixed width that needed it, and what replaces it is
+stricter. <code>multiply_many</code> refuses an encoded <code>|k| ≥ 2^64</code>; this refuses
+<code>|k| ≥ 2^53</code>, and 2^53 &lt; 2^64 at every scale. Measured across 3000
+combinations of scale and magnitude: 108 inputs this path refuses and
+the other accepts, and none the other way round.</p>
+<p>The bound differs in kind, which is why it is a limit to respect rather
+than a regression to fix. <code>2^64</code> was a timing requirement — every
+exponent had to be the same width. <code>2^53</code> is where an <code>f64</code> stops
+holding every integer, so past it the value multiplied in is not the
+value the caller named: <code>10^20</code> arrives as <code>1.9999999999999997e20</code>.
+<code>multiply_many</code> rounds there silently; this refuses.</p>
+<p>What it costs, concretely, at the default scale of 1e8: an encoded bound
+of 2^53 means <code>|k| ≤ 9.0e7</code>. A unix timestamp (1.7e9), a population
+count, a revenue figure — all pass <code>multiply_many</code> and are refused here.
+The way through is a lower <code>scalar_scale_pow10</code>, trading fractional
+precision for range; at 1e2 the ceiling is 9.0e13.</p>
+<p>The plaintext space (2^2027 at this key size) never binds either way,
+and there is no silent wrap-around: every path out of range ends in a
+refusal.</p>
+<p>Refusals that carry meaning are kept and one is added. A scalar encoding
+to zero is still refused — <code>E(x)^0 = 1</code> destroys the value and marks the
+result as recognisably zero to anyone who sees it. New: a ciphertext
+sharing a factor with <code>n</code> is refused for <strong>every</strong> scalar. <code>pow_mod</code>
+reports it only for a negative exponent, because only then does it need
+the inverse, so left to it the same input was accepted or rejected
+depending on the sign of an unrelated number.</p>
 <h2 id="050-2026-08-27">0.5.0 — 2026-08-27<a class="headerlink" href="#050-2026-08-27" title="Permanent link">&para;</a></h2>
 <p>Additive only. Nothing existing changes behaviour, and ciphertexts keep
 their format.</p>
