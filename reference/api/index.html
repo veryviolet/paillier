@@ -1525,9 +1525,9 @@ a thousand bits short of overflow.</p>
 blocks. <code>blocks</code> is a list of index lists into <code>blobs</code>; the result is one
 blob per block, in the order the blocks were given.</p>
 <p>Equivalent to <code>[add_many(pub, [blobs[i] for i in block]) for block in
-blocks]</code>, byte for byte — and about eight times faster on the shape it
-was written for, because the Python loop holds the GIL and re-parses
-every blob once per block that names it.</p>
+blocks]</code>, byte for byte. It is faster on the shape it was written for,
+because the Python loop holds the GIL and re-parses every blob once per
+block that names it.</p>
 <p>Refuses: an <strong>empty block</strong>; a block longer than <code>2^20</code>; an index past
 the end of <code>blobs</code>; a block that <strong>mixes scales</strong>; a ciphertext outside
 <code>[1, n²)</code>. An empty LIST of blocks is not an error — it is no sums, which
@@ -1546,31 +1546,6 @@ are two sums and are allowed; two scales inside ONE block are not.</p>
 <p><code>[0, 0, 0]</code> is three times that term. Indices are positions, not a
 set, and nothing here deduplicates them.</p>
 </div>
-<p>Measured on a 2048-bit key, 20000 ciphertexts and 348 blocks averaging
-half the array — the sweep of one vertical tree node over 12 features at
-30 quantiles:</p>
-<table>
-<thead>
-<tr>
-<th></th>
-<th>time</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>loop over <code>add_many</code></td>
-<td>25.276 s</td>
-</tr>
-<tr>
-<td><code>add_blocks</code></td>
-<td>3.151 s</td>
-</tr>
-<tr>
-<td><strong>speed-up</strong></td>
-<td><strong>8.0×</strong></td>
-</tr>
-</tbody>
-</table>
 <h2 id="multiply_manypub-blobs-scalars-scalar_scale_pow10none"><code>multiply_many(pub, blobs, scalars, *, scalar_scale_pow10=None)</code><a class="headerlink" href="#multiply_manypub-blobs-scalars-scalar_scale_pow10none" title="Permanent link">&para;</a></h2>
 <p>Multiplies each ciphertext by a <strong>known</strong> scalar — <code>E(x) → E(k·x)</code> — and
 returns a list of blobs, paired with the input by position.</p>
@@ -1758,29 +1733,6 @@ one.</p>
 <p>Refuses a blob carrying a <strong>non-zero scale</strong>, and a value that is not a
 ciphertext under this key. The scale is refused rather than divided out:
 dividing is what puts the rounding back.</p>
-<p>Measured on a 2048-bit key, 720 ciphertexts:</p>
-<table>
-<thead>
-<tr>
-<th></th>
-<th>time</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>loop over <code>decrypt</code></td>
-<td>2.74 s</td>
-</tr>
-<tr>
-<td><code>decrypt_many</code></td>
-<td>0.48 s</td>
-</tr>
-<tr>
-<td><strong>speed-up</strong></td>
-<td><strong>5.8×</strong></td>
-</tr>
-</tbody>
-</table>
 <div class="admonition note">
 <p class="admonition-title">Use <code>decrypt</code> for a magnitude</p>
 <p>A scaled value is a magnitude, and a magnitude is what <code>decrypt</code>

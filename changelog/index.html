@@ -1718,31 +1718,9 @@ that was published. It is named here so the history says which release
 carries it, and the number is spent on that as much as on the addition
 below.</p>
 <p><code>decrypt</code> was the last exported operation still serial, and it holds the
-GIL, so a Python thread pool over it measured 0.64× rather than a
-speed-up. On the caller's node decryption was 64% of one vertical GBDT
-round.</p>
-<table>
-<thead>
-<tr>
-<th></th>
-<th>time</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>loop over <code>decrypt</code>, 720 ciphertexts</td>
-<td>2.74 s</td>
-</tr>
-<tr>
-<td><code>decrypt_many</code></td>
-<td>0.48 s</td>
-</tr>
-<tr>
-<td><strong>speed-up</strong></td>
-<td><strong>5.8×</strong></td>
-</tr>
-</tbody>
-</table>
+GIL, so a Python thread pool over it is slower than the loop it replaces
+rather than faster. Decryption was a large share of one vertical GBDT
+round on the caller's node.</p>
 <p>It returns the plaintext as a decimal STRING and refuses a scaled blob,
 so an aggregate above <code>2^53</code> stays exact. <code>decrypt</code> returns <code>f64</code>, and
 <code>9007199254740993</code> does not survive that — a rounded gradient sum picks
@@ -1752,33 +1730,9 @@ a different split and still reads as a plausible number.</p>
 the same ciphertexts: a vertical tree's passive side sweeps every
 (feature × candidate threshold) pair and sums the gradients of the rows
 on one side of each. Driven as a Python loop that work holds the GIL and
-runs on one core — measured at <strong>98.4%</strong> of a whole tree node, beside
-encryption and re-randomisation that are already parallel here and cost
-almost nothing next to it.</p>
-<p>Measured on a 2048-bit key, 20000 ciphertexts and 348 blocks averaging
-half the array, on 12 cores:</p>
-<table>
-<thead>
-<tr>
-<th></th>
-<th>time</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>loop over <code>add_many</code></td>
-<td>25.276 s</td>
-</tr>
-<tr>
-<td><code>add_blocks</code></td>
-<td>3.151 s</td>
-</tr>
-<tr>
-<td><strong>speed-up</strong></td>
-<td><strong>8.0×</strong></td>
-</tr>
-</tbody>
-</table>
+runs on one core, and it dominated a whole tree node — the encryption and
+the re-randomisation beside it are already parallel here and cost almost
+nothing next to it.</p>
 <p>The results are byte-identical to the loop. Two things it does that the
 loop cannot: every blob is parsed <strong>once</strong> rather than once per block
 naming it (a row belongs to about half the candidates), and the blocks
