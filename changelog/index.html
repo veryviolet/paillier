@@ -944,6 +944,45 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#070-2026-09-06" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.7.0 — 2026-09-06
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.0 — 2026-09-06">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#decrypt_many-exact-batched-and-released-late" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        decrypt_many — exact, batched, and released late
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add_blocks-thousands-of-sums-over-one-array" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        add_blocks — thousands of sums over one array
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#060-2026-08-29" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1294,6 +1333,45 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#070-2026-09-06" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.7.0 — 2026-09-06
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.0 — 2026-09-06">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#decrypt_many-exact-batched-and-released-late" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        decrypt_many — exact, batched, and released late
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add_blocks-thousands-of-sums-over-one-array" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        add_blocks — thousands of sums over one array
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#060-2026-08-29" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1630,6 +1708,86 @@
 
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
+<h2 id="070-2026-09-06">0.7.0 — 2026-09-06<a class="headerlink" href="#070-2026-09-06" title="Permanent link">&para;</a></h2>
+<p>Additive only. Nothing existing changes behaviour, and ciphertexts keep
+their format.</p>
+<h3 id="decrypt_many-exact-batched-and-released-late"><code>decrypt_many</code> — exact, batched, and released late<a class="headerlink" href="#decrypt_many-exact-batched-and-released-late" title="Permanent link">&para;</a></h3>
+<p>This function was written on 2026-09-06 and committed <strong>without a
+version bump</strong>, so a build of <code>0.6.0</code> from that day is not the <code>0.6.0</code>
+that was published. It is named here so the history says which release
+carries it, and the number is spent on that as much as on the addition
+below.</p>
+<p><code>decrypt</code> was the last exported operation still serial, and it holds the
+GIL, so a Python thread pool over it measured 0.64× rather than a
+speed-up. On the caller's node decryption was 64% of one vertical GBDT
+round.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>loop over <code>decrypt</code>, 720 ciphertexts</td>
+<td>2.74 s</td>
+</tr>
+<tr>
+<td><code>decrypt_many</code></td>
+<td>0.48 s</td>
+</tr>
+<tr>
+<td><strong>speed-up</strong></td>
+<td><strong>5.8×</strong></td>
+</tr>
+</tbody>
+</table>
+<p>It returns the plaintext as a decimal STRING and refuses a scaled blob,
+so an aggregate above <code>2^53</code> stays exact. <code>decrypt</code> returns <code>f64</code>, and
+<code>9007199254740993</code> does not survive that — a rounded gradient sum picks
+a different split and still reads as a plausible number.</p>
+<h3 id="add_blocks-thousands-of-sums-over-one-array"><code>add_blocks</code> — thousands of sums over one array<a class="headerlink" href="#add_blocks-thousands-of-sums-over-one-array" title="Permanent link">&para;</a></h3>
+<p><code>add_many</code> sums one block. The caller's shape is thousands of them over
+the same ciphertexts: a vertical tree's passive side sweeps every
+(feature × candidate threshold) pair and sums the gradients of the rows
+on one side of each. Driven as a Python loop that work holds the GIL and
+runs on one core — measured at <strong>98.4%</strong> of a whole tree node, beside
+encryption and re-randomisation that are already parallel here and cost
+almost nothing next to it.</p>
+<p>Measured on a 2048-bit key, 20000 ciphertexts and 348 blocks averaging
+half the array, on 12 cores:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>loop over <code>add_many</code></td>
+<td>25.276 s</td>
+</tr>
+<tr>
+<td><code>add_blocks</code></td>
+<td>3.151 s</td>
+</tr>
+<tr>
+<td><strong>speed-up</strong></td>
+<td><strong>8.0×</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The results are byte-identical to the loop. Two things it does that the
+loop cannot: every blob is parsed <strong>once</strong> rather than once per block
+naming it (a row belongs to about half the candidates), and the blocks
+are summed with the GIL released.</p>
+<p>Every refusal <code>add_many</code> makes for one sum, this makes <strong>per block</strong>: an
+empty block, a block past the <code>2^20</code> headroom, a block mixing scales, an
+index past the end, a value outside <code>[1, n²)</code>. An empty LIST of blocks
+returns no sums and is not an error — that is a different question from
+an empty sum.</p>
 <h2 id="060-2026-08-29">0.6.0 — 2026-08-29<a class="headerlink" href="#060-2026-08-29" title="Permanent link">&para;</a></h2>
 <p>Additive only. Nothing existing changes behaviour, and ciphertexts keep
 their format.</p>

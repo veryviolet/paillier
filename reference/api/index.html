@@ -867,6 +867,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#add_blockspub-blobs-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        add_blocks(pub, blobs, blocks)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#multiply_manypub-blobs-scalars-scalar_scale_pow10none" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -954,6 +965,17 @@
     <span class="md-ellipsis">
       
         decrypt(sec, blob)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decrypt_manysec-blobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        decrypt_many(sec, blobs)
       
     </span>
   </a>
@@ -1289,6 +1311,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#add_blockspub-blobs-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        add_blocks(pub, blobs, blocks)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#multiply_manypub-blobs-scalars-scalar_scale_pow10none" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1376,6 +1409,17 @@
     <span class="md-ellipsis">
       
         decrypt(sec, blob)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decrypt_manysec-blobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        decrypt_many(sec, blobs)
       
     </span>
   </a>
@@ -1476,6 +1520,57 @@ actually keeps sums in the group is the gap between the key floor
 (<code>2^2026</code>) and what is encodable from <code>f64</code> at all (about <code>2^1024</code>):
 a thousand bits short of overflow.</p>
 </div>
+<h2 id="add_blockspub-blobs-blocks"><code>add_blocks(pub, blobs, blocks)</code><a class="headerlink" href="#add_blockspub-blobs-blocks" title="Permanent link">&para;</a></h2>
+<p>Sums MANY blocks over one array of ciphertexts, in parallel over the
+blocks. <code>blocks</code> is a list of index lists into <code>blobs</code>; the result is one
+blob per block, in the order the blocks were given.</p>
+<p>Equivalent to <code>[add_many(pub, [blobs[i] for i in block]) for block in
+blocks]</code>, byte for byte — and about eight times faster on the shape it
+was written for, because the Python loop holds the GIL and re-parses
+every blob once per block that names it.</p>
+<p>Refuses: an <strong>empty block</strong>; a block longer than <code>2^20</code>; an index past
+the end of <code>blobs</code>; a block that <strong>mixes scales</strong>; a ciphertext outside
+<code>[1, n²)</code>. An empty LIST of blocks is not an error — it is no sums, which
+is a different thing from an empty sum.</p>
+<p>A ciphertext that <strong>no block names</strong> is never read, so it is never
+refused either. That is what makes the equivalence above hold for
+refusals as well as for values: the loop would not have read it.</p>
+<div class="admonition note">
+<p class="admonition-title">Per block, not per call</p>
+<p>Every limit and every refusal <code>add_many</code> applies to one sum, this
+applies to each block separately. Two blocks at two different scales
+are two sums and are allowed; two scales inside ONE block are not.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">A repeated index is added again</p>
+<p><code>[0, 0, 0]</code> is three times that term. Indices are positions, not a
+set, and nothing here deduplicates them.</p>
+</div>
+<p>Measured on a 2048-bit key, 20000 ciphertexts and 348 blocks averaging
+half the array — the sweep of one vertical tree node over 12 features at
+30 quantiles:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>loop over <code>add_many</code></td>
+<td>25.276 s</td>
+</tr>
+<tr>
+<td><code>add_blocks</code></td>
+<td>3.151 s</td>
+</tr>
+<tr>
+<td><strong>speed-up</strong></td>
+<td><strong>8.0×</strong></td>
+</tr>
+</tbody>
+</table>
 <h2 id="multiply_manypub-blobs-scalars-scalar_scale_pow10none"><code>multiply_many(pub, blobs, scalars, *, scalar_scale_pow10=None)</code><a class="headerlink" href="#multiply_manypub-blobs-scalars-scalar_scale_pow10none" title="Permanent link">&para;</a></h2>
 <p>Multiplies each ciphertext by a <strong>known</strong> scalar — <code>E(x) → E(k·x)</code> — and
 returns a list of blobs, paired with the input by position.</p>
@@ -1651,6 +1746,47 @@ not a ciphertext under this key.</p>
 <p>Nor can there be: it does not follow from <code>n</code> alone. A ciphertext
 made under a different key will usually lead to a refusal — but not
 always.</p>
+</div>
+<h2 id="decrypt_manysec-blobs"><code>decrypt_many(sec, blobs)</code><a class="headerlink" href="#decrypt_manysec-blobs" title="Permanent link">&para;</a></h2>
+<p>Decrypts a batch across all cores and returns the plaintexts as <strong>decimal
+strings</strong>, in the order given.</p>
+<p>Strings, not floats, because the values this is for are aggregates: a
+homomorphic sum passes <code>2^53</code> on an ordinary batch, and above that an
+<code>f64</code> holds only the even integers. <code>decrypt</code> would return a number that
+is not flagged, not out of range and not implausible — merely a different
+one.</p>
+<p>Refuses a blob carrying a <strong>non-zero scale</strong>, and a value that is not a
+ciphertext under this key. The scale is refused rather than divided out:
+dividing is what puts the rounding back.</p>
+<p>Measured on a 2048-bit key, 720 ciphertexts:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>loop over <code>decrypt</code></td>
+<td>2.74 s</td>
+</tr>
+<tr>
+<td><code>decrypt_many</code></td>
+<td>0.48 s</td>
+</tr>
+<tr>
+<td><strong>speed-up</strong></td>
+<td><strong>5.8×</strong></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Use <code>decrypt</code> for a magnitude</p>
+<p>A scaled value is a magnitude, and a magnitude is what <code>decrypt</code>
+returns. This one is for callers that will add, compare or re-encode
+the result, where a double rounding through binary64 stops being the
+identity well below <code>2^53</code>.</p>
 </div>
 <h2 id="__version__"><code>__version__</code><a class="headerlink" href="#__version__" title="Permanent link">&para;</a></h2>
 <p>The package version, taken from <code>Cargo.toml</code> at build time rather than
