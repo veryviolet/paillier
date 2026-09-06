@@ -1240,6 +1240,58 @@ fn decrypt(sk: &SecretKey, blob: &[u8]) -> PyResult<f64> {
     decode_integer(&plain, scale).map_err(PyValueError::new_err)
 }
 
+/// Decrypt a batch, exactly, across all cores.
+///
+/// `decrypt` returns `f64`, and an integer above `2**53` does not fit
+/// one: the sum of a wide node's gradients is exactly that size, and a
+/// silent rounding there picks a different split while staying a
+/// plausible number. So this returns the plaintext as a DECIMAL STRING
+/// and refuses a scaled blob — a scale would put the division back and
+/// with it the rounding this exists to avoid.
+///
+/// It is the only exported operation that was still serial: `rayon`
+/// appears in this crate for `encrypt_many` and `rerandomize`, and a
+/// measurement on the caller's node put decryption at 64% of one
+/// training round with no scaling across threads at all, because
+/// `decrypt` holds the GIL.
+#[pyfunction]
+fn decrypt_many(
+    py: Python<'_>,
+    sk: &SecretKey,
+    blobs: Vec<Bound<'_, PyBytes>>,
+) -> PyResult<Vec<String>> {
+    let slices: Vec<&[u8]> = blobs.iter().map(|b| b.as_bytes()).collect();
+
+    let produced: Result<Vec<String>, String> = py.allow_threads(|| {
+        slices
+            .par_iter()
+            .enumerate()
+            .map(|(index, blob)| -> Result<String, String> {
+                let (pow10, cipher) = split_blob(blob).map_err(|message| {
+                    format!("ciphertext #{}: {message}", index + 1)
+                })?;
+                if pow10 != 0 {
+                    return Err(format!(
+                        "ciphertext #{} carries scale 1e{pow10}: an exact \
+                         decryption returns the plaintext integer, and a \
+                         scale would divide it back into a float",
+                        index + 1
+                    ));
+                }
+                let plain = sk.inner.decrypt(&cipher).ok_or_else(|| {
+                    format!(
+                        "ciphertext #{} is not one under this key",
+                        index + 1
+                    )
+                })?;
+                Ok(plain.to_string())
+            })
+            .collect()
+    });
+
+    produced.map_err(PyValueError::new_err)
+}
+
 #[pymodule]
 fn paillier(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // The version comes from `Cargo.toml` AT BUILD TIME rather than
@@ -1258,6 +1310,7 @@ fn paillier(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(multiply_many_public, m)?)?;
     m.add_function(wrap_pyfunction!(rerandomize, m)?)?;
     m.add_function(wrap_pyfunction!(decrypt, m)?)?;
+    m.add_function(wrap_pyfunction!(decrypt_many, m)?)?;
     Ok(())
 }
 
