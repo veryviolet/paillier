@@ -1,5 +1,65 @@
 # Changelog
 
+## 0.7.0 — 2026-09-06
+
+Additive only. Nothing existing changes behaviour, and ciphertexts keep
+their format.
+
+### `decrypt_many` — exact, batched, and released late
+
+This function was written on 2026-09-06 and committed **without a
+version bump**, so a build of `0.6.0` from that day is not the `0.6.0`
+that was published. It is named here so the history says which release
+carries it, and the number is spent on that as much as on the addition
+below.
+
+`decrypt` was the last exported operation still serial, and it holds the
+GIL, so a Python thread pool over it measured 0.64× rather than a
+speed-up. On the caller's node decryption was 64% of one vertical GBDT
+round.
+
+| | time |
+|---|---|
+| loop over `decrypt`, 720 ciphertexts | 2.74 s |
+| `decrypt_many` | 0.48 s |
+| **speed-up** | **5.8×** |
+
+It returns the plaintext as a decimal STRING and refuses a scaled blob,
+so an aggregate above `2^53` stays exact. `decrypt` returns `f64`, and
+`9007199254740993` does not survive that — a rounded gradient sum picks
+a different split and still reads as a plausible number.
+
+### `add_blocks` — thousands of sums over one array
+
+`add_many` sums one block. The caller's shape is thousands of them over
+the same ciphertexts: a vertical tree's passive side sweeps every
+(feature × candidate threshold) pair and sums the gradients of the rows
+on one side of each. Driven as a Python loop that work holds the GIL and
+runs on one core — measured at **98.4%** of a whole tree node, beside
+encryption and re-randomisation that are already parallel here and cost
+almost nothing next to it.
+
+Measured on a 2048-bit key, 20000 ciphertexts and 348 blocks averaging
+half the array, on 12 cores:
+
+| | time |
+|---|---|
+| loop over `add_many` | 25.276 s |
+| `add_blocks` | 3.151 s |
+| **speed-up** | **8.0×** |
+
+The results are byte-identical to the loop. Two things it does that the
+loop cannot: every blob is parsed **once** rather than once per block
+naming it (a row belongs to about half the candidates), and the blocks
+are summed with the GIL released.
+
+Every refusal `add_many` makes for one sum, this makes **per block**: an
+empty block, a block past the `2^20` headroom, a block mixing scales, an
+index past the end, a value outside `[1, n²)`. An empty LIST of blocks
+returns no sums and is not an error — that is a different question from
+an empty sum.
+
+
 ## 0.6.0 — 2026-08-29
 
 Additive only. Nothing existing changes behaviour, and ciphertexts keep

@@ -755,6 +755,157 @@ fn add_many(
     Ok(PyBytes::new(py, &join_blob(scale_pow10, &total)).unbind())
 }
 
+/// Sum MANY blocks of the same ciphertexts, in parallel over the blocks.
+///
+/// This is `add_many` applied to a list of index sets, and it exists
+/// because the caller's shape is not one sum but thousands of them over
+/// one array: a vertical tree's passive side sweeps every
+/// (feature x candidate threshold) pair and sums the gradients of the
+/// rows on one side of each. Driven from Python that loop holds the GIL
+/// and runs on one core, and a measurement on the caller's node put it
+/// at 98.4% of the whole node — the encryption and the re-randomisation
+/// around it are already parallel here and cost almost nothing beside
+/// it.
+///
+/// Two things it does that a loop over `add_many` cannot:
+///
+/// * **every ciphertext is parsed once**, not once per block it appears
+///   in. A row belongs to about half the candidates, so the same blob
+///   was being re-split and re-parsed hundreds of times;
+/// * **the blocks are summed across all cores** with the GIL released.
+///
+/// An EMPTY block is a refusal, exactly as in `add_many`: an empty sum
+/// has no encryption under this key, and returning a ciphertext of zero
+/// nobody asked for would make the two functions disagree about the
+/// same question.
+///
+/// A ciphertext NO block names is not read and not validated, for the
+/// same reason: the loop this replaces would not have read it either.
+#[pyfunction]
+fn add_blocks(
+    py: Python<'_>,
+    pk: &PublicKey,
+    blobs: Vec<Bound<'_, PyBytes>>,
+    blocks: Vec<Vec<usize>>,
+) -> PyResult<Vec<Py<PyBytes>>> {
+    let nn = &pk.nn;
+    let slices: Vec<&[u8]> = blobs.iter().map(|b| b.as_bytes()).collect();
+
+    let produced: Result<Vec<Vec<u8>>, String> = py.allow_threads(|| {
+        // The shape of the blocks is settled BEFORE any ciphertext is
+        // touched, and only the ciphertexts a block actually names are
+        // parsed. Validating the whole array instead would refuse a
+        // blob nothing references — which the loop over `add_many` this
+        // replaces does not do, so the two would disagree about an
+        // input neither of them reads.
+        let mut needed = vec![false; slices.len()];
+        for (block_index, block) in blocks.iter().enumerate() {
+            if block.is_empty() {
+                return Err(format!(
+                    "block #{} is empty: an empty sum has no encryption \
+                     under this key, and returning one would be a \
+                     ciphertext of zero that nobody asked for",
+                    block_index + 1
+                ));
+            }
+            if block.len() > SUM_HEADROOM_TERMS as usize {
+                return Err(format!(
+                    "block #{} holds {} ciphertexts, at most \
+                     {SUM_HEADROOM_TERMS} per sum: past that the reserved \
+                     headroom stops covering the sum",
+                    block_index + 1,
+                    block.len()
+                ));
+            }
+            for (position, &index) in block.iter().enumerate() {
+                // The index is reported AS GIVEN, zero-based. It comes
+                // from Python and can be any `usize`, so `index + 1`
+                // wraps at the maximum and names ciphertext `#0`.
+                if index >= slices.len() {
+                    return Err(format!(
+                        "block #{} names index {} at position {}, and only \
+                         {} ciphertexts were given",
+                        block_index + 1,
+                        index,
+                        position + 1,
+                        slices.len()
+                    ));
+                }
+                needed[index] = true;
+            }
+        }
+
+        // Parse ONCE, and only what is referenced. The same term appears
+        // in many blocks, and `split_blob` plus the `Integer`
+        // construction is the bulk of what a per-block loop repeats.
+        let parsed: Vec<Option<(u8, Integer)>> = (0..slices.len())
+            .into_par_iter()
+            .map(|index| -> Result<Option<(u8, Integer)>, String> {
+                if !needed[index] {
+                    return Ok(None);
+                }
+                let (pow10, value) =
+                    split_blob(slices[index]).map_err(|message| {
+                        format!("ciphertext #{}: {message}", index + 1)
+                    })?;
+                if value < 1 || value >= *nn {
+                    return Err(format!(
+                        "ciphertext #{} is not in [1, n^2) of this key: a \
+                         valid ciphertext is an invertible residue modulo \
+                         n^2, and this one is not",
+                        index + 1
+                    ));
+                }
+                Ok(Some((pow10, value)))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        blocks
+            .par_iter()
+            .enumerate()
+            .map(|(block_index, block)| -> Result<Vec<u8>, String> {
+                let mut total = Integer::from(1);
+                let mut scale_pow10: Option<u8> = None;
+                for (position, &index) in block.iter().enumerate() {
+                    let (pow10, value) = parsed[index]
+                        .as_ref()
+                        .expect("every referenced index was parsed above");
+                    // Same rule as `add_many`: mixing scales adds
+                    // different units and returns a plausible wrong
+                    // number, and rescaling under encryption is not
+                    // available.
+                    match scale_pow10 {
+                        None => scale_pow10 = Some(*pow10),
+                        Some(first) if first != *pow10 => {
+                            return Err(format!(
+                                "block #{} mixes scale 1e{pow10} at position \
+                                 {} into a sum started at 1e{first}: adding \
+                                 them would produce a plausible wrong \
+                                 number, and rescaling is impossible on \
+                                 encrypted values",
+                                block_index + 1,
+                                position + 1
+                            ))
+                        }
+                        Some(_) => {}
+                    }
+                    total = total * value % nn;
+                }
+                Ok(join_blob(
+                    scale_pow10.expect("the block is non-empty, checked above"),
+                    &total,
+                ))
+            })
+            .collect()
+    });
+
+    let produced = produced.map_err(PyValueError::new_err)?;
+    Ok(produced
+        .into_iter()
+        .map(|bytes| PyBytes::new(py, &bytes).unbind())
+        .collect())
+}
+
 /// The width, in bits, that an encoded scalar must fit.
 ///
 /// Every scalar exponentiation runs at EXACTLY `SCALAR_BITS + 2` bits,
@@ -1306,6 +1457,7 @@ fn paillier(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(generate_keypair, m)?)?;
     m.add_function(wrap_pyfunction!(encrypt_many, m)?)?;
     m.add_function(wrap_pyfunction!(add_many, m)?)?;
+    m.add_function(wrap_pyfunction!(add_blocks, m)?)?;
     m.add_function(wrap_pyfunction!(multiply_many, m)?)?;
     m.add_function(wrap_pyfunction!(multiply_many_public, m)?)?;
     m.add_function(wrap_pyfunction!(rerandomize, m)?)?;

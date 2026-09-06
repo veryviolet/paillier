@@ -77,6 +77,47 @@ outside `[1, n²)`; a batch that **mixes scales**.
     (`2^2026`) and what is encodable from `f64` at all (about `2^1024`):
     a thousand bits short of overflow.
 
+## `add_blocks(pub, blobs, blocks)`
+
+Sums MANY blocks over one array of ciphertexts, in parallel over the
+blocks. `blocks` is a list of index lists into `blobs`; the result is one
+blob per block, in the order the blocks were given.
+
+Equivalent to `[add_many(pub, [blobs[i] for i in block]) for block in
+blocks]`, byte for byte — and about eight times faster on the shape it
+was written for, because the Python loop holds the GIL and re-parses
+every blob once per block that names it.
+
+Refuses: an **empty block**; a block longer than `2^20`; an index past
+the end of `blobs`; a block that **mixes scales**; a ciphertext outside
+`[1, n²)`. An empty LIST of blocks is not an error — it is no sums, which
+is a different thing from an empty sum.
+
+A ciphertext that **no block names** is never read, so it is never
+refused either. That is what makes the equivalence above hold for
+refusals as well as for values: the loop would not have read it.
+
+!!! note "Per block, not per call"
+
+    Every limit and every refusal `add_many` applies to one sum, this
+    applies to each block separately. Two blocks at two different scales
+    are two sums and are allowed; two scales inside ONE block are not.
+
+!!! note "A repeated index is added again"
+
+    `[0, 0, 0]` is three times that term. Indices are positions, not a
+    set, and nothing here deduplicates them.
+
+Measured on a 2048-bit key, 20000 ciphertexts and 348 blocks averaging
+half the array — the sweep of one vertical tree node over 12 features at
+30 quantiles:
+
+| | time |
+|---|---|
+| loop over `add_many` | 25.276 s |
+| `add_blocks` | 3.151 s |
+| **speed-up** | **8.0×** |
+
 ## `multiply_many(pub, blobs, scalars, *, scalar_scale_pow10=None)`
 
 Multiplies each ciphertext by a **known** scalar — `E(x) → E(k·x)` — and
@@ -271,6 +312,36 @@ not a ciphertext under this key.
     Nor can there be: it does not follow from `n` alone. A ciphertext
     made under a different key will usually lead to a refusal — but not
     always.
+
+## `decrypt_many(sec, blobs)`
+
+Decrypts a batch across all cores and returns the plaintexts as **decimal
+strings**, in the order given.
+
+Strings, not floats, because the values this is for are aggregates: a
+homomorphic sum passes `2^53` on an ordinary batch, and above that an
+`f64` holds only the even integers. `decrypt` would return a number that
+is not flagged, not out of range and not implausible — merely a different
+one.
+
+Refuses a blob carrying a **non-zero scale**, and a value that is not a
+ciphertext under this key. The scale is refused rather than divided out:
+dividing is what puts the rounding back.
+
+Measured on a 2048-bit key, 720 ciphertexts:
+
+| | time |
+|---|---|
+| loop over `decrypt` | 2.74 s |
+| `decrypt_many` | 0.48 s |
+| **speed-up** | **5.8×** |
+
+!!! note "Use `decrypt` for a magnitude"
+
+    A scaled value is a magnitude, and a magnitude is what `decrypt`
+    returns. This one is for callers that will add, compare or re-encode
+    the result, where a double rounding through binary64 stops being the
+    identity well below `2^53`.
 
 ## `__version__`
 
