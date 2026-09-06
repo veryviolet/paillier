@@ -84,9 +84,9 @@ blocks. `blocks` is a list of index lists into `blobs`; the result is one
 blob per block, in the order the blocks were given.
 
 Equivalent to `[add_many(pub, [blobs[i] for i in block]) for block in
-blocks]`, byte for byte — and about eight times faster on the shape it
-was written for, because the Python loop holds the GIL and re-parses
-every blob once per block that names it.
+blocks]`, byte for byte. It is faster on the shape it was written for,
+because the Python loop holds the GIL and re-parses every blob once per
+block that names it.
 
 Refuses: an **empty block**; a block longer than `2^20`; an index past
 the end of `blobs`; a block that **mixes scales**; a ciphertext outside
@@ -107,16 +107,6 @@ refusals as well as for values: the loop would not have read it.
 
     `[0, 0, 0]` is three times that term. Indices are positions, not a
     set, and nothing here deduplicates them.
-
-Measured on a 2048-bit key, 20000 ciphertexts and 348 blocks averaging
-half the array — the sweep of one vertical tree node over 12 features at
-30 quantiles:
-
-| | time |
-|---|---|
-| loop over `add_many` | 25.276 s |
-| `add_blocks` | 3.151 s |
-| **speed-up** | **8.0×** |
 
 ## `multiply_many(pub, blobs, scalars, *, scalar_scale_pow10=None)`
 
@@ -327,14 +317,6 @@ one.
 Refuses a blob carrying a **non-zero scale**, and a value that is not a
 ciphertext under this key. The scale is refused rather than divided out:
 dividing is what puts the rounding back.
-
-Measured on a 2048-bit key, 720 ciphertexts:
-
-| | time |
-|---|---|
-| loop over `decrypt` | 2.74 s |
-| `decrypt_many` | 0.48 s |
-| **speed-up** | **5.8×** |
 
 !!! note "Use `decrypt` for a magnitude"
 

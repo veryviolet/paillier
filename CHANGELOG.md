@@ -14,15 +14,9 @@ carries it, and the number is spent on that as much as on the addition
 below.
 
 `decrypt` was the last exported operation still serial, and it holds the
-GIL, so a Python thread pool over it measured 0.64× rather than a
-speed-up. On the caller's node decryption was 64% of one vertical GBDT
-round.
-
-| | time |
-|---|---|
-| loop over `decrypt`, 720 ciphertexts | 2.74 s |
-| `decrypt_many` | 0.48 s |
-| **speed-up** | **5.8×** |
+GIL, so a Python thread pool over it is slower than the loop it replaces
+rather than faster. Decryption was a large share of one vertical GBDT
+round on the caller's node.
 
 It returns the plaintext as a decimal STRING and refuses a scaled blob,
 so an aggregate above `2^53` stays exact. `decrypt` returns `f64`, and
@@ -35,18 +29,9 @@ a different split and still reads as a plausible number.
 the same ciphertexts: a vertical tree's passive side sweeps every
 (feature × candidate threshold) pair and sums the gradients of the rows
 on one side of each. Driven as a Python loop that work holds the GIL and
-runs on one core — measured at **98.4%** of a whole tree node, beside
-encryption and re-randomisation that are already parallel here and cost
-almost nothing next to it.
-
-Measured on a 2048-bit key, 20000 ciphertexts and 348 blocks averaging
-half the array, on 12 cores:
-
-| | time |
-|---|---|
-| loop over `add_many` | 25.276 s |
-| `add_blocks` | 3.151 s |
-| **speed-up** | **8.0×** |
+runs on one core, and it dominated a whole tree node — the encryption and
+the re-randomisation beside it are already parallel here and cost almost
+nothing next to it.
 
 The results are byte-identical to the loop. Two things it does that the
 loop cannot: every blob is parsed **once** rather than once per block

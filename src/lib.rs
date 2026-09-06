@@ -762,10 +762,9 @@ fn add_many(
 /// one array: a vertical tree's passive side sweeps every
 /// (feature x candidate threshold) pair and sums the gradients of the
 /// rows on one side of each. Driven from Python that loop holds the GIL
-/// and runs on one core, and a measurement on the caller's node put it
-/// at 98.4% of the whole node — the encryption and the re-randomisation
-/// around it are already parallel here and cost almost nothing beside
-/// it.
+/// and runs on one core, and on the caller's node it dominated the whole
+/// node — the encryption and the re-randomisation around it are already
+/// parallel here and cost almost nothing beside it.
 ///
 /// Two things it does that a loop over `add_many` cannot:
 ///
@@ -1401,10 +1400,9 @@ fn decrypt(sk: &SecretKey, blob: &[u8]) -> PyResult<f64> {
 /// with it the rounding this exists to avoid.
 ///
 /// It is the only exported operation that was still serial: `rayon`
-/// appears in this crate for `encrypt_many` and `rerandomize`, and a
-/// measurement on the caller's node put decryption at 64% of one
-/// training round with no scaling across threads at all, because
-/// `decrypt` holds the GIL.
+/// appears in this crate for `encrypt_many` and `rerandomize`, and on the
+/// caller's node decryption was a large share of one training round with
+/// no scaling across threads at all, because `decrypt` holds the GIL.
 #[pyfunction]
 fn decrypt_many(
     py: Python<'_>,
