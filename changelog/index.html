@@ -944,6 +944,45 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#071-2026-09-07" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.7.1 — 2026-09-07
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.1 — 2026-09-07">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#both-multiplication-paths-use-the-cores-they-already-had" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Both multiplication paths use the cores they already had
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-made-it-visible" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What made it visible
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#070-2026-09-06" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1333,6 +1372,45 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#071-2026-09-07" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.7.1 — 2026-09-07
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.7.1 — 2026-09-07">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#both-multiplication-paths-use-the-cores-they-already-had" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Both multiplication paths use the cores they already had
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-made-it-visible" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What made it visible
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#070-2026-09-06" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1708,6 +1786,39 @@
 
 
 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
+<h2 id="071-2026-09-07">0.7.1 — 2026-09-07<a class="headerlink" href="#071-2026-09-07" title="Permanent link">&para;</a></h2>
+<p>Performance only. Same arithmetic, same ciphertext format, same bytes out
+for the same bytes in.</p>
+<h3 id="both-multiplication-paths-use-the-cores-they-already-had">Both multiplication paths use the cores they already had<a class="headerlink" href="#both-multiplication-paths-use-the-cores-they-already-had" title="Permanent link">&para;</a></h3>
+<p><code>multiply_many</code> and <code>multiply_many_public</code> released the GIL and then did
+the work in a plain <code>for</code> loop. Releasing the GIL without a parallel
+iterator buys nothing: the caller's other threads may run, but the
+multiplication itself sits on one core. <code>encrypt_many</code> has used
+<code>par_iter</code> from the start; these two never did.</p>
+<p>Both now spread over the cores rayon is configured for, the way
+<code>encrypt_many</code> already did. The decrypted sum is unchanged to the last
+digit either side of the change, and the two paths still agree with each
+other exactly.</p>
+<p><strong>One behaviour does change, and it is in the error message.</strong> A
+sequential loop returned on the first bad entry, so the index it named
+was the lowest one. A parallel collect keeps whichever error arrives
+first, so with several bad entries in one batch the index named is one
+of them rather than the first, and it may differ between runs of the
+same input. An <code>Err</code> is still returned whenever any entry is bad, and
+the index named always belongs to an entry that really is bad. The four
+paths that were already parallel have always behaved this way; these two
+now match them rather than being made an exception.</p>
+<p><strong>The flat-timing guarantee of <code>multiply_many</code> is untouched</strong>, and that
+is why this is safe to do there at all: what makes that path flat is a
+property of each individual product — a fixed-width exponent, the offset
+divided back out — not of the order the products are computed in. What
+<code>multiply_many_public</code> gives up is likewise a property of the exponent's
+width. Neither depends on scheduling.</p>
+<h3 id="what-made-it-visible">What made it visible<a class="headerlink" href="#what-made-it-visible" title="Permanent link">&para;</a></h3>
+<p>Vertical linear training runs <code>rows × features</code> multiplications per
+round on the secret path. On a batch of a size that occurs in practice
+one round took long enough to outrun the caller's transport deadline,
+with every core but one idle for the whole of it.</p>
 <h2 id="070-2026-09-06">0.7.0 — 2026-09-06<a class="headerlink" href="#070-2026-09-06" title="Permanent link">&para;</a></h2>
 <p>Additive only. Nothing existing changes behaviour, and ciphertexts keep
 their format.</p>
