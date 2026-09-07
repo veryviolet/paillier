@@ -1006,12 +1006,25 @@ fn multiply_many(
 
     let slices: Vec<&[u8]> = blobs.iter().map(|b| b.as_bytes()).collect();
 
+    // `allow_threads` releases the GIL; `par_iter` is what then uses the
+    // cores. Both are needed, and this path had only the first — so the
+    // GIL was free and one core did the work. It is the costliest entry
+    // point in the library, two exponentiations and an inversion per
+    // product, and the callers that reach for it run one product per
+    // (row, feature) pair.
+    //
+    // The ARITHMETIC is untouched, and that is what keeps the guarantee:
+    // the flat timing this path exists for is a property of each product
+    // — a fixed-width exponent, the offset divided back out — and not of
+    // the order the products are computed in. `encrypt_many` has been
+    // shaped this way from the start; this one stayed sequential.
     let produced = py
         .allow_threads(|| {
-            let mut out: Vec<Vec<u8>> = Vec::with_capacity(slices.len());
-            for (index, (blob, scalar)) in
-                slices.iter().zip(scalars.iter()).enumerate()
-            {
+            slices
+                .par_iter()
+                .zip(scalars.par_iter())
+                .enumerate()
+                .map(|(index, (blob, scalar))| -> Result<Vec<u8>, String> {
                 let (pow10, cipher) = split_blob(blob).map_err(|message| {
                     format!("ciphertext #{}: {message}", index + 1)
                 })?;
@@ -1075,9 +1088,9 @@ fn multiply_many(
                 })?;
                 let product = raised * undo % nn;
 
-                out.push(join_blob(product_pow10 as u8, &product));
-            }
-            Ok(out)
+                Ok(join_blob(product_pow10 as u8, &product))
+                })
+                .collect::<Result<Vec<Vec<u8>>, String>>()
         })
         .map_err(PyValueError::new_err)?;
 
@@ -1175,12 +1188,20 @@ fn multiply_many_public(
     let nn = &pk.nn;
     let slices: Vec<&[u8]> = blobs.iter().map(|b| b.as_bytes()).collect();
 
+    // Parallel for the same reason as `multiply_many` above. Each
+    // product is cheaper here — one windowed exponentiation instead of
+    // two plus an inversion — but there are just as many of them, and
+    // they were on one core just the same.
+    //
+    // What this path trades away is a property of the exponent's WIDTH,
+    // which the order of computation does not touch.
     let produced = py
         .allow_threads(|| {
-            let mut out: Vec<Vec<u8>> = Vec::with_capacity(slices.len());
-            for (index, (blob, scalar)) in
-                slices.iter().zip(scalars.iter()).enumerate()
-            {
+            slices
+                .par_iter()
+                .zip(scalars.par_iter())
+                .enumerate()
+                .map(|(index, (blob, scalar))| -> Result<Vec<u8>, String> {
                 let (pow10, cipher) = split_blob(blob).map_err(|message| {
                     format!("ciphertext #{}: {message}", index + 1)
                 })?;
@@ -1278,9 +1299,9 @@ fn multiply_many_public(
                         )
                     })?;
 
-                out.push(join_blob(product_pow10 as u8, &product));
-            }
-            Ok(out)
+                Ok(join_blob(product_pow10 as u8, &product))
+                })
+                .collect::<Result<Vec<Vec<u8>>, String>>()
         })
         .map_err(PyValueError::new_err)?;
 

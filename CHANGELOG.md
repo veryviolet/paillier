@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.7.1 — 2026-09-07
+
+Performance only. Same arithmetic, same ciphertext format, same bytes out
+for the same bytes in.
+
+### Both multiplication paths use the cores they already had
+
+`multiply_many` and `multiply_many_public` released the GIL and then did
+the work in a plain `for` loop. Releasing the GIL without a parallel
+iterator buys nothing: the caller's other threads may run, but the
+multiplication itself sits on one core. `encrypt_many` has used
+`par_iter` from the start; these two never did.
+
+Both now spread over the cores rayon is configured for, the way
+`encrypt_many` already did. The decrypted sum is unchanged to the last
+digit either side of the change, and the two paths still agree with each
+other exactly.
+
+**One behaviour does change, and it is in the error message.** A
+sequential loop returned on the first bad entry, so the index it named
+was the lowest one. A parallel collect keeps whichever error arrives
+first, so with several bad entries in one batch the index named is one
+of them rather than the first, and it may differ between runs of the
+same input. An `Err` is still returned whenever any entry is bad, and
+the index named always belongs to an entry that really is bad. The four
+paths that were already parallel have always behaved this way; these two
+now match them rather than being made an exception.
+
+**The flat-timing guarantee of `multiply_many` is untouched**, and that
+is why this is safe to do there at all: what makes that path flat is a
+property of each individual product — a fixed-width exponent, the offset
+divided back out — not of the order the products are computed in. What
+`multiply_many_public` gives up is likewise a property of the exponent's
+width. Neither depends on scheduling.
+
+### What made it visible
+
+Vertical linear training runs `rows × features` multiplications per
+round on the secret path. On a batch of a size that occurs in practice
+one round took long enough to outrun the caller's transport deadline,
+with every core but one idle for the whole of it.
+
 ## 0.7.0 — 2026-09-06
 
 Additive only. Nothing existing changes behaviour, and ciphertexts keep
